@@ -101,6 +101,10 @@
   .ctrl-label { text-align:center; font-size:10px; color:var(--muted); margin-top:5px; font-weight:700; letter-spacing:.5px; }
   .ctrl-wrap { display:flex; flex-direction:column; align-items:center; }
   .hint { text-align: center; color: var(--muted); font-size: 12px; padding: 2px 0 4px; }
+  /* Adventurousness dial — how far into the graph discovery reaches */
+  .advbar { display: flex; gap: 4px; background: var(--card); border-radius: 14px; padding: 4px; margin: 2px 0 4px; }
+  .advbar button { flex: 1; border: 0; background: transparent; color: var(--muted); font-weight: 700; font-size: 12px; padding: 8px 4px; border-radius: 10px; cursor: pointer; transition: background .15s, color .15s; }
+  .advbar button.on { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
 
   .loading, .empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); text-align:center; padding: 0 30px; }
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #2a2740; border-top-color: var(--accent); animation: spin 1s linear infinite; }
@@ -165,6 +169,11 @@
 
     <!-- DISCOVER -->
     <section class="screen" id="discover">
+      <div class="advbar" id="advbar">
+        <button data-adv="0">🛋️ Cozy</button>
+        <button data-adv="1">⚖️ Balanced</button>
+        <button data-adv="2">🧭 Adventurous</button>
+      </div>
       <div class="deck" id="deck">
         <div class="loading" id="deckLoading"><div class="spinner"></div><div>Mapping your taste…</div></div>
       </div>
@@ -215,6 +224,7 @@ const state = {
   current: null,
   refilling: false,
   exploreBoost: 0,      // when >0, reach further out in the graph
+  adventure: 1,         // discovery dial: 0=cozy, 1=balanced, 2=adventurous
   seedLabels: [],       // for display
 };
 
@@ -301,7 +311,7 @@ function ensureArtist(id, name, score, meta) {
 /* ---------- Track normalization ---------- */
 function normalize(t, reason) {
   const cover = t.album && (t.album.cover_big || t.album.cover_medium || t.album.cover);
-  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, reason };
+  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, rank: t.rank || 0, reason };
 }
 function queueTracks(list, reason) {
   let n = 0;
@@ -347,7 +357,9 @@ async function refill() {
     let added = 0, attempts = 0;
     while (added < 6 && attempts < 5) {
       attempts++;
-      const explore = state.exploreBoost > 0;
+      // Adventurousness dial controls how often we reach further out in the graph.
+      const advExploreChance = [0.05, 0.2, 0.55][state.adventure];
+      const explore = state.exploreBoost > 0 || Math.random() < advExploreChance;
       const S = pickSource(explore);
       if (!S) break;
       await fetchRelatedInto(S);
@@ -362,7 +374,7 @@ async function refill() {
           targets = (RA.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 2);
         }
         reasonOverride = "Reaching further out…";
-        state.exploreBoost--;
+        if (state.exploreBoost > 0) state.exploreBoost--;
       } else {
         targets = (S.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 2);
       }
@@ -383,8 +395,18 @@ async function refill() {
       }
     }
   } finally { state.refilling = false; }
-  // light shuffle so it doesn't feel batched by artist
-  for (let i = state.queue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [state.queue[i], state.queue[j]] = [state.queue[j], state.queue[i]]; }
+  orderQueue();
+}
+// Order the upcoming queue with an adventure bias + randomness (avoids batching by artist).
+// Deezer 'rank' ~ popularity: cozy floats hits up, adventurous floats deep cuts up, balanced = shuffle.
+function orderQueue() {
+  const adv = state.adventure;
+  state.queue.forEach(t => {
+    const pop = (t.rank || 0) / 1000000; // ~0..1
+    const bias = adv === 0 ? pop : adv === 2 ? -pop : 0;
+    t._ord = bias + Math.random();
+  });
+  state.queue.sort((a, b) => b._ord - a._ord);
 }
 
 /* ---------- Persistence ---------- */
@@ -398,6 +420,7 @@ function save() {
       knownIds: [...state.knownIds].slice(-1200),
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
+      adventure: state.adventure,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (e) { /* storage may be blocked; app still works in-session */ }
@@ -413,6 +436,7 @@ function load() {
     state.knownIds = new Set(d.knownIds || []);
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
+    if (typeof d.adventure === "number") state.adventure = d.adventure;
     return Object.keys(state.artists).length > 0 || state.liked.length > 0;
   } catch (e) { return false; }
 }
@@ -655,6 +679,21 @@ document.getElementById("btnNope").onclick = () => decide("nope");
 document.getElementById("btnHeard").onclick = () => decide("heard");
 document.getElementById("btnReplay").onclick = () => { const h = state.current && hotStarts[state.current.id]; try { audio.currentTime = (h && h > 1.5) ? h : 0; } catch (_) {} safePlay(); };
 
+/* ---------- Adventurousness dial ---------- */
+function applyAdventureUI() {
+  document.querySelectorAll("#advbar button").forEach(b => b.classList.toggle("on", +b.dataset.adv === state.adventure));
+}
+function setAdventure(n) {
+  state.adventure = n;
+  applyAdventureUI();
+  save();
+  toast(["🛋️ Cozy — close to your favourites", "⚖️ Balanced mix", "🧭 Adventurous — reaching far out"][n]);
+  // seed some immediate exploration when cranking it up
+  if (n === 2) state.exploreBoost = Math.max(state.exploreBoost, 2);
+  orderQueue(); // re-order what's already queued so the change is felt right away
+}
+document.querySelectorAll("#advbar button").forEach(b => b.onclick = () => setAdventure(+b.dataset.adv));
+
 /* ---------- Drag / swipe ---------- */
 // Playful, artist-safe remarks. Likes get hyped, passes stay light (never bash an artist).
 const LOVE_REMARKS = ["banger","certified heat","yes chef","this slaps","instant add","obsessed","on repeat","vibe unlocked","heat check"];
@@ -773,6 +812,7 @@ function toast(msg) {
 /* ---------- Boot ---------- */
 (function boot() {
   const returning = load();
+  applyAdventureUI();
   if (returning) {
     document.getElementById("welcomeStat").textContent = state.liked.length;
     const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
