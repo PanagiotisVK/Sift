@@ -1294,7 +1294,7 @@ function updateFriends() {
 document.getElementById("btnInvite").onclick = async () => {
   const arche = document.getElementById("tcArche").textContent;
   const text = 'I\'m "' + arche + '" on Facet 🎧 — a music discovery app that actually finds you songs you\'ve never heard and will love. Come compare tastes:';
-  const url = "https://facetmusic.netlify.app/";
+  const url = location.origin + location.pathname; // always matches wherever the app is hosted
   try {
     if (navigator.share) await navigator.share({ title: "Facet", text, url });
     else { await navigator.clipboard.writeText(text + " " + url); toast("Invite copied to clipboard"); }
