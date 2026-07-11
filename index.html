@@ -205,6 +205,17 @@
   .friend .match { text-align: center; flex-shrink: 0; }
   .friend .match .pct { font-weight: 900; font-size: 19px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .friend .match .ml { font-size: 9px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  /* Send-a-deck */
+  .dm-title { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 20px; }
+  #deckmode { padding: 0; }
+  .deckrow { border: 1px solid var(--glass-brd); border-radius: 14px; padding: 12px; margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(255,255,255,.04); }
+  .deckrow .dr-meta { flex: 1; min-width: 0; }
+  .deckrow .dr-t { font-weight: 700; font-size: 14px; }
+  .deckrow .dr-s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .deckrow .dr-share { flex: 0 0 auto; padding: 9px 14px; }
+  .deckrow .dr-det { flex-basis: 100%; border-top: 1px solid rgba(255,255,255,.08); padding-top: 8px; }
+  .deckrow .dr-friend { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+  .deckrow .dr-friend b { color: var(--text); font-weight: 700; }
   /* Bottom tab bar — primary navigation (scales to Friends, DMs, Profile) */
   .tabbar { display: flex; background: rgba(30,27,48,.42); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border: 1px solid var(--glass-brd); border-radius: 24px; margin: 2px 10px calc(6px + env(safe-area-inset-bottom)); padding: 6px 4px; z-index: 5; box-shadow: 0 12px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1); }
   .tab { flex: 1; background: transparent; border: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 9.5px; font-weight: 700; cursor: pointer; padding: 2px 0; transition: color .15s; }
@@ -357,6 +368,28 @@
         </div>
         <div class="acct-msg" id="friendMsg"></div>
         <div id="friendsList"></div>
+
+        <div class="acct-title" style="margin-top:18px;">Send a deck</div>
+        <div class="acct-sub">Bundle your latest Finds into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
+        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Create a deck from my Finds</button>
+        <div class="acct-msg" id="deckMsg"></div>
+        <div id="myDecks"></div>
+      </div>
+    </section>
+
+    <!-- DECK MODE (a friend swiping a shared deck) -->
+    <section class="screen" id="deckmode">
+      <div style="padding:12px 18px 2px;">
+        <div class="dm-title" id="dmTitle">A deck for you</div>
+        <div class="sub" id="dmSub" style="margin:3px 4px 0;">Swipe through these picks — love the ones you vibe with.</div>
+      </div>
+      <div class="deck" id="dmDeck" style="margin:8px 18px 2px;"></div>
+      <div class="dock">
+        <div class="controls">
+          <div class="ctrl-wrap"><button class="ctrl big nope" id="dmNope"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button><div class="ctrl-label">NOPE</div></div>
+          <div class="ctrl-wrap"><button class="ctrl small replay" id="dmPlay"></button><div class="ctrl-label">PLAY</div></div>
+          <div class="ctrl-wrap"><button class="ctrl big love" id="dmLove"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button><div class="ctrl-label">LOVE</div></div>
+        </div>
       </div>
     </section>
   </main>
@@ -713,8 +746,8 @@ function showScreen(name) {
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.screen === name));
   if (name === "finds") updateFinds(); // refresh buckets + kick off genre lookups
   if (name === "friends") { updateFriends(); if (window._refreshSocial) window._refreshSocial(); } // taste fingerprint + cloud sync
-  if (name !== "discover") audio.pause();
-  else if (state.current) safePlay();
+  if (name !== "discover" && name !== "deckmode") audio.pause();
+  else if (name === "discover" && state.current) safePlay();
 }
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
   if (b.dataset.soon) { toast(b.dataset.soon + " — coming soon 👀"); return; }
@@ -848,7 +881,7 @@ audio.addEventListener("timeupdate", () => {
 // Play / pause (SVG icons)
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.4c0-.8.9-1.3 1.6-.9l9 6.6c.6.4.6 1.4 0 1.8l-9 6.6c-.7.4-1.6-.1-1.6-.9z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.8" height="14" rx="1.3"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.3"/></svg>';
-function updatePlayIcon() { const b = document.getElementById("btnPlay"); if (b) b.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE; }
+function updatePlayIcon() { const b = document.getElementById("btnPlay"); if (b) b.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE; const d = document.getElementById("dmPlay"); if (d) d.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE; }
 updatePlayIcon();
 audio.addEventListener("play", updatePlayIcon);
 audio.addEventListener("pause", updatePlayIcon);
@@ -1313,6 +1346,7 @@ function renderAcct() {
   document.getElementById("userName").textContent = "@" + me_profile.username;
   document.getElementById("userSync").textContent = "Vibe synced ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
   renderFriends();
+  renderMyDecks();
 }
 
 async function renderFriends() {
@@ -1408,7 +1442,7 @@ async function addFriend() {
 }
 
 // Called when the Friends tab opens: refresh my cloud taste + friends' match %.
-window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderFriends(); } };
+window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderFriends(); renderMyDecks(); } };
 
 (function initSocial() {
   if (!SB) { const a = document.getElementById("acctBox"); if (a) a.style.display = "none"; return; }
@@ -1424,6 +1458,188 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   loadMe();
 })();
 
+/* ============================================================
+   SEND-A-DECK — bundle songs, share a link, a friend swipes your
+   picks, and their loves come back to you. Sender side saves decks
+   to Supabase; receiver side is a self-contained swipe experience
+   that anyone can open from the link (login only needed to send
+   their loves back). Reuses the same audio + "best part" engine.
+   ============================================================ */
+let dmQueue = [], dmLoved = [], dmDeckMeta = null, dmCurrent = null, dmIndex = 0, dmTotal = 0;
+
+// --- Sender: create + share + see results ---
+async function createDeckFromFinds() {
+  if (!SB || !me_profile) return;
+  const picks = [...state.liked].reverse().slice(0, 12); // latest up to 12
+  if (picks.length < 3) { acctMsg("deckMsg", "Love at least 3 songs first — then you can send them! 🎧", "err"); return; }
+  const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
+  acctMsg("deckMsg", "Creating your deck…");
+  try {
+    const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title: me_profile.username + "'s picks", tracks }).select().single();
+    if (error) { acctMsg("deckMsg", error.message, "err"); return; }
+    acctMsg("deckMsg", "Deck ready! Sharing link… 🚀", "ok");
+    shareDeck(location.origin + location.pathname + "?deck=" + data.id, tracks.length);
+    renderMyDecks();
+  } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); }
+}
+async function shareDeck(link, n) {
+  const text = "I made you a deck of " + n + " songs on Facet 🎧 — swipe through and tell me which you love:";
+  try {
+    if (navigator.share) await navigator.share({ title: "Facet deck", text, url: link });
+    else { await navigator.clipboard.writeText(text + " " + link); toast("Deck link copied!"); }
+  } catch (e) { try { await navigator.clipboard.writeText(link); toast("Deck link copied!"); } catch (_) {} }
+}
+async function renderMyDecks() {
+  const wrap = document.getElementById("myDecks");
+  if (!wrap || !SB || !me_session) return;
+  try {
+    const { data: decks } = await SB.from("decks").select("id,title,tracks,created_at").eq("owner", me_session.user.id).order("created_at", { ascending: false });
+    if (!decks || !decks.length) { wrap.innerHTML = ""; return; }
+    const ids = decks.map(d => d.id);
+    const { data: results } = await SB.from("deck_results").select("deck_id,swiper_name,loved").in("deck_id", ids);
+    const byDeck = {}; (results || []).forEach(r => { (byDeck[r.deck_id] = byDeck[r.deck_id] || []).push(r); });
+    wrap.innerHTML = '<div class="acct-title" style="margin-top:18px;">Decks you sent</div>';
+    decks.forEach(d => {
+      const res = byDeck[d.id] || [];
+      const swipers = res.length, totalLoves = res.reduce((s, r) => s + ((r.loved || []).length), 0);
+      const link = location.origin + location.pathname + "?deck=" + d.id;
+      const nT = d.tracks ? d.tracks.length : 0;
+      const el = document.createElement("div"); el.className = "deckrow";
+      el.innerHTML = '<div class="dr-meta"><div class="dr-t">' + esc(d.title || "Deck") + '</div><div class="dr-s">' + nT + ' songs · ' + swipers + (swipers === 1 ? ' friend swiped' : ' friends swiped') + (totalLoves ? ' · ' + totalLoves + ' ♥' : '') + '</div></div><button class="btn-mini ghost dr-share">Share</button>';
+      el.querySelector(".dr-share").onclick = () => shareDeck(link, nT);
+      if (res.length) {
+        const det = document.createElement("div"); det.className = "dr-det";
+        det.innerHTML = res.map(r => {
+          const loved = (r.loved || []);
+          return '<div class="dr-friend"><b>@' + esc(r.swiper_name || "someone") + '</b> loved ' + loved.length + (loved.length ? ': ' + loved.map(x => esc(x.title)).join(", ") : '') + '</div>';
+        }).join("");
+        el.appendChild(det);
+      }
+      wrap.appendChild(el);
+    });
+  } catch (e) { /* offline */ }
+}
+
+// --- Receiver: open a shared deck and swipe it ---
+async function openDeck(deckId) {
+  if (!SB) return false;
+  try {
+    const { data: deck } = await SB.from("decks").select("*").eq("id", deckId).maybeSingle();
+    if (!deck || !deck.tracks || !deck.tracks.length) { toast("That deck couldn't be found."); return false; }
+    dmDeckMeta = deck;
+    dmQueue = deck.tracks.filter(t => t && t.preview).slice();
+    dmTotal = dmQueue.length; dmIndex = 0; dmLoved = [];
+    let senderName = "A friend";
+    try { const { data: op } = await SB.from("profiles").select("username").eq("id", deck.owner).maybeSingle(); if (op && op.username) senderName = "@" + op.username; } catch (_) {}
+    document.getElementById("dmTitle").textContent = senderName + " sent you a deck";
+    document.getElementById("tabbar").style.display = "none";
+    showScreen("deckmode");
+    dmNext();
+    return true;
+  } catch (e) { return false; }
+}
+function dmNext() {
+  const track = dmQueue.shift();
+  if (!track) { dmFinish(); return; }
+  dmCurrent = track; dmIndex++;
+  document.getElementById("dmSub").textContent = "Song " + dmIndex + " of " + dmTotal + " · swipe ♥ or ✕";
+  renderDmCard(track);
+  playDm(track);
+}
+function renderDmCard(track) {
+  const dmDeck = document.getElementById("dmDeck");
+  dmDeck.innerHTML = "";
+  const nextT = dmQueue[0];
+  if (nextT && nextT.cover) {
+    const ghost = document.createElement("div"); ghost.className = "card ghost";
+    ghost.innerHTML = '<div class="art" style="background-image:url(\'' + nextT.cover + '\')"></div>';
+    dmDeck.appendChild(ghost);
+  }
+  const card = document.createElement("div"); card.className = "card";
+  card.innerHTML =
+    '<div class="progress" id="dmProg"></div><div class="tint"></div>' +
+    '<div class="stamp love">🔥 love</div><div class="stamp nope">nope</div>' +
+    '<div class="art" style="background-image:url(\'' + (track.cover || "") + '\')"></div>' +
+    '<div class="meta"><h2 class="title">' + esc(track.title) + '</h2><p class="artist">' + esc(track.artist) + '</p></div>';
+  dmDeck.appendChild(card);
+  attachDeckDrag(card);
+  card.querySelector(".art").addEventListener("click", () => safePlay());
+  setBackdrop(track.cover);
+}
+function playDm(track) {
+  const token = ++audioToken;
+  audio.onloadedmetadata = null; audio.loop = true; audio.src = track.preview;
+  try { audio.currentTime = 0; } catch (_) {}
+  const applyHot = () => { if (token !== audioToken) return; const h = hotStarts[track.id]; if (h && h > 1.5 && audio.currentTime < 2.5) { try { audio.currentTime = h; } catch (_) {} } };
+  audio.onloadedmetadata = applyHot; safePlay();
+  ensureHot(track).then(applyHot);
+  if (dmQueue[0]) ensureHot(dmQueue[0]);
+}
+function dmDecide(kind, kin) {
+  if (!dmCurrent) return;
+  if (kind === "love") dmLoved.push({ id: dmCurrent.id, title: dmCurrent.title, artist: dmCurrent.artist, cover: dmCurrent.cover });
+  const card = document.getElementById("dmDeck").querySelector(".card:not(.ghost)");
+  if (!card) { dmNext(); return; }
+  let x = kind === "love" ? 650 : -650, y = 60, rot = kind === "love" ? 25 : -25;
+  if (kin && (Math.abs(kin.vx) > 0.05 || Math.abs(kin.vy) > 0.05)) {
+    x = kin.dx + kin.vx * 150; y = kin.dy + kin.vy * 150;
+    const mag = Math.hypot(x, y) || 1; if (mag < 750) { x = x / mag * 750; y = y / mag * 750; }
+    rot = Math.max(-50, Math.min(50, x / 14));
+  }
+  card.style.transition = "transform .32s cubic-bezier(.3,.6,.35,1), opacity .32s";
+  card.style.transform = "translate(" + x + "px," + y + "px) rotate(" + rot + "deg)";
+  card.style.opacity = "0";
+  setTimeout(dmNext, 250);
+}
+function attachDeckDrag(card) {
+  const love = card.querySelector(".stamp.love"), nope = card.querySelector(".stamp.nope"), tint = card.querySelector(".tint");
+  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, lastX = 0, lastY = 0, lastT = 0, vx = 0, vy = 0; const TH = 120;
+  function clearFx() { love.style.opacity = nope.style.opacity = 0; tint.style.opacity = 0; }
+  function spring() { card.style.transition = "transform .38s cubic-bezier(.2,1.35,.4,1)"; card.style.transform = "translate(0,0) rotate(0deg)"; clearFx(); }
+  card.addEventListener("pointerdown", e => { dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vx = vy = 0; try { card.setPointerCapture(e.pointerId); } catch (_) {} card.style.transition = "none"; });
+  card.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    dx = e.clientX - startX; dy = e.clientY - startY;
+    const now = performance.now(), dt = now - lastT;
+    if (dt > 0) { vx = (e.clientX - lastX) / dt; vy = (e.clientY - lastY) / dt; lastX = e.clientX; lastY = e.clientY; lastT = now; }
+    card.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (dx / 20) + "deg)";
+    clearFx();
+    if (dx > 0) { const prog = Math.min(dx / TH, 1); love.style.opacity = Math.min(dx / 80, 1); love.style.transform = "rotate(12deg) scale(" + (0.75 + prog * 0.55) + ")"; tint.style.background = "radial-gradient(circle at 82% 50%, rgba(35,209,139," + (0.15 + prog * 0.45) + "), transparent 68%)"; tint.style.opacity = 1; }
+    else if (dx < 0) { const prog = Math.min(-dx / TH, 1); nope.style.opacity = Math.min(-dx / 80, 1); nope.style.transform = "rotate(-12deg) scale(" + (0.75 + prog * 0.55) + ")"; tint.style.background = "radial-gradient(circle at 18% 50%, rgba(255,92,108," + (0.15 + prog * 0.45) + "), transparent 68%)"; tint.style.opacity = 1; }
+    if (e.cancelable) e.preventDefault();
+  });
+  function end() { if (!dragging) return; dragging = false; const kin = { dx, dy, vx, vy }; if (dx > TH) dmDecide("love", kin); else if (dx < -TH) dmDecide("nope", kin); else spring(); }
+  card.addEventListener("pointerup", end);
+  card.addEventListener("pointercancel", end);
+}
+async function dmFinish() {
+  audio.pause();
+  const n = dmLoved.length;
+  document.getElementById("dmSub").textContent = "Deck complete! 🎉";
+  const dmDeck = document.getElementById("dmDeck");
+  dmDeck.innerHTML = '<div class="empty"><div style="font-size:44px">🎧</div><div style="font-size:20px;font-weight:800;color:var(--text)">You loved ' + n + ' of ' + dmTotal + '</div><div id="dmSaveMsg" style="margin-top:2px;"></div></div>';
+  if (SB && me_session && me_profile && dmDeckMeta) {
+    try {
+      await SB.from("deck_results").upsert({ deck_id: dmDeckMeta.id, swiper: me_session.user.id, swiper_name: me_profile.username, loved: dmLoved });
+      document.getElementById("dmSaveMsg").textContent = "Your picks were sent back to the sender ✓";
+    } catch (e) { document.getElementById("dmSaveMsg").textContent = "Couldn't save your picks — check your connection."; }
+  } else {
+    document.getElementById("dmSaveMsg").textContent = "Make a free account on Facet to send your loves back!";
+  }
+  const cont = document.createElement("button");
+  cont.className = "btn-primary"; cont.style.maxWidth = "260px"; cont.style.marginTop = "18px";
+  cont.textContent = (me_profile ? "Back to Facet" : "Try Facet yourself →");
+  cont.onclick = () => { location.href = location.pathname; };
+  dmDeck.appendChild(cont);
+}
+audio.addEventListener("timeupdate", () => { const p = document.getElementById("dmProg"); if (p && audio.duration) p.style.width = (audio.currentTime / audio.duration * 100) + "%"; });
+(function initDeckUI() {
+  const b = document.getElementById("btnCreateDeck"); if (b) b.onclick = createDeckFromFinds;
+  const l = document.getElementById("dmLove"); if (l) l.onclick = () => dmDecide("love");
+  const nn = document.getElementById("dmNope"); if (nn) nn.onclick = () => dmDecide("nope");
+  const pp = document.getElementById("dmPlay"); if (pp) { pp.onclick = () => { if (audio.paused) safePlay(); else audio.pause(); }; pp.innerHTML = ICON_PLAY; }
+})();
+
 /* ---------- Toast ---------- */
 let toastTimer = null;
 function toast(msg) {
@@ -1436,15 +1652,21 @@ function toast(msg) {
 (function boot() {
   const returning = load();
   applyAdventureUI();
-  if (returning) {
-    document.getElementById("welcomeStat").textContent = state.liked.length;
-    const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
-    document.getElementById("welcomeArtists").textContent = artistsLine;
-    updateFinds();
-    showScreen("welcome");
-  } else {
-    showScreen("onboarding");
+  function showHome() {
+    if (returning) {
+      document.getElementById("welcomeStat").textContent = state.liked.length;
+      const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
+      document.getElementById("welcomeArtists").textContent = artistsLine;
+      updateFinds();
+      showScreen("welcome");
+    } else {
+      showScreen("onboarding");
+    }
   }
+  // A shared deck link (?deck=…) drops you straight into swiping a friend's picks.
+  const deckParam = new URLSearchParams(location.search).get("deck");
+  if (deckParam) { openDeck(deckParam).then(ok => { if (!ok) showHome(); }); return; }
+  showHome();
 })();
 </script>
 </body>
