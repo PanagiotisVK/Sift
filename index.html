@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #0c0b12; --bg2: #14121f;
@@ -180,6 +181,30 @@
   .tc-dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.85); }
   .soon-note { margin: 22px 4px 0; padding: 14px 16px; border: 1px solid var(--glass-brd); border-radius: 16px; background: var(--card); color: var(--muted); font-size: 13px; line-height: 1.55; }
   .soon-lbl { color: var(--text); font-weight: 800; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  /* Account + friends (Supabase-backed) */
+  .acct { margin: 18px 4px 0; padding: 16px; border: 1px solid var(--glass-brd); border-radius: 18px; background: var(--card); }
+  .acct-title { font-weight: 800; font-size: 15px; }
+  .acct-sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; line-height: 1.5; }
+  .acct input { width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-brd); background: rgba(255,255,255,.06); color: var(--text); font-size: 14px; outline: none; }
+  .acct input:focus { border-color: var(--accent); }
+  .acct-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .acct-row input { margin-top: 0; }
+  .btn-mini { flex: 1; padding: 12px; border: 0; border-radius: 12px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-weight: 800; font-size: 14px; transition: transform .1s; }
+  .btn-mini:active { transform: scale(.96); }
+  .btn-mini.ghost { background: transparent; border: 1.5px solid var(--glass-brd); color: var(--text); }
+  .btn-mini:disabled { opacity: .5; cursor: not-allowed; }
+  .acct-msg { font-size: 12.5px; margin-top: 10px; color: var(--muted); line-height: 1.5; }
+  .acct-msg:empty { margin-top: 0; }
+  .acct-msg.err { color: var(--nope); }
+  .acct-msg.ok { color: var(--love); }
+  .friend { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .friend .fav { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 17px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent2)); flex-shrink: 0; }
+  .friend .fmeta { flex: 1; min-width: 0; }
+  .friend .fmeta .fn { font-weight: 700; font-size: 14px; }
+  .friend .fmeta .fa { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .friend .match { text-align: center; flex-shrink: 0; }
+  .friend .match .pct { font-weight: 900; font-size: 19px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .friend .match .ml { font-size: 9px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
   /* Bottom tab bar — primary navigation (scales to Friends, DMs, Profile) */
   .tabbar { display: flex; background: rgba(30,27,48,.42); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border: 1px solid var(--glass-brd); border-radius: 24px; margin: 2px 10px calc(6px + env(safe-area-inset-bottom)); padding: 6px 4px; z-index: 5; box-shadow: 0 12px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1); }
   .tab { flex: 1; background: transparent; border: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 9.5px; font-weight: 700; cursor: pointer; padding: 2px 0; transition: color .15s; }
@@ -290,9 +315,48 @@
         <div class="tc-foot"><span class="tc-dot"></span> FACET</div>
       </div>
       <button class="btn-primary" id="btnInvite" style="margin-top:18px;">Invite a friend to Facet</button>
-      <div class="soon-note">
-        <div class="soon-lbl">Coming soon to Friends</div>
-        Match your taste with friends · Send a deck of songs for them to swipe · Chat about music
+
+      <!-- Logged out: create account / log in -->
+      <div class="acct" id="acctBox" style="display:none;">
+        <div class="acct-title">Save your vibe &amp; add friends</div>
+        <div class="acct-sub">Create a free account to sync your taste across devices and compare it with friends.</div>
+        <input id="authEmail" type="email" placeholder="Email" autocomplete="email" />
+        <input id="authPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" />
+        <div class="acct-row">
+          <button class="btn-mini" id="btnSignup">Create account</button>
+          <button class="btn-mini ghost" id="btnLogin">Log in</button>
+        </div>
+        <div class="acct-msg" id="authMsg"></div>
+      </div>
+
+      <!-- Logged in, no username yet: pick one -->
+      <div class="acct" id="unameBox" style="display:none;">
+        <div class="acct-title">Pick a username</div>
+        <div class="acct-sub">This is how friends will find you. Letters, numbers and _ only.</div>
+        <div class="acct-row">
+          <input id="unameInput" placeholder="username" autocomplete="off" maxlength="20" />
+          <button class="btn-mini" id="btnSaveUname" style="flex:0 0 auto;padding:12px 18px;">Save</button>
+        </div>
+        <div class="acct-msg" id="unameMsg"></div>
+      </div>
+
+      <!-- Logged in: profile + friends -->
+      <div class="acct" id="userBox" style="display:none;">
+        <div class="acct-row" style="justify-content:space-between;margin-top:0;">
+          <div style="min-width:0;">
+            <div class="acct-title" id="userName">@you</div>
+            <div class="acct-sub" id="userSync">Vibe synced ✓</div>
+          </div>
+          <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
+        </div>
+        <div class="acct-title" style="margin-top:18px;">Friends</div>
+        <div class="acct-sub">Add a friend by their username to compare tastes.</div>
+        <div class="acct-row">
+          <input id="friendInput" placeholder="friend's username" autocomplete="off" maxlength="20" />
+          <button class="btn-mini" id="btnAddFriend" style="flex:0 0 auto;padding:12px 18px;">Add</button>
+        </div>
+        <div class="acct-msg" id="friendMsg"></div>
+        <div id="friendsList"></div>
       </div>
     </section>
   </main>
@@ -648,7 +712,7 @@ function showScreen(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.screen === name));
   if (name === "finds") updateFinds(); // refresh buckets + kick off genre lookups
-  if (name === "friends") updateFriends(); // build the taste fingerprint
+  if (name === "friends") { updateFriends(); if (window._refreshSocial) window._refreshSocial(); } // taste fingerprint + cloud sync
   if (name !== "discover") audio.pause();
   else if (state.current) safePlay();
 }
@@ -1150,6 +1214,14 @@ function maybeFetchGenres() {
 }
 
 /* ---------- Friends / Taste Fingerprint ---------- */
+function computeArchetype(likedLen, distinctGenres, adventure) {
+  if (likedLen < 3) return "Fresh Ears";
+  if (adventure === 2) return "The Explorer";
+  if (distinctGenres >= 5) return "The Omnivore";
+  if (distinctGenres && distinctGenres <= 2 && likedLen >= 5) return "The Purist";
+  if (adventure === 0) return "The Curator";
+  return "The Tastemaker";
+}
 function updateFriends() {
   const liked = state.liked;
   const acount = {}; liked.forEach(t => acount[t.artist] = (acount[t.artist] || 0) + 1);
@@ -1159,13 +1231,7 @@ function updateFriends() {
   if (topGenres.length < 2 && typeof seedGenres !== "undefined" && seedGenres.size) topGenres = [...seedGenres.keys()].slice(0, 4);
   const distinct = Object.keys(gcount).length;
   const advName = ADV_NAMES[state.adventure] || "Balanced";
-
-  let arche = "The Tastemaker";
-  if (liked.length < 3) arche = "Fresh Ears";
-  else if (state.adventure === 2) arche = "The Explorer";
-  else if (distinct >= 5) arche = "The Omnivore";
-  else if (distinct && distinct <= 2 && liked.length >= 5) arche = "The Purist";
-  else if (state.adventure === 0) arche = "The Curator";
+  const arche = computeArchetype(liked.length, distinct, state.adventure);
 
   document.getElementById("tcArche").textContent = arche;
   document.getElementById("tcSub").textContent = liked.length + (liked.length === 1 ? " find" : " finds") + " · " + advName + " explorer";
@@ -1186,6 +1252,177 @@ document.getElementById("startOver").onclick = () => {
   try { localStorage.removeItem(LS_KEY); } catch (e) {}
   location.reload();
 };
+
+/* ============================================================
+   SOCIAL BACKEND (Supabase) — accounts, profile sync, friends.
+   Fully additive: if the library fails to load (offline / file://
+   with no net), SB is null and the account UI simply hides — the
+   rest of the app is untouched. The publishable key is meant to be
+   public; security is enforced by Row Level Security in Postgres.
+   ============================================================ */
+const SB_URL = "https://dqteepkjhnlidjireelt.supabase.co";
+const SB_KEY = "sb_publishable_TJdDN2P-In37OvVZ3mevSQ_7a9_YH9n";
+const SB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+let me_session = null, me_profile = null;
+
+function acctMsg(id, text, cls) { const e = document.getElementById(id); if (!e) return; e.textContent = text || ""; e.className = "acct-msg" + (cls ? " " + cls : ""); }
+function cleanHandle(s) { return (s || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, ""); }
+
+// My taste summary — the shape we store in the cloud + match against friends.
+function myTaste() {
+  const liked = state.liked;
+  const acount = {}; liked.forEach(t => acount[t.artist] = (acount[t.artist] || 0) + 1);
+  const topArtists = Object.entries(acount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(e => e[0]);
+  const gcount = {}; liked.forEach(t => { if (t.genre) gcount[t.genre] = (gcount[t.genre] || 0) + 1; });
+  let topGenres = Object.entries(gcount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(e => e[0]);
+  if (!topGenres.length && typeof seedGenres !== "undefined" && seedGenres.size) topGenres = [...seedGenres.keys()].slice(0, 6);
+  const distinct = Object.keys(gcount).length;
+  return { archetype: computeArchetype(liked.length, distinct, state.adventure), top_genres: topGenres, top_artists: topArtists, finds_count: liked.length, adventure: state.adventure };
+}
+
+// Taste Match %: overlap of genres (weighted heavier) + artists, with a gentle floor.
+function tasteMatch(me, them) {
+  const norm = a => (a || []).map(x => String(x).toLowerCase());
+  const meG = new Set(norm(me.top_genres)), themG = norm(them.top_genres);
+  const meA = new Set(norm(me.top_artists)), themA = norm(them.top_artists);
+  let gShared = 0; themG.forEach(g => { if (meG.has(g)) gShared++; });
+  let aShared = 0; themA.forEach(a => { if (meA.has(a)) aShared++; });
+  const gUnion = new Set([...meG, ...themG]).size || 1;
+  const aUnion = new Set([...meA, ...themA]).size || 1;
+  let pct = Math.round((gShared / gUnion * 0.6 + aShared / aUnion * 0.4) * 100);
+  return Math.min(99, Math.max(pct, (gShared || aShared) ? 15 : 5));
+}
+
+async function syncProfile() {
+  if (!SB || !me_profile) return;
+  const t = myTaste();
+  try {
+    await SB.from("profiles").update({ archetype: t.archetype, top_genres: t.top_genres, top_artists: t.top_artists, finds_count: t.finds_count, adventure: t.adventure, updated_at: new Date().toISOString() }).eq("id", me_profile.id);
+    me_profile = Object.assign(me_profile, t);
+    const us = document.getElementById("userSync"); if (us) us.textContent = "Vibe synced ✓ · " + t.finds_count + (t.finds_count === 1 ? " find" : " finds");
+  } catch (e) { /* offline → keep local */ }
+}
+
+function renderAcct() {
+  const acctBox = document.getElementById("acctBox"), userBox = document.getElementById("userBox"), unameBox = document.getElementById("unameBox");
+  if (!acctBox) return;
+  if (!SB) { acctBox.style.display = "none"; return; }        // no backend available
+  if (!me_session) { acctBox.style.display = ""; userBox.style.display = "none"; unameBox.style.display = "none"; return; }
+  if (!me_profile) { acctBox.style.display = "none"; userBox.style.display = "none"; unameBox.style.display = ""; return; }
+  acctBox.style.display = "none"; unameBox.style.display = "none"; userBox.style.display = "";
+  document.getElementById("userName").textContent = "@" + me_profile.username;
+  document.getElementById("userSync").textContent = "Vibe synced ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
+  renderFriends();
+}
+
+async function renderFriends() {
+  const list = document.getElementById("friendsList");
+  if (!list || !SB || !me_session) return;
+  try {
+    const { data: edges } = await SB.from("friendships").select("friend_id").eq("user_id", me_session.user.id);
+    if (!edges || !edges.length) { list.innerHTML = '<div class="acct-sub" style="margin-top:12px;">No friends yet — add someone by their username above. 👆</div>'; return; }
+    const ids = edges.map(e => e.friend_id);
+    const { data: profs } = await SB.from("profiles").select("*").in("id", ids);
+    const mine = myTaste();
+    list.innerHTML = "";
+    (profs || []).forEach(p => {
+      const pct = tasteMatch(mine, p);
+      const row = document.createElement("div"); row.className = "friend";
+      row.innerHTML =
+        '<div class="fav">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+        '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">' + esc(p.archetype || "Fresh Ears") + ' · ' + (p.finds_count || 0) + ' finds</div></div>' +
+        '<div class="match"><div class="pct">' + pct + '%</div><div class="ml">match</div></div>';
+      list.appendChild(row);
+    });
+  } catch (e) { /* offline */ }
+}
+
+async function loadMe() {
+  if (!SB) { renderAcct(); return; }
+  try {
+    const { data: { session } } = await SB.auth.getSession();
+    me_session = session || null;
+    if (!me_session) { me_profile = null; renderAcct(); return; }
+    const { data: prof } = await SB.from("profiles").select("*").eq("id", me_session.user.id).maybeSingle();
+    me_profile = prof || null;
+    renderAcct();
+    if (me_profile) syncProfile();
+  } catch (e) { renderAcct(); }
+}
+
+async function doSignup() {
+  if (!SB) return;
+  const email = document.getElementById("authEmail").value.trim(), pass = document.getElementById("authPass").value;
+  if (!email || pass.length < 6) { acctMsg("authMsg", "Enter an email and a password of at least 6 characters.", "err"); return; }
+  acctMsg("authMsg", "Creating your account…");
+  try {
+    const { data, error } = await SB.auth.signUp({ email, password: pass });
+    if (error) { acctMsg("authMsg", error.message, "err"); return; }
+    if (data.session) { me_session = data.session; acctMsg("authMsg", "Welcome to Facet! Pick a username 👇", "ok"); loadMe(); }
+    else { acctMsg("authMsg", "Account made! Check your email to confirm it, then hit Log in.", "ok"); }
+  } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
+}
+
+async function doLogin() {
+  if (!SB) return;
+  const email = document.getElementById("authEmail").value.trim(), pass = document.getElementById("authPass").value;
+  if (!email || !pass) { acctMsg("authMsg", "Enter your email and password.", "err"); return; }
+  acctMsg("authMsg", "Logging in…");
+  try {
+    const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
+    if (error) { acctMsg("authMsg", error.message, "err"); return; }
+    me_session = data.session; acctMsg("authMsg", ""); loadMe();
+  } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
+}
+
+async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; renderAcct(); }
+
+async function saveUsername() {
+  if (!SB || !me_session) return;
+  const v = cleanHandle(document.getElementById("unameInput").value);
+  if (v.length < 3) { acctMsg("unameMsg", "Username needs at least 3 letters or numbers.", "err"); return; }
+  acctMsg("unameMsg", "Saving…");
+  const t = myTaste();
+  try {
+    const { data, error } = await SB.from("profiles").insert(Object.assign({ id: me_session.user.id, username: v, display_name: v }, t)).select().single();
+    if (error) { acctMsg("unameMsg", error.code === "23505" ? "That username's taken — try another." : error.message, "err"); return; }
+    me_profile = data; acctMsg("unameMsg", ""); renderAcct();
+  } catch (e) { acctMsg("unameMsg", "Something went wrong — try again.", "err"); }
+}
+
+async function addFriend() {
+  if (!SB || !me_session) return;
+  const v = cleanHandle(document.getElementById("friendInput").value);
+  if (!v) return;
+  if (me_profile && v === me_profile.username) { acctMsg("friendMsg", "That's you! 😄", "err"); return; }
+  acctMsg("friendMsg", "Looking…");
+  try {
+    const { data: prof } = await SB.from("profiles").select("id,username").eq("username", v).maybeSingle();
+    if (!prof) { acctMsg("friendMsg", "No one with that username yet.", "err"); return; }
+    const { error } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: prof.id });
+    if (error && error.code !== "23505") { acctMsg("friendMsg", error.message, "err"); return; }
+    document.getElementById("friendInput").value = "";
+    acctMsg("friendMsg", "Added @" + v + " ✓", "ok");
+    renderFriends();
+  } catch (e) { acctMsg("friendMsg", "Something went wrong — try again.", "err"); }
+}
+
+// Called when the Friends tab opens: refresh my cloud taste + friends' match %.
+window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderFriends(); } };
+
+(function initSocial() {
+  if (!SB) { const a = document.getElementById("acctBox"); if (a) a.style.display = "none"; return; }
+  document.getElementById("btnSignup").onclick = doSignup;
+  document.getElementById("btnLogin").onclick = doLogin;
+  document.getElementById("btnLogout").onclick = doLogout;
+  document.getElementById("btnSaveUname").onclick = saveUsername;
+  document.getElementById("btnAddFriend").onclick = addFriend;
+  document.getElementById("friendInput").addEventListener("keydown", e => { if (e.key === "Enter") addFriend(); });
+  document.getElementById("unameInput").addEventListener("keydown", e => { if (e.key === "Enter") saveUsername(); });
+  document.getElementById("authPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+  SB.auth.onAuthStateChange((_evt, session) => { me_session = session || null; if (!session) { me_profile = null; renderAcct(); } });
+  loadMe();
+})();
 
 /* ---------- Toast ---------- */
 let toastTimer = null;
