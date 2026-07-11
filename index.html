@@ -267,6 +267,27 @@
   .freshtag { display: block; width: fit-content; font-size: 11px; letter-spacing: .5px; font-weight: 800; color: #0b0b0d; background: var(--accent); padding: 5px 11px; border-radius: 12px; margin-bottom: 8px; }
   .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(22,22,26,.55); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7); border: 1px solid var(--glass-brd); color: var(--text); padding: 10px 16px; border-radius: 16px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s, transform .3s; z-index: 50; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+  /* Chip icons: emoji for genres, artist photo for artists */
+  .chip-av { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 6px; margin-top: -2px; }
+  /* Artist profile screen */
+  #artist { padding: 8px 16px 24px; overflow-y: auto; }
+  .artist-back { display: inline-flex; align-items: center; gap: 3px; background: transparent; border: 0; color: var(--muted); font-weight: 700; font-size: 14px; cursor: pointer; padding: 6px 2px; }
+  .artist-back svg { width: 18px; height: 18px; }
+  .artist-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 0 4px; }
+  .artist-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-brd); box-shadow: 0 10px 30px rgba(0,0,0,.5); background: var(--card); }
+  .artist-name { font-size: 24px; font-weight: 800; margin-top: 14px; }
+  .artist-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  #artistFollow.following { background: transparent; border: 1.5px solid var(--glass-brd); color: var(--text); box-shadow: none; }
+  .artist-tracks-lbl { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 18px 4px 10px; }
+  .atrack { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--glass-brd); border-radius: 14px; padding: 8px; margin-bottom: 8px; }
+  .atrack img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .atrack .at-meta { flex: 1; min-width: 0; }
+  .atrack .at-t { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .atrack .at-a { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .atrack .at-btn { border: 0; background: rgba(255,255,255,.06); color: var(--text); width: 38px; height: 38px; border-radius: 10px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+  .atrack .at-btn svg { width: 15px; height: 15px; }
+  .atrack .at-btn.love { color: var(--love); }
+  .card .artist .artist-go { opacity: .55; margin-left: 6px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -436,6 +457,19 @@
         </div>
       </div>
     </section>
+
+    <!-- ARTIST PROFILE -->
+    <section class="screen" id="artist">
+      <button class="artist-back" id="artistBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg> Back</button>
+      <div class="artist-hero">
+        <img class="artist-photo" id="artistPhoto" src="" alt="" />
+        <div class="artist-name" id="artistName"></div>
+        <div class="artist-sub" id="artistSub"></div>
+        <button class="btn-primary" id="artistFollow" style="max-width:220px;margin-top:14px;">Follow</button>
+      </div>
+      <div class="artist-tracks-lbl">Top tracks</div>
+      <div id="artistTracks"></div>
+    </section>
   </main>
 
   <nav class="tabbar" id="tabbar" style="display:none;">
@@ -470,6 +504,7 @@ const state = {
   exploreBoost: 0,      // when >0, reach further out in the graph
   adventure: 1,         // discovery dial: 0=cozy, 1=balanced, 2=adventurous
   freshFinds: false,    // when true, champion smaller/emerging artists
+  following: {},        // artistId -> {id,name,picture} you follow
   seedLabels: [],       // for display
 };
 
@@ -516,6 +551,17 @@ const GENRES = Object.keys(GENRE_ANCHORS).sort(); // alphabetized for easy scann
 // Broad genres shown by default so the initial list isn't overwhelming; the rest
 // (incl. specific/vibe ones like Euro Summer) appear via search or "Show all".
 const POPULAR_GENRES = new Set(["Pop", "Hip-Hop/Rap", "R&B/Soul", "Rock", "Indie", "Alternative", "Electronic", "House", "Techno", "Jazz", "Country", "Folk", "Metal", "Latin", "K-Pop", "Afrobeats", "Classical", "Reggae"]);
+// A fitting emoji per genre, purely for visual appeal on the onboarding chips.
+const GENRE_EMOJI = {
+  "Pop":"🎤","Indie":"🎸","Dream Pop":"💭","Bedroom Pop":"🛏️","Hyperpop":"⚡","Synthwave":"🌆","City Pop":"🌃",
+  "Hip-Hop/Rap":"🎙️","Trap":"🔊","Drill":"🗡️","Grime":"🇬🇧","Phonk":"😈","Lo-Fi":"🌙","Boom Bap":"📻",
+  "R&B/Soul":"💜","Neo-Soul":"🌹","Motown":"🎶","Funk":"🕺","Disco":"🪩","Gospel":"🙏",
+  "Rock":"🤘","Alternative":"🌀","Punk":"🧷","Metal":"💀","Grunge":"🌧️","Emo":"🖤","Post-Punk":"🌫️","Post-Rock":"🏔️","Shoegaze":"👟","Psychedelic":"🌈","Math Rock":"➗",
+  "Electronic":"🎛️","House":"🏠","Afro House":"🥁","Techno":"🤖","Trance":"💫","EDM":"🎉","Dubstep":"💥","Drum & Bass":"🏃","Ambient":"☁️",
+  "Afrobeats":"🌍","Amapiano":"🎹","K-Pop":"💖","J-Pop":"🌸","J-Rock":"⛩️","Latin":"💃","Reggaeton":"🔥","Dancehall":"🇯🇲","Reggae":"🌴","Salsa":"🌶️","Bossa Nova":"🏖️","Flamenco":"🇪🇸",
+  "Jazz":"🎷","Blues":"💙","Country":"🤠","Folk":"🪕","Bluegrass":"🌾","Americana":"🇺🇸","Classical":"🎻","Opera":"🎭","Soundtrack":"🎬",
+  "Euro Summer":"☀️","Corridos Tumbados":"🇲🇽","Jersey Club":"🔀"
+};
 
 const audio = new Audio();
 audio.preload = "auto";
@@ -681,6 +727,7 @@ function save() {
       seedLabels: state.seedLabels,
       adventure: state.adventure,
       freshFinds: state.freshFinds,
+      following: state.following,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (e) { /* storage may be blocked; app still works in-session */ }
@@ -698,6 +745,7 @@ function load() {
     state.seedLabels = d.seedLabels || [];
     if (typeof d.adventure === "number") state.adventure = d.adventure;
     if (typeof d.freshFinds === "boolean") state.freshFinds = d.freshFinds;
+    state.following = d.following || {};
     return Object.keys(state.artists).length > 0 || state.liked.length > 0;
   } catch (e) { return false; }
 }
@@ -709,20 +757,21 @@ const genreChips = document.getElementById("genreChips");
 const artistChips = document.getElementById("artistChips");
 const startBtn = document.getElementById("startBtn");
 
-function renderChip(el, g, w) {
+function renderChip(el, g, w, lead) {
   el.classList.remove("w1", "w2", "w3");
   if (w > 0) el.classList.add("w" + w);
-  el.innerHTML = esc(g) + (w > 0 ? '<span class="wt">' + "•".repeat(w) + "</span>" : "");
+  el.innerHTML = (lead || "") + esc(g) + (w > 0 ? '<span class="wt">' + "•".repeat(w) + "</span>" : "");
 }
 GENRES.forEach(g => {
   const el = document.createElement("div");
   el.className = "chip";
   el.dataset.g = g;
-  renderChip(el, g, 0);
+  const lead = (GENRE_EMOJI[g] || "🎵") + " ";
+  renderChip(el, g, 0, lead);
   el.onclick = () => {
     let w = (seedGenres.get(g) || 0) + 1;
     if (w > 3) { seedGenres.delete(g); w = 0; } else { seedGenres.set(g, w); }
-    renderChip(el, g, w);
+    renderChip(el, g, w, lead);
     updateStart();
   };
   genreChips.appendChild(el);
@@ -753,14 +802,22 @@ function addArtistChip() {
     seedArtists.set(val, 1);
     const el = document.createElement("div");
     el.className = "chip";
-    renderChip(el, val, 1);                 // same weighted bubble as genres
+    el._lead = "";
+    renderChip(el, val, 1, el._lead);       // same weighted bubble as genres
     el.onclick = () => {
       let w = (seedArtists.get(val) || 0) + 1;
       if (w > 3) { seedArtists.delete(val); el.remove(); }  // 4th tap removes it
-      else { seedArtists.set(val, w); renderChip(el, val, w); }
+      else { seedArtists.set(val, w); renderChip(el, val, w, el._lead); }
       updateStart();
     };
     artistChips.appendChild(el);
+    // Try to show the artist's photo on the chip (best-effort)
+    searchArtist(val).then(a => {
+      if (a && a.picture_small && seedArtists.has(val)) {
+        el._lead = '<img class="chip-av" src="' + a.picture_small + '" alt="" />';
+        renderChip(el, val, seedArtists.get(val), el._lead);
+      }
+    }).catch(() => {});
   }
   input.value = ""; updateStart();
 }
@@ -849,10 +906,12 @@ function renderCard(track) {
     '<div class="meta">' + (track.nbFan != null && track.nbFan < 40000 ? '<span class="freshtag">✦ Fresh Find</span>' : '') +
     '<span class="reason">' + esc(track.reason || "Discovery") + '</span>' +
     '<h2 class="title">' + esc(track.title) + '</h2>' +
-    '<p class="artist">' + esc(track.artist) + '</p></div>';
+    '<p class="artist">' + esc(track.artist) + '<span class="artist-go">›</span></p></div>';
   deck.appendChild(card);
   attachDrag(card);
   card.querySelector(".art").addEventListener("click", () => safePlay());
+  const aEl = card.querySelector(".artist");
+  if (aEl) aEl.addEventListener("click", e => { e.stopPropagation(); openArtist(track.artistId, track.artist); });
   setBackdrop(track.cover); // blur backdrop + color-tint the UI to this cover
 }
 
@@ -1276,6 +1335,8 @@ function updateFinds() {
       audio.src = url; try { audio.currentTime = 0; } catch (_) {}
       safePlay();
     };
+    const fa = row.querySelector(".a");
+    if (fa && t.artistId) { fa.style.cursor = "pointer"; fa.onclick = () => openArtist(t.artistId, t.artist); }
     list.appendChild(row);
   });
 
@@ -1759,6 +1820,84 @@ audio.addEventListener("pause", () => { const h = document.getElementById("dmHin
   const nn = document.getElementById("dmNope"); if (nn) nn.onclick = () => dmDecide("nope");
   const pp = document.getElementById("dmPlay"); if (pp) { pp.onclick = () => { if (audio.paused) safePlay(); else audio.pause(); }; pp.innerHTML = ICON_PLAY; }
 })();
+
+/* ============================================================
+   ARTIST PROFILE — tap an artist to see their page: photo, fan
+   count, Follow, and a playable list of their top tracks. Gives
+   every discovered artist (especially small ones) a real home.
+   ============================================================ */
+let artistBackTo = "discover";
+async function openArtist(artistId, name) {
+  if (!artistId) return;
+  const active = document.querySelector(".screen.active");
+  artistBackTo = (active && active.id) || "discover";
+  audio.pause();
+  showScreen("artist");
+  document.getElementById("artist").scrollTop = 0;
+  document.getElementById("artistName").textContent = name || "Artist";
+  document.getElementById("artistSub").textContent = "Loading…";
+  document.getElementById("artistPhoto").src = "";
+  document.getElementById("artistTracks").innerHTML = '<div class="empty-finds">Loading tracks…</div>';
+  updateFollowBtn(artistId, name);
+  const info = await deezer("artist/" + artistId, {});
+  if (info && info.name) {
+    name = info.name;
+    document.getElementById("artistName").textContent = info.name;
+    document.getElementById("artistPhoto").src = info.picture_xl || info.picture_big || info.picture_medium || "";
+    const fans = info.nb_fan || 0;
+    document.getElementById("artistSub").textContent = (fans && fans < 40000 ? "✦ Emerging · " : "") + fans.toLocaleString() + " fans on Deezer";
+    updateFollowBtn(artistId, name);
+  } else {
+    document.getElementById("artistSub").textContent = "";
+  }
+  const top = await artistTop(artistId, 15);
+  renderArtistTracks(name, top || []);
+}
+function updateFollowBtn(artistId, name) {
+  const btn = document.getElementById("artistFollow");
+  if (!btn) return;
+  const following = !!state.following[artistId];
+  btn.textContent = following ? "Following ✓" : "Follow";
+  btn.classList.toggle("following", following);
+  btn.onclick = () => {
+    if (state.following[artistId]) { delete state.following[artistId]; toast("Unfollowed " + (name || "artist")); }
+    else { state.following[artistId] = { id: artistId, name: name, picture: document.getElementById("artistPhoto").src }; toast("Following " + (name || "artist") + " ✦"); }
+    save();
+    updateFollowBtn(artistId, name);
+  };
+}
+function renderArtistTracks(name, tracks) {
+  const wrap = document.getElementById("artistTracks");
+  if (!wrap) return;
+  const list = tracks.filter(t => t && t.preview);
+  if (!list.length) { wrap.innerHTML = '<div class="empty-finds">No previews available for this artist.</div>'; return; }
+  wrap.innerHTML = "";
+  list.forEach(t => {
+    const cover = t.album && (t.album.cover_medium || t.album.cover);
+    const norm = normalize(t, "From " + name);
+    const row = document.createElement("div"); row.className = "atrack";
+    row.innerHTML = '<img src="' + (cover || "") + '" alt="" />' +
+      '<div class="at-meta"><div class="at-t">' + esc(t.title) + '</div><div class="at-a">' + esc(name) + '</div></div>' +
+      '<button class="at-btn play" aria-label="Preview">' + ICON_PLAY + '</button>' +
+      '<button class="at-btn love" aria-label="Add to Finds"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
+    row.querySelector(".play").onclick = async () => {
+      const tok = ++audioToken; audio.onloadedmetadata = null; audio.loop = false;
+      const url = await resolvePreview(norm);
+      if (tok !== audioToken) return;
+      audio.src = url; try { audio.currentTime = 0; } catch (_) {}
+      safePlay();
+    };
+    row.querySelector(".love").onclick = () => {
+      if (!state.liked.some(x => x.id === norm.id)) { state.liked.push(norm); updateFinds(); save(); toast("♥ Added to your Finds"); }
+      else toast("Already in your Finds");
+    };
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("artistBack").onclick = () => {
+  showScreen(artistBackTo);
+  if (artistBackTo === "discover" && state.current) playTrack(state.current);
+};
 
 /* ---------- Toast ---------- */
 let toastTimer = null;
