@@ -156,7 +156,16 @@
   /* "Open in your app" service links — search the song in Spotify / Apple / YouTube */
   .find .svc { flex-basis: 100%; display: flex; gap: 6px; }
   .find .svc a { flex: 1; text-align: center; text-decoration: none; font-weight: 700; font-size: 10.5px; padding: 8px 3px; border-radius: 10px; white-space: nowrap; }
-  .find .svc a.sp, .find .svc a.ap, .find .svc a.yt, .find .svc a.sc { background: rgba(255,255,255,.06); color: #c7cad0; border: 1px solid var(--glass-brd); }
+  /* Platform buttons keep their trademark colour as an accent + border — pops against the mono UI */
+  .find .svc a { border: 1px solid var(--glass-brd); transition: background .15s, border-color .15s; }
+  .find .svc a.sp { color: #1ed760; border-color: rgba(30,215,96,.55); background: rgba(30,215,96,.10); }
+  .find .svc a.ap { color: #fb5c74; border-color: rgba(251,92,116,.55); background: rgba(251,92,116,.10); }
+  .find .svc a.yt { color: #ff5c5c; border-color: rgba(255,92,92,.55); background: rgba(255,92,92,.10); }
+  .find .svc a.sc { color: #ff7a33; border-color: rgba(255,122,51,.55); background: rgba(255,122,51,.10); }
+  .find .svc a.sp:active { background: rgba(30,215,96,.22); }
+  .find .svc a.ap:active { background: rgba(251,92,116,.22); }
+  .find .svc a.yt:active { background: rgba(255,92,92,.22); }
+  .find .svc a.sc:active { background: rgba(255,122,51,.22); }
   .find button.mini { border: 0; background: rgba(255,255,255,.06); color: var(--text); width: 40px; height: 40px; border-radius: 10px; cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .empty-finds { text-align:center; color: var(--muted); padding: 60px 20px; }
