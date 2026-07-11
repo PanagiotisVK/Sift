@@ -6,9 +6,6 @@
 <title>Facet — Music Discovery</title>
 <link rel="icon" href="favicon.png" />
 <link rel="apple-touch-icon" href="favicon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -24,7 +21,7 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; height: 100%;
-    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; letter-spacing: -0.01em;
     background: radial-gradient(1200px 800px at 50% -10%, #17171b 0%, var(--bg) 55%), var(--bg);
     color: var(--text); overflow: hidden;
@@ -37,7 +34,7 @@
 
   header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: rgba(14,14,16,.35); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border-bottom: 1px solid rgba(255,255,255,.07); position: relative; z-index: 5; }
   .brand { display: flex; align-items: center; gap: 9px; }
-  .brand > div { font-family: "Space Grotesk", sans-serif; font-weight: 700; letter-spacing: 2px; font-size: 17px; }
+  .brand > div { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: 2px; font-size: 17px; }
   .brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(255,255,255,.35); }
   .brand .logo { height: 30px; width: auto; display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
   .brand small { color: var(--muted); font-weight: 600; font-size: 10px; letter-spacing: 1px; }
@@ -169,13 +166,13 @@
   .tastecard { position: relative; border-radius: 22px; padding: 20px 18px; margin: 0 4px; overflow: hidden; background: linear-gradient(155deg, #24242b, #0c0c0e); border: 1px solid rgba(255,255,255,.10); box-shadow: 0 14px 40px rgba(0,0,0,.5); }
   .tastecard::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,.2), transparent 60%); pointer-events: none; }
   .tc-top, .tc-row, .tc-foot { position: relative; z-index: 1; }
-  .tc-arche { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 26px; color: #fff; letter-spacing: -.01em; }
+  .tc-arche { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 26px; color: #fff; letter-spacing: -.01em; }
   .tc-sub { color: rgba(255,255,255,.82); font-weight: 600; font-size: 13px; margin-top: 2px; }
   .tc-row { margin-top: 14px; }
   .tc-lbl { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.75); font-weight: 800; margin-bottom: 7px; }
   .tc-chips { display: flex; flex-wrap: wrap; gap: 7px; }
   .tc-chips span { background: rgba(255,255,255,.22); color: #fff; font-weight: 700; font-size: 13px; padding: 6px 11px; border-radius: 12px; }
-  .tc-foot { display: flex; align-items: center; gap: 7px; margin-top: 20px; font-family: "Space Grotesk", sans-serif; font-weight: 700; letter-spacing: 2px; color: #fff; font-size: 13px; }
+  .tc-foot { display: flex; align-items: center; gap: 7px; margin-top: 20px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: 2px; color: #fff; font-size: 13px; }
   .tc-dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.85); }
   .soon-note { margin: 22px 4px 0; padding: 14px 16px; border: 1px solid var(--glass-brd); border-radius: 16px; background: var(--card); color: var(--muted); font-size: 13px; line-height: 1.55; }
   .soon-lbl { color: var(--text); font-weight: 800; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
@@ -204,7 +201,7 @@
   .friend .match .pct { font-weight: 900; font-size: 19px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .friend .match .ml { font-size: 9px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
   /* Send-a-deck */
-  .dm-title { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 20px; }
+  .dm-title { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 20px; }
   #deckmode { padding: 0; }
   .deckrow { border: 1px solid var(--glass-brd); border-radius: 14px; padding: 12px; margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(255,255,255,.04); }
   .deckrow .dr-meta { flex: 1; min-width: 0; }
@@ -218,7 +215,7 @@
   @keyframes hintPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.06); } }
   .dm-intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 30px; }
   .dm-intro .logo { filter: drop-shadow(0 3px 10px rgba(0,0,0,.5)); }
-  .dm-intro-t { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 24px; margin-top: 16px; }
+  .dm-intro-t { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; margin-top: 16px; }
   .dm-intro-s { color: var(--muted); font-size: 14px; margin-top: 8px; line-height: 1.5; }
   .dm-intro-note { color: var(--muted); font-size: 12px; margin-top: 16px; }
   .dm-progress { display: flex; gap: 4px; padding: 10px 18px 0; }
