@@ -201,6 +201,13 @@
   .acct-msg:empty { margin-top: 0; }
   .acct-msg.err { color: var(--nope); }
   .acct-msg.ok { color: var(--love); }
+  /* Activity feed */
+  .act { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .act:first-child { border-top: 0; padding-top: 6px; }
+  .act .act-ic { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.08); display: grid; place-items: center; flex-shrink: 0; font-size: 14px; }
+  .act .act-body { flex: 1; min-width: 0; font-size: 13px; line-height: 1.4; }
+  .act .act-body b { font-weight: 700; }
+  .act .act-time { color: var(--muted); font-size: 11px; margin-top: 2px; }
   .friend { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); }
   .friend .fav { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 17px; color: var(--text); background: rgba(255,255,255,.10); border: 1px solid var(--glass-brd); flex-shrink: 0; }
   .friend .fmeta { flex: 1; min-width: 0; }
@@ -416,6 +423,8 @@
           </div>
           <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
         </div>
+        <div class="acct-title" style="margin-top:18px;">Activity</div>
+        <div id="activityFeed"></div>
         <div class="acct-title" style="margin-top:18px;">Friends</div>
         <div class="acct-sub">Add a friend by their username to compare tastes.</div>
         <div class="acct-row">
@@ -1483,6 +1492,7 @@ function renderAcct() {
   acctBox.style.display = "none"; unameBox.style.display = "none"; userBox.style.display = "";
   document.getElementById("userName").textContent = "@" + me_profile.username;
   document.getElementById("userSync").textContent = "Vibe synced ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
+  renderActivity();
   renderFriends();
   renderMyDecks();
 }
@@ -1509,6 +1519,45 @@ async function renderFriends() {
   } catch (e) { /* offline */ }
 }
 
+function timeAgo(iso) {
+  try {
+    const s = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 60) return "just now";
+    const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
+    const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+    const d = Math.floor(h / 24); if (d < 7) return d + "d ago";
+    const w = Math.floor(d / 7); if (w < 5) return w + "w ago";
+    return Math.floor(d / 30) + "mo ago";
+  } catch (e) { return ""; }
+}
+async function renderActivity() {
+  const wrap = document.getElementById("activityFeed");
+  if (!wrap || !SB || !me_session) return;
+  try {
+    const events = [];
+    // people who swiped one of my decks
+    const { data: decks } = await SB.from("decks").select("id").eq("owner", me_session.user.id);
+    if (decks && decks.length) {
+      const { data: results } = await SB.from("deck_results").select("swiper_name,loved,created_at").in("deck_id", decks.map(d => d.id));
+      (results || []).forEach(r => {
+        const n = (r.loved || []).length;
+        events.push({ icon: "🎧", time: r.created_at, html: "<b>@" + esc(r.swiper_name || "someone") + "</b> swiped your deck and loved " + n + (n === 1 ? " song" : " songs") });
+      });
+    }
+    // people who added me as a friend
+    const { data: adds } = await SB.from("friendships").select("user_id,created_at").eq("friend_id", me_session.user.id);
+    if (adds && adds.length) {
+      const { data: profs } = await SB.from("profiles").select("id,username").in("id", adds.map(a => a.user_id));
+      const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
+      adds.forEach(a => events.push({ icon: "➕", time: a.created_at, html: "<b>@" + esc(nmap[a.user_id] || "someone") + "</b> added you as a friend" }));
+    }
+    events.sort((a, b) => new Date(b.time) - new Date(a.time));
+    if (!events.length) { wrap.innerHTML = '<div class="acct-sub" style="margin-top:8px;">No activity yet — invite a friend and send a deck to get things going. 🎧</div>'; return; }
+    wrap.innerHTML = events.slice(0, 20).map(e =>
+      '<div class="act"><div class="act-ic">' + e.icon + '</div><div class="act-body">' + e.html + '<div class="act-time">' + timeAgo(e.time) + '</div></div></div>'
+    ).join("");
+  } catch (e) { /* offline */ }
+}
 async function loadMe() {
   if (!SB) { renderAcct(); return; }
   try {
@@ -1580,7 +1629,7 @@ async function addFriend() {
 }
 
 // Called when the Friends tab opens: refresh my cloud taste + friends' match %.
-window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderFriends(); renderMyDecks(); } };
+window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderActivity(); renderFriends(); renderMyDecks(); } };
 
 (function initSocial() {
   if (!SB) { const a = document.getElementById("acctBox"); if (a) a.style.display = "none"; return; }
