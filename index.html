@@ -53,6 +53,8 @@
   main { flex: 1; position: relative; overflow: hidden; }
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
   .screen.active { display: flex; }
+  /* scrollable screens are flex columns — keep their children at natural height so the screen scrolls instead of squashing the taste card */
+  #finds > *, #friends > *, #artist > * { flex-shrink: 0; }
 
   /* Onboarding + Welcome */
   #onboarding, #welcome { padding: 8px 20px 24px; overflow-y: auto; }
