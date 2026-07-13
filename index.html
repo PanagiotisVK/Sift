@@ -293,9 +293,18 @@
   .adv-pill { align-self: center; margin-top: 3px; background: var(--glass); backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5); border: 1px solid var(--glass-brd); color: var(--text); font-weight: 700; font-size: 12px; padding: 7px 15px; border-radius: 16px; cursor: pointer; transition: transform .1s; }
   .adv-pill:active { transform: scale(.94); }
   .adv-pill.on { background: var(--accent); color: #0b0b0d; border-color: transparent; }
-  .pill-row { display: flex; gap: 8px; justify-content: center; align-self: center; }
+  .pill-row { display: flex; gap: 8px; justify-content: center; align-self: center; flex-wrap: wrap; }
+  /* Genre tuner sheet */
+  .gsheet-ov { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: flex-end; }
+  .gsheet { width: 100%; max-height: 74%; background: var(--bg2); border-radius: 22px 22px 0 0; border-top: 1px solid var(--glass-brd); padding: 16px 18px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -20px 50px rgba(0,0,0,.6); overflow-y: auto; animation: gsheetUp .22s ease; }
+  @keyframes gsheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .gsheet-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; font-size: 17px; color: #fff; }
+  .gsheet-x { background: rgba(255,255,255,.08); border: 0; color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 13px; cursor: pointer; line-height: 1; }
+  .gsheet-sub { color: var(--muted); font-size: 12.5px; margin: 6px 0 14px; line-height: 1.4; }
+  .gsheet-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gsheet-chips .gchip[disabled] { opacity: .5; }
   .freshtag { display: block; width: fit-content; font-size: 11px; letter-spacing: .5px; font-weight: 800; color: #0b0b0d; background: var(--accent); padding: 5px 11px; border-radius: 12px; margin-bottom: 8px; }
-  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(22,22,26,.55); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7); border: 1px solid var(--glass-brd); color: var(--text); padding: 10px 16px; border-radius: 16px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s, transform .3s; z-index: 50; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(22,22,26,.55); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7); border: 1px solid var(--glass-brd); color: var(--text); padding: 10px 16px; border-radius: 16px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s, transform .3s; z-index: 70; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
   /* Chip icons: emoji for genres, artist photo for artists */
   .chip-av { width: 1.8em; height: 1.8em; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,.18); }
@@ -379,6 +388,7 @@
         <div class="pill-row">
           <button class="adv-pill" id="advPill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 8h8"/><path d="M17 8h2"/><circle cx="15" cy="8" r="2"/><path d="M5 16h2"/><path d="M9 16h10"/><circle cx="7" cy="16" r="2"/></svg><span id="advLabel">Adventurous</span></button>
           <button class="adv-pill" id="freshPill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l1.7 5.3 5.3 1.7-5.3 1.7L12 16.5l-1.7-5.3L5 9.5l5.3-1.7z"/></svg><span>Fresh Finds</span></button>
+          <button class="adv-pill" id="genrePill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Genres</span></button>
         </div>
       </div>
     </section>
@@ -522,6 +532,14 @@
     <button class="tab" data-screen="friends"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3.8 19c0-2.9 2.3-4.8 5.2-4.8s5.2 1.9 5.2 4.8"/><path d="M16.2 6.3a2.8 2.8 0 0 1 0 5.2"/><path d="M17.6 14.4c2 .5 3.4 2.1 3.4 4.6"/></svg></span><span>Friends <span class="badge alert" id="friendsBadge" style="display:none;">0</span></span></button>
     <button class="tab soon" data-soon="Messages"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a7.5 7.5 0 0 1-10.6 6.8L4 20l1.3-4.2A7.5 7.5 0 1 1 20.5 12z"/></svg></span><span>Messages</span></button>
   </nav>
+
+  <div class="gsheet-ov" id="genreSheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Tune your mix</span><button class="gsheet-x" id="genreSheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub">Tap a genre to steer what Sift plays next. Your picks glow — tap again to ease off.</p>
+      <div class="gsheet-chips" id="genreSheetChips"></div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 </div>
@@ -1292,6 +1310,63 @@ function setFresh() {
   orderQueue();
 }
 document.getElementById("freshPill").onclick = setFresh;
+
+/* ---------- Genre tuner — steer the mix mid-session ---------- */
+// A picked genre isn't a filter — it seeds that genre's anchor artists into your graph
+// (so all future picks lean toward it) AND front-loads a couple songs so the shift is felt now.
+function genreActive(g) { return (state.seedLabels || []).includes(g); }
+function renderGenreSheet() {
+  const wrap = document.getElementById("genreSheetChips");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  GENRES.forEach(g => {
+    const c = document.createElement("button");
+    c.className = "gchip" + (genreActive(g) ? " on" : "");
+    c.textContent = g;
+    c.onclick = () => toggleGenreLive(g, c);
+    wrap.appendChild(c);
+  });
+}
+async function toggleGenreLive(g, chip) {
+  if (genreActive(g)) {                                   // ease off — stop reinforcing it
+    state.seedLabels = (state.seedLabels || []).filter(x => x !== g);
+    if (typeof seedGenres !== "undefined") seedGenres.delete(g);
+    chip.classList.remove("on");
+    save();
+    toast("Eased off " + g);
+    return;
+  }
+  // add it
+  state.seedLabels = state.seedLabels || [];
+  state.seedLabels.push(g);
+  if (typeof seedGenres !== "undefined") seedGenres.set(g, 2);
+  chip.classList.add("on"); chip.disabled = true;
+  toast("Mixing in " + g + "…");
+  const anchors = GENRE_ANCHORS[g] || [g];
+  const seeds = [];
+  for (const name of anchors) {
+    const a = await searchArtist(name);
+    if (a) seeds.push(ensureArtist(a.id, a.name, 3, { origin: "seed", genreName: g, nbFan: a.nb_fan }));
+  }
+  // pull tracks from the new genre and move them to the FRONT so the change is immediate
+  const before = state.queue.length;
+  let added = 0;
+  for (const art of seeds) {
+    const pool = await artistTop(art.id, 25);
+    added += queueTracks(pickArtistTracks(pool), "Exploring " + g, art.nbFan);
+  }
+  if (added) { const fresh = state.queue.splice(before, added); state.queue.unshift(...fresh); }
+  state.exploreBoost = Math.max(state.exploreBoost, 1);
+  if (state.queue.length < 6) await refill();
+  chip.disabled = false;
+  save();
+  toast(added ? ("Now mixing in " + g + " — swipe on") : ("Added " + g + " to your mix"));
+}
+function openGenreSheet() { renderGenreSheet(); document.getElementById("genreSheet").style.display = "flex"; }
+function closeGenreSheet() { document.getElementById("genreSheet").style.display = "none"; }
+document.getElementById("genrePill").onclick = openGenreSheet;
+document.getElementById("genreSheetX").onclick = closeGenreSheet;
+document.getElementById("genreSheet").onclick = (e) => { if (e.target.id === "genreSheet") closeGenreSheet(); };
 
 /* ---------- Drag / swipe ---------- */
 // Playful, artist-safe remarks. Likes get hyped, passes stay light (never bash an artist).
