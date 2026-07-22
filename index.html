@@ -54,7 +54,7 @@
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
   .screen.active { display: flex; }
   /* scrollable screens are flex columns — keep their children at natural height so the screen scrolls instead of squashing the taste card */
-  #finds > *, #friends > *, #artist > * { flex-shrink: 0; }
+  #finds > *, #friends > *, #profile > *, #artist > * { flex-shrink: 0; }
 
   /* Onboarding + Welcome */
   #onboarding, #welcome { padding: 8px 20px 24px; overflow-y: auto; }
@@ -188,9 +188,13 @@
   .find button.mini { border: 0; background: rgba(255,255,255,.06); color: var(--text); width: 40px; height: 40px; border-radius: 10px; cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .empty-finds { text-align:center; color: var(--muted); padding: 60px 20px; }
-  .startover { display:block; width:100%; margin: 20px 0 0; padding: 12px; background: transparent; border: 1.5px solid #26262b; color: var(--muted); border-radius: 14px; font-weight: 700; cursor: pointer; }
-  /* Friends / Taste Fingerprint */
-  #friends { padding: 4px 16px 24px; overflow-y: auto; }
+  .startover { display:block; width:100%; margin: 20px 0 0; padding: 12px; background: transparent; border: 1.5px solid #26262b; color: var(--muted); border-radius: 14px; font-weight: 700; cursor: pointer; transition: border-color .2s, color .2s; }
+  .startover.armed { border-color: #ef5b6b; color: #ef5b6b; }
+  /* Friends + You (profile) */
+  #friends, #profile { padding: 4px 16px 24px; overflow-y: auto; }
+  #friends h2, #profile h2 { margin: 8px 4px 4px; font-size: 22px; }
+  #friends .sub, #profile .sub { color: var(--muted); margin: 0 4px 14px; font-size: 13px; }
+  .about-note { text-align: center; color: var(--muted); font-size: 11px; letter-spacing: .4px; margin-top: 16px; }
   .tastecard { position: relative; border-radius: 22px; padding: 20px 18px; margin: 0 4px; overflow: hidden; background: linear-gradient(155deg, #24242b, #0c0c0e); border: 1px solid rgba(255,255,255,.10); box-shadow: 0 14px 40px rgba(0,0,0,.5); }
   .tastecard::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,.2), transparent 60%); pointer-events: none; }
   .tc-top, .tc-row, .tc-foot { position: relative; z-index: 1; }
@@ -307,6 +311,7 @@
   .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(22,22,26,.55); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7); border: 1px solid var(--glass-brd); color: var(--text); padding: 10px 16px; border-radius: 16px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s, transform .3s; z-index: 70; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
   /* Chip icons: emoji for genres, artist photo for artists */
+  .chip-x { margin-left: 8px; opacity: .5; font-weight: 700; font-size: .85em; }
   .chip-av { width: 1.8em; height: 1.8em; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,.18); }
   .chip.has-av { display: inline-flex; align-items: center; padding-left: 6px; }
   .chip.has-av .chip-av { margin-right: 9px; }
@@ -329,6 +334,11 @@
   .atrack .at-btn svg { width: 15px; height: 15px; }
   .atrack .at-btn.love { color: var(--love); }
   .card .artist .artist-go { opacity: .55; margin-left: 6px; font-weight: 700; }
+  /* Small phones (SE etc.): keep the Discover pills on one line so the card keeps its height */
+  @media (max-width: 380px) {
+    .adv-pill { font-size: 11px; padding: 6px 11px; gap: 5px; }
+    .adv-pill svg { width: 13px; height: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -342,7 +352,7 @@
   <main>
     <!-- WELCOME BACK -->
     <section class="screen" id="welcome">
-      <h1>Welcome back 👋</h1>
+      <h1>Welcome back</h1>
       <p class="lead">Sift remembers your taste. Let's find you something new.</p>
       <div class="welcome-stat" id="welcomeStat">0</div>
       <div style="color:var(--muted);font-weight:700;margin-top:4px;">finds so far</div>
@@ -354,11 +364,11 @@
     <section class="screen" id="onboarding">
       <h1>What do you love?</h1>
       <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
-      <div class="section-label">Genres — tap once to pick, tap again to weight it bigger (up to 🔥🔥🔥)</div>
-      <input id="genreSearch" class="genre-search" placeholder="🔍 Search genres (e.g. afro, euro summer, jazz)…" autocomplete="off" />
+      <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
+      <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. afro, euro summer, jazz)…" autocomplete="off" />
       <div class="chips" id="genreChips"></div>
       <button type="button" id="toggleGenres" class="show-all-btn">Show all genres ▾</button>
-      <div class="section-label">Artists you love — add them, then tap to weight bigger (tap 4× to remove)</div>
+      <div class="section-label">Artists you love — tap to turn them up</div>
       <div class="artist-row">
         <input id="artistInput" placeholder="Type an artist and hit +" autocomplete="off" />
         <button id="addArtist">+</button>
@@ -396,7 +406,7 @@
     <!-- FINDS -->
     <section class="screen" id="finds">
       <h2>Your Finds</h2>
-      <p class="sub">Songs you loved. Tap ▶ for a preview, or open it in Spotify / Apple — or hit YouTube / SoundCloud for remixes &amp; edits.</p>
+      <p class="sub">Songs you loved — preview them here, or open them in your streaming app.</p>
       <div class="follow-shelf" id="followShelf" style="display:none;">
         <div class="fs-head">Following</div>
         <div class="fs-row" id="followRow"></div>
@@ -412,24 +422,56 @@
       </div>
       <div class="finds-genres" id="findsGenres"></div>
       <div id="findsList"></div>
-      <button class="startover" id="startOver">Start over (clear my taste)</button>
     </section>
 
-    <!-- FRIENDS / YOU -->
+    <!-- FRIENDS — social only: activity, friends list, decks -->
     <section class="screen" id="friends">
+      <h2>Friends</h2>
+      <p class="sub">Compare tastes, send decks of your finds, and see what lands.</p>
+
+      <!-- Logged out: point at the You tab instead of duplicating auth here -->
+      <div class="acct" id="friendsLocked" style="display:none;">
+        <div class="acct-title">Friends live on your account</div>
+        <div class="acct-sub">Create a free account to add friends, compare taste matches and swap decks of songs.</div>
+        <button class="btn-mini" id="goProfileBtn" style="margin-top:10px;">Set up your account</button>
+      </div>
+
+      <!-- Logged in: the social surface -->
+      <div class="acct" id="friendsSocial" style="display:none;">
+        <div class="acct-title">Activity</div>
+        <div id="activityFeed"></div>
+        <div class="acct-title" style="margin-top:18px;">Friends</div>
+        <div class="acct-sub">Add a friend by their username to compare tastes.</div>
+        <div class="acct-row">
+          <input id="friendInput" placeholder="friend's username" autocomplete="off" maxlength="20" />
+          <button class="btn-mini" id="btnAddFriend" style="flex:0 0 auto;padding:12px 18px;">Add</button>
+        </div>
+        <div class="acct-msg" id="friendMsg"></div>
+        <div id="friendsList"></div>
+
+        <div class="acct-title" style="margin-top:18px;">Send a deck</div>
+        <div class="acct-sub">Bundle your latest Finds into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
+        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Create a deck from my Finds</button>
+        <div class="acct-msg" id="deckMsg"></div>
+        <div id="myDecks"></div>
+      </div>
+      <button class="btn-primary" id="btnInvite" style="margin-top:18px;">Invite a friend to Sift</button>
+    </section>
+
+    <!-- YOU — identity, account, app controls -->
+    <section class="screen" id="profile">
       <h2>Your Vibe</h2>
-      <p class="sub">Your musical identity — screenshot it, and invite friends to compare tastes.</p>
+      <p class="sub">Your musical identity — screenshot it and share it.</p>
       <div class="tastecard" id="tasteCard">
         <div class="tc-top">
           <div class="tc-arche" id="tcArche">The Tastemaker</div>
           <div class="tc-sub" id="tcSub">0 finds · Balanced explorer</div>
-          <div class="tc-disc" id="tcDisc" style="display:none;">✨ <b id="tcDiscN">0</b>% of what Sift played was new to me</div>
+          <div class="tc-disc" id="tcDisc" style="display:none;"><b id="tcDiscN">0</b>% of what Sift played was new to me</div>
         </div>
         <div class="tc-row"><div class="tc-lbl">Top genres</div><div class="tc-chips" id="tcGenres"></div></div>
         <div class="tc-row"><div class="tc-lbl">On repeat</div><div class="tc-chips" id="tcArtists"></div></div>
         <div class="tc-foot"><span class="tc-dot"></span> SIFT</div>
       </div>
-      <button class="btn-primary" id="btnInvite" style="margin-top:18px;">Invite a friend to Sift</button>
 
       <!-- Logged out: create account / log in -->
       <div class="acct" id="acctBox" style="display:none;">
@@ -455,8 +497,8 @@
         <div class="acct-msg" id="unameMsg"></div>
       </div>
 
-      <!-- Logged in: profile + friends -->
-      <div class="acct" id="userBox" style="display:none;">
+      <!-- Logged in: account summary -->
+      <div class="acct" id="profileBox" style="display:none;">
         <div class="acct-row" style="justify-content:space-between;margin-top:0;">
           <div style="min-width:0;">
             <div class="acct-title" id="userName">@you</div>
@@ -464,23 +506,10 @@
           </div>
           <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
         </div>
-        <div class="acct-title" style="margin-top:18px;">Activity</div>
-        <div id="activityFeed"></div>
-        <div class="acct-title" style="margin-top:18px;">Friends</div>
-        <div class="acct-sub">Add a friend by their username to compare tastes.</div>
-        <div class="acct-row">
-          <input id="friendInput" placeholder="friend's username" autocomplete="off" maxlength="20" />
-          <button class="btn-mini" id="btnAddFriend" style="flex:0 0 auto;padding:12px 18px;">Add</button>
-        </div>
-        <div class="acct-msg" id="friendMsg"></div>
-        <div id="friendsList"></div>
-
-        <div class="acct-title" style="margin-top:18px;">Send a deck</div>
-        <div class="acct-sub">Bundle your latest Finds into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
-        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Create a deck from my Finds</button>
-        <div class="acct-msg" id="deckMsg"></div>
-        <div id="myDecks"></div>
       </div>
+
+      <button class="startover" id="startOver">Start over — clear my taste</button>
+      <div class="about-note">Sift · early access · your taste lives on this device</div>
     </section>
 
     <!-- DECK MODE (a friend swiping a shared deck) -->
@@ -490,15 +519,15 @@
         <img src="logo-mark.png?v=3" class="logo" style="height:38px" alt="Sift" />
         <div class="dm-intro-t" id="dmIntroTitle">A deck for you</div>
         <div class="dm-intro-s" id="dmIntroSub">swipe right on the ones you love</div>
-        <button class="btn-primary" id="dmStart" style="max-width:280px;margin-top:22px;">Start swiping ▶</button>
-        <div class="dm-intro-note">Your loves get sent back to them 💜</div>
+        <button class="btn-primary" id="dmStart" style="max-width:280px;margin-top:22px;">Start swiping</button>
+        <div class="dm-intro-note">The songs you love get sent back to them</div>
       </div>
       <!-- swipe view -->
       <div id="dmSwipe" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div class="dm-progress" id="dmBars"></div>
         <div style="padding:8px 18px 0;">
           <div class="dm-title" id="dmTitle">Deck</div>
-          <div class="sub" id="dmSub" style="margin:2px 4px 0;">swipe ♥ or ✕</div>
+          <div class="sub" id="dmSub" style="margin:2px 4px 0;">swipe right to love, left to pass</div>
         </div>
         <div class="deck" id="dmDeck" style="margin:8px 18px 2px;"></div>
         <div class="burst" id="dmBurst"></div>
@@ -530,7 +559,7 @@
     <button class="tab" data-screen="discover"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M16 8l-2.5 5.5L8 16l2.5-5.5z" fill="currentColor" stroke="none"/></svg></span><span>Discover</span></button>
     <button class="tab" data-screen="finds"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span><span>Finds <span class="badge" id="findsCount">0</span></span></button>
     <button class="tab" data-screen="friends"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3.8 19c0-2.9 2.3-4.8 5.2-4.8s5.2 1.9 5.2 4.8"/><path d="M16.2 6.3a2.8 2.8 0 0 1 0 5.2"/><path d="M17.6 14.4c2 .5 3.4 2.1 3.4 4.6"/></svg></span><span>Friends <span class="badge alert" id="friendsBadge" style="display:none;">0</span></span></button>
-    <button class="tab soon" data-soon="Messages"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a7.5 7.5 0 0 1-10.6 6.8L4 20l1.3-4.2A7.5 7.5 0 1 1 20.5 12z"/></svg></span><span>Messages</span></button>
+    <button class="tab" data-screen="profile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.3 18.4c1.2-2.1 3.3-3.3 5.7-3.3s4.5 1.2 5.7 3.3"/></svg></span><span>You</span></button>
   </nav>
 
   <div class="gsheet-ov" id="genreSheet" style="display:none;">
@@ -875,7 +904,7 @@ const genreChips = document.getElementById("genreChips");
 const artistChips = document.getElementById("artistChips");
 const startBtn = document.getElementById("startBtn");
 
-function renderChip(el, g, w, lead) {
+function renderChip(el, g, w, lead, removable) {
   el.classList.remove("w1", "w2", "w3");
   if (w > 0) el.classList.add("w" + w);
   let hearts = "";
@@ -884,7 +913,7 @@ function renderChip(el, g, w, lead) {
     for (let i = 1; i <= 3; i++) hearts += '<span class="hrt' + (i <= w ? "" : " off") + '">♥</span>';
     hearts += "</span>";
   }
-  el.innerHTML = (lead || "") + esc(g) + hearts;
+  el.innerHTML = (lead || "") + esc(g) + hearts + (removable ? '<span class="chip-x" aria-label="Remove">✕</span>' : "");
 }
 GENRES.forEach(g => {
   const el = document.createElement("div");
@@ -927,11 +956,12 @@ function addArtistChip() {
     const el = document.createElement("div");
     el.className = "chip";
     el._lead = "";
-    renderChip(el, val, 1, el._lead);       // same weighted bubble as genres
-    el.onclick = () => {
+    renderChip(el, val, 1, el._lead, true);   // same weighted bubble as genres, plus an ✕ to remove
+    el.onclick = (e) => {
+      if (e.target.closest(".chip-x")) { seedArtists.delete(val); el.remove(); updateStart(); return; }
       let w = (seedArtists.get(val) || 0) + 1;
-      if (w > 3) { seedArtists.delete(val); el.remove(); }  // 4th tap removes it
-      else { seedArtists.set(val, w); renderChip(el, val, w, el._lead); }
+      if (w > 3) w = 1;                        // tap cycles the weight ♥ → ♥♥ → ♥♥♥ → back
+      seedArtists.set(val, w); renderChip(el, val, w, el._lead, true);
       updateStart();
     };
     artistChips.appendChild(el);
@@ -941,7 +971,7 @@ function addArtistChip() {
       if (pic && seedArtists.has(val)) {
         el._lead = '<img class="chip-av" src="' + pic + '" alt="" />';
         el.classList.add("has-av");
-        renderChip(el, val, seedArtists.get(val), el._lead);
+        renderChip(el, val, seedArtists.get(val), el._lead, true);
       }
     }).catch(() => {});
   }
@@ -984,15 +1014,18 @@ function showScreen(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.screen === name));
   if (name === "finds") updateFinds(); // refresh buckets + kick off genre lookups
-  if (name === "friends") { updateFriends(); updateActivityBadge(); if (window._refreshSocial) window._refreshSocial(); } // taste fingerprint + cloud sync + clear unread
+  if (name === "friends") { updateActivityBadge(); if (window._refreshSocial) window._refreshSocial(); } // cloud sync + clear unread
+  if (name === "profile") { updateFriends(); if (window._refreshSocial) window._refreshSocial(); } // taste fingerprint lives here now
   if (name !== "discover" && name !== "deckmode") audio.pause();
   else if (name === "discover" && state.current) safePlay();
 }
-document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
-  if (b.dataset.soon) { toast(b.dataset.soon + " — coming soon 👀"); return; }
-  showScreen(b.dataset.screen);
-});
-document.getElementById("btnSettings").onclick = () => toast("⚙ Settings — coming soon");
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => showScreen(b.dataset.screen));
+// Header gear = shortcut to the You tab (account + app controls)
+document.getElementById("btnSettings").onclick = () => {
+  if (document.getElementById("tabbar").style.display === "none") { toast("Finish setup first"); return; }
+  showScreen("profile");
+};
+document.getElementById("goProfileBtn").onclick = () => showScreen("profile");
 
 document.getElementById("resumeBtn").onclick = async () => {
   document.getElementById("tabbar").style.display = "flex";
@@ -1475,7 +1508,7 @@ function updateDiscStat() {
   const pct = Math.round(newToYou / seen * 100);
   document.getElementById("dsPct").textContent = pct;
   document.getElementById("dsRow").innerHTML =
-    '🎧 <b>' + seen + '</b> played &nbsp; ✨ <b>' + newToYou + '</b> never heard &nbsp; ♥ <b>' + state.liked.length + '</b> loved';
+    '<span><b>' + seen + '</b> played</span><span><b>' + newToYou + '</b> never heard</span><span><b>' + state.liked.length + '</b> loved</span>';
   ds.style.display = "block";
 }
 function updateFinds() {
@@ -1614,6 +1647,7 @@ function updateFriends() {
   if (topGenres.length < 2 && liked.length) maybeFetchGenres(); // fill genres in the background
 }
 document.getElementById("btnInvite").onclick = async () => {
+  updateFriends(); // make sure the archetype is current even if the You tab hasn't been opened
   const arche = document.getElementById("tcArche").textContent;
   const text = 'I\'m "' + arche + '" on Sift 🎧 — a music discovery app that actually finds you songs you\'ve never heard and will love. Come compare tastes:';
   const url = location.origin + location.pathname; // always matches wherever the app is hosted
@@ -1622,7 +1656,17 @@ document.getElementById("btnInvite").onclick = async () => {
     else { await navigator.clipboard.writeText(text + " " + url); toast("Invite copied to clipboard"); }
   } catch (e) { /* share cancelled */ }
 };
+// Destructive → two-tap confirm: first tap arms it (goes red), second tap wipes. Disarms after 4s.
+let startOverTimer = null;
 document.getElementById("startOver").onclick = () => {
+  const b = document.getElementById("startOver");
+  if (!b.classList.contains("armed")) {
+    b.classList.add("armed");
+    b.textContent = "Really erase everything? Tap again";
+    startOverTimer = setTimeout(() => { b.classList.remove("armed"); b.textContent = "Start over — clear my taste"; }, 4000);
+    return;
+  }
+  clearTimeout(startOverTimer);
   try { localStorage.removeItem(LS_KEY); } catch (e) {}
   location.reload();
 };
@@ -1678,12 +1722,17 @@ async function syncProfile() {
 }
 
 function renderAcct() {
-  const acctBox = document.getElementById("acctBox"), userBox = document.getElementById("userBox"), unameBox = document.getElementById("unameBox");
-  if (!acctBox) return;
-  if (!SB) { acctBox.style.display = "none"; return; }        // no backend available
-  if (!me_session) { acctBox.style.display = ""; userBox.style.display = "none"; unameBox.style.display = "none"; return; }
-  if (!me_profile) { acctBox.style.display = "none"; userBox.style.display = "none"; unameBox.style.display = ""; return; }
-  acctBox.style.display = "none"; unameBox.style.display = "none"; userBox.style.display = "";
+  // Auth state drives two screens now: You (acct/uname/profile boxes) + Friends (locked vs social).
+  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? "" : "none"; };
+  if (!document.getElementById("acctBox")) return;
+  if (!SB) { ["acctBox", "unameBox", "profileBox", "friendsLocked", "friendsSocial"].forEach(id => show(id, false)); return; } // no backend available
+  const ready = !!(me_session && me_profile);
+  show("acctBox", !me_session);
+  show("unameBox", !!me_session && !me_profile);
+  show("profileBox", ready);
+  show("friendsLocked", !ready);
+  show("friendsSocial", ready);
+  if (!ready) return;
   document.getElementById("userName").textContent = "@" + me_profile.username;
   document.getElementById("userSync").textContent = "Vibe synced ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
   renderActivity();
@@ -1696,7 +1745,7 @@ async function renderFriends() {
   if (!list || !SB || !me_session) return;
   try {
     const { data: edges } = await SB.from("friendships").select("friend_id").eq("user_id", me_session.user.id);
-    if (!edges || !edges.length) { list.innerHTML = '<div class="acct-sub" style="margin-top:12px;">No friends yet — add someone by their username above. 👆</div>'; return; }
+    if (!edges || !edges.length) { list.innerHTML = '<div class="acct-sub" style="margin-top:12px;">No friends yet — add someone by their username above.</div>'; return; }
     const ids = edges.map(e => e.friend_id);
     const { data: profs } = await SB.from("profiles").select("*").in("id", ids);
     const mine = myTaste();
@@ -1847,7 +1896,7 @@ async function addFriend() {
 window._refreshSocial = function () { if (SB && me_session && me_profile) { syncProfile(); renderActivity(); renderFriends(); renderMyDecks(); } };
 
 (function initSocial() {
-  if (!SB) { const a = document.getElementById("acctBox"); if (a) a.style.display = "none"; return; }
+  if (!SB) { renderAcct(); return; }   // offline / no backend → all account UI stays hidden
   document.getElementById("btnSignup").onclick = doSignup;
   document.getElementById("btnLogin").onclick = doLogin;
   document.getElementById("btnLogout").onclick = doLogout;
