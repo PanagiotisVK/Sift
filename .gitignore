@@ -5,9 +5,14 @@ PROJECT.md
 prototype.html
 site/
 
+# Capacitor / build artifacts (generated — never committed)
+node_modules/
+www/
+
 # OS / editor / temp junk
 .DS_Store
 Thumbs.db
 *.log
 _test_*.mp3
 resp.json
+design-previews/

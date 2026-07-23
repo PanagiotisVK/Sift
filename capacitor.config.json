@@ -1,0 +1,9 @@
+{
+  "appId": "com.pvk.sift",
+  "appName": "Sift",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#09090b"
+  }
+}
