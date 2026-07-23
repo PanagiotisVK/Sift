@@ -723,7 +723,21 @@ const hotPending = new Set();
 let _audioCtx = null;
 function getCtx() { if (!_audioCtx) { try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return _audioCtx; }
 
-/* ---------- Deezer API via JSONP (runs from file:// with no server) ---------- */
+/* ============================================================
+   PROVIDER SEAM — the one place the app talks to a music catalog.
+   Everything below PROVIDER is swappable; everything above it (the
+   engine, queue, UI) never imports a catalog directly.
+
+   The returned object shapes ARE the app-wide contract:
+     track:  { id, title, preview, link, rank (0..~1M popularity),
+               artist:{ id, name }, album:{ id, cover_big|cover_medium|cover } }
+     artist: { id, name, nb_fan, picture_small|picture_medium|picture_big|picture_xl }
+     album:  { id, title, release_date }
+   The Apple/ListenBrainz provider (migration phases 2–3) must emit these same
+   fields — rank from normalized listen counts, nb_fan from artist listener counts.
+   ============================================================ */
+
+/* ---------- Deezer transport (JSONP — runs from file:// with no server) ---------- */
 let jsonpId = 0;
 function deezer(path, params) {
   return new Promise((resolve) => {
@@ -739,10 +753,53 @@ function deezer(path, params) {
     document.body.appendChild(script);
   });
 }
-async function searchArtist(name) { const d = await deezer("search/artist", { q: name, limit: 1 }); return d && d.data && d.data[0]; }
-async function searchTracks(q, limit) { const d = await deezer("search", { q: q, limit: limit || 20 }); return (d && d.data) || []; }
-async function relatedArtists(id) { const d = await deezer("artist/" + id + "/related", { limit: 8 }); return (d && d.data) || []; }
-async function artistTop(id, limit) { const d = await deezer("artist/" + id + "/top", { limit: limit || 6 }); return (d && d.data) || []; }
+
+/* ---------- Deezer provider (prototype-only license — swapped for Apple+ListenBrainz before the App Store) ---------- */
+const DeezerProvider = {
+  name: "deezer",
+  fanNoun: "fans on Deezer",
+  async searchArtist(name) { const d = await deezer("search/artist", { q: name, limit: 1 }); return d && d.data && d.data[0]; },
+  async searchTracks(q, limit) { const d = await deezer("search", { q: q, limit: limit || 20 }); return (d && d.data) || []; },
+  async relatedArtists(id) { const d = await deezer("artist/" + id + "/related", { limit: 8 }); return (d && d.data) || []; },
+  async artistTop(id, limit) { const d = await deezer("artist/" + id + "/top", { limit: limit || 6 }); return (d && d.data) || []; },
+  // Deezer preview URLs expire (403 after a while) — any track played from storage
+  // (a deck, old Finds) re-fetches a live preview by id, falling back to search.
+  async resolvePreview(track) {
+    if (track._fresh && track.preview) return track.preview;
+    try { const d = await deezer("track/" + track.id, {}); if (d && d.preview) { track.preview = d.preview; track._fresh = true; return d.preview; } } catch (_) {}
+    try { const s = await deezer("search", { q: track.artist + " " + track.title, limit: 1 }); if (s && s.data && s.data[0] && s.data[0].preview) { track.preview = s.data[0].preview; track._fresh = true; return s.data[0].preview; } } catch (_) {}
+    return track.preview;
+  },
+  // Genre for a loved track, via its album (backfills albumId by search for older finds).
+  async trackGenre(t) {
+    let albumId = t.albumId;
+    if (!albumId) {
+      const s = await deezer("search", { q: t.artist + " " + t.title, limit: 1 });
+      albumId = s && s.data && s.data[0] && s.data[0].album && s.data[0].album.id;
+      if (albumId) t.albumId = albumId;
+    }
+    if (!albumId) return "Mixed";
+    if (albumGenreCache[albumId]) return albumGenreCache[albumId];
+    const al = await deezer("album/" + albumId, {});
+    const genre = (al && al.genres && al.genres.data && al.genres.data[0] && al.genres.data[0].name) || "Mixed";
+    albumGenreCache[albumId] = genre;
+    return genre;
+  },
+  async artistInfo(id) { const info = await deezer("artist/" + id, {}); return (info && info.name) ? info : null; },
+  async artistAlbums(id, limit) { const r = await deezer("artist/" + id + "/albums", { limit: limit || 25 }); return (r && r.data) || []; },
+};
+
+// Registry + selection. The Apple/ListenBrainz provider registers here when it lands,
+// and can then be A/B'd live via ?provider=apple (or localStorage sift_provider).
+const PROVIDERS = { deezer: DeezerProvider };
+let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") || localStorage.getItem("sift_provider") || "deezer"] || DeezerProvider;
+
+// The verbs the rest of the app uses — always dispatched through the active provider.
+async function searchArtist(name) { return PROVIDER.searchArtist(name); }
+async function searchTracks(q, limit) { return PROVIDER.searchTracks(q, limit); }
+async function relatedArtists(id) { return PROVIDER.relatedArtists(id); }
+async function artistTop(id, limit) { return PROVIDER.artistTop(id, limit); }
+async function resolvePreview(track) { return PROVIDER.resolvePreview(track); }
 
 /* ---------- Apple Music exact-track lookup (iTunes Search API — free, no key, JSONP) ----------
    Upgrades a Find's Apple button from "here's a search page" to "here's the actual song".
@@ -1790,25 +1847,10 @@ async function maybeFetchAppleLinks() {
   if (found) updateFinds(); // re-render with the exact links (also picks up the next batch)
 }
 
-// Look up each loved song's genre (via its Deezer album) so we can bucket them.
+// Look up each loved song's genre so we can bucket them (catalog details live on the provider).
 async function ensureGenre(t) {
   if (t.genre) return;
-  let albumId = t.albumId;
-  if (!albumId) { // older finds saved before we captured album id → find it by search
-    const s = await deezer("search", { q: t.artist + " " + t.title, limit: 1 });
-    albumId = s && s.data && s.data[0] && s.data[0].album && s.data[0].album.id;
-    if (albumId) t.albumId = albumId;
-  }
-  let genre = "Mixed";
-  if (albumId) {
-    if (albumGenreCache[albumId]) genre = albumGenreCache[albumId];
-    else {
-      const al = await deezer("album/" + albumId, {});
-      genre = (al && al.genres && al.genres.data && al.genres.data[0] && al.genres.data[0].name) || "Mixed";
-      albumGenreCache[albumId] = genre;
-    }
-  }
-  t.genre = genre;
+  t.genre = (await PROVIDER.trackGenre(t)) || "Mixed";
 }
 function maybeFetchGenres() {
   if (fetchingGenres) return;
@@ -2352,14 +2394,7 @@ function renderDmCard(track) {
   card.querySelector(".art").addEventListener("click", () => safePlay());
   setBackdrop(track.cover);
 }
-// Deezer preview URLs expire (they 403 after a while). Any track played from
-// storage (a deck, or old Finds) must re-fetch a live preview by its track id.
-async function resolvePreview(track) {
-  if (track._fresh && track.preview) return track.preview;
-  try { const d = await deezer("track/" + track.id, {}); if (d && d.preview) { track.preview = d.preview; track._fresh = true; return d.preview; } } catch (_) {}
-  try { const s = await deezer("search", { q: track.artist + " " + track.title, limit: 1 }); if (s && s.data && s.data[0] && s.data[0].preview) { track.preview = s.data[0].preview; track._fresh = true; return s.data[0].preview; } } catch (_) {}
-  return track.preview;
-}
+// resolvePreview lives on the provider seam now (expiring preview URLs are a catalog concern).
 async function playDm(track) {
   const token = ++audioToken;
   const url = await resolvePreview(track);
@@ -2478,8 +2513,7 @@ async function checkFollowingReleases() {
   let changed = false;
   for (const a of arts) {
     try {
-      const r = await deezer("artist/" + a.id + "/albums", { limit: 25 });
-      const albums = (r && r.data) || [];
+      const albums = await PROVIDER.artistAlbums(a.id, 25);
       if (!albums.length) continue;
       let newest = albums[0];
       for (const al of albums) { if ((al.release_date || "") > (newest.release_date || "")) newest = al; }
@@ -2503,13 +2537,13 @@ async function openArtist(artistId, name) {
   document.getElementById("artistPhoto").src = "";
   document.getElementById("artistTracks").innerHTML = '<div class="empty-finds">Loading tracks…</div>';
   updateFollowBtn(artistId, name);
-  const info = await deezer("artist/" + artistId, {});
+  const info = await PROVIDER.artistInfo(artistId);
   if (info && info.name) {
     name = info.name;
     document.getElementById("artistName").textContent = info.name;
     document.getElementById("artistPhoto").src = info.picture_xl || info.picture_big || info.picture_medium || "";
     const fans = info.nb_fan || 0;
-    document.getElementById("artistSub").textContent = (fans && fans < 40000 ? "✦ Emerging · " : "") + fans.toLocaleString() + " fans on Deezer";
+    document.getElementById("artistSub").textContent = (fans && fans < 40000 ? "✦ Emerging · " : "") + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
     updateFollowBtn(artistId, name);
   } else {
     document.getElementById("artistSub").textContent = "";
