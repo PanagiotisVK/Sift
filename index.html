@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Sift — Music Discovery</title>
+<!-- Installable PWA: Add to Home Screen = full-screen app + exempt from iOS's 7-day localStorage purge -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#09090b" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Sift" />
 <link rel="icon" href="favicon.png?v=3" />
-<link rel="apple-touch-icon" href="favicon.png?v=3" />
+<link rel="apple-touch-icon" href="icon-180.png" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -38,7 +44,8 @@
   #bgArt { position: fixed; inset: 0; z-index: 0; background-size: cover; background-position: center; filter: blur(60px) saturate(.5) brightness(.4); transform: scale(1.3); transition: filter .5s; }
   #bgArt::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(12,11,18,.38), rgba(12,11,18,.72)); }
 
-  header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: rgba(10,10,12,.72); border-bottom: 1px solid var(--glass-brd); position: relative; z-index: 5; }
+  /* safe-area top padding: in installed (standalone) mode content flows under the status bar */
+  header { display: flex; align-items: center; justify-content: space-between; padding: calc(8px + env(safe-area-inset-top)) 16px 8px; background: rgba(10,10,12,.72); border-bottom: 1px solid var(--glass-brd); position: relative; z-index: 5; }
   .brand { display: flex; align-items: center; gap: 9px; }
   .brand > div { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: 2px; font-size: 17px; }
   .brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
@@ -196,6 +203,8 @@
   .find .svc a:active { filter: brightness(.85); }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
+  .find button.mini.rm { background: transparent; color: var(--faint); }
+  .find button.mini.rm:active { color: var(--danger); }
   .empty-finds { text-align:center; color: var(--muted); padding: 60px 20px; }
   .startover { display:block; width:100%; margin: 20px 0 0; padding: 12px; background: transparent; border: 1.5px solid #26262b; color: var(--muted); border-radius: var(--r-md); font-weight: 600; cursor: pointer; transition: border-color .2s, color .2s; }
   .startover.armed { border-color: var(--danger); color: var(--danger); }
@@ -917,6 +926,7 @@ function save() {
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (e) { /* storage may be blocked; app still works in-session */ }
+  if (typeof scheduleFindsSync === "function") scheduleFindsSync(); // debounced cloud backup of liked songs
 }
 function load() {
   try {
@@ -1604,6 +1614,7 @@ function updateFinds() {
     row.innerHTML = '<img src="' + (t.cover || "") + '" alt="" />' +
       '<div class="fmeta"><div class="n">' + esc(t.title) + '</div><div class="a">' + esc(t.artist) + '</div></div>' +
       '<button class="mini"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.4c0-.8.9-1.3 1.6-.9l9 6.6c.6.4.6 1.4 0 1.8l-9 6.6c-.7.4-1.6-.1-1.6-.9z"/></svg></button>' +
+      '<button class="mini rm" title="Remove from Finds" aria-label="Remove from Finds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
       '<div class="svc">' +
         '<a class="sp" href="' + sp + '" target="_blank" rel="noopener" title="Open in Spotify" aria-label="Spotify">' + SVC_ICONS.sp + '</a>' +
         '<a class="ap" href="' + ap + '" target="_blank" rel="noopener" title="Open in Apple Music" aria-label="Apple Music">' + SVC_ICONS.ap + '</a>' +
@@ -1616,6 +1627,12 @@ function updateFinds() {
       if (tok !== audioToken) return;
       audio.src = url; try { audio.currentTime = 0; } catch (_) {}
       safePlay();
+    };
+    row.querySelector(".rm").onclick = () => {
+      const i = state.liked.indexOf(t);
+      if (i >= 0) state.liked.splice(i, 1);          // knownIds keeps it — it won't be re-suggested
+      save(); updateFinds(); syncProfile();
+      toast("Removed from Finds");
     };
     const fa = row.querySelector(".a");
     if (fa && t.artistId) { fa.style.cursor = "pointer"; fa.onclick = () => openArtist(t.artistId, t.artist); }
@@ -1782,8 +1799,52 @@ async function syncProfile() {
   try {
     await SB.from("profiles").update({ archetype: t.archetype, top_genres: t.top_genres, top_artists: t.top_artists, finds_count: t.finds_count, adventure: t.adventure, updated_at: new Date().toISOString() }).eq("id", me_profile.id);
     me_profile = Object.assign(me_profile, t);
-    const us = document.getElementById("userSync"); if (us) us.textContent = "Vibe synced ✓ · " + t.finds_count + (t.finds_count === 1 ? " find" : " finds");
+    const us = document.getElementById("userSync"); if (us) us.textContent = "Backed up ✓ · " + t.finds_count + (t.finds_count === 1 ? " find" : " finds");
   } catch (e) { /* offline → keep local */ }
+}
+
+/* ---------- Cloud backup of the Finds themselves ----------
+   The actual liked songs (not just taste stats) live in user_finds, one JSONB row per
+   user. Local is the source of truth; the cloud is a backup that (a) restores a fresh
+   or purged device (iOS clears localStorage for rarely-visited sites) and (b) merges
+   in tracks from a second device. Pushes are debounced off save(). */
+let findsSyncTimer = null, findsPulled = false;
+function scheduleFindsSync() {
+  if (!SB || !me_session) return;
+  clearTimeout(findsSyncTimer);
+  findsSyncTimer = setTimeout(pushFindsToCloud, 4000);
+}
+async function pushFindsToCloud() {
+  if (!SB || !me_session) return;
+  try {
+    await SB.from("user_finds").upsert({ user_id: me_session.user.id, data: state.liked, updated_at: new Date().toISOString() });
+  } catch (e) { /* offline or table missing — next save() retries */ }
+}
+async function pullCloudFinds() {
+  if (!SB || !me_session || findsPulled) return;
+  findsPulled = true;
+  try {
+    const { data } = await SB.from("user_finds").select("data").eq("user_id", me_session.user.id).maybeSingle();
+    const cloud = (data && data.data) || [];
+    if (!cloud.length) { pushFindsToCloud(); return; }   // first backup for this account
+    if (!state.liked.length) {
+      // fresh/purged device → restore the whole library
+      state.liked = cloud;
+      cloud.forEach(t => { if (t.id) state.knownIds.add(t.id); });
+      save(); updateFinds();
+      toast("Restored " + cloud.length + " finds from your account");
+    } else {
+      // both sides have songs → adopt any cloud tracks we don't have locally, then push the union
+      const have = new Set(state.liked.map(t => t.id));
+      const extra = cloud.filter(t => t.id && !have.has(t.id));
+      if (extra.length) {
+        state.liked = state.liked.concat(extra);
+        extra.forEach(t => state.knownIds.add(t.id));
+        save(); updateFinds();
+      }
+      pushFindsToCloud();
+    }
+  } catch (e) { /* table not created yet or offline — backup simply inactive */ }
 }
 
 function renderAcct() {
@@ -1799,7 +1860,7 @@ function renderAcct() {
   show("friendsSocial", ready);
   if (!ready) return;
   document.getElementById("userName").textContent = "@" + me_profile.username;
-  document.getElementById("userSync").textContent = "Vibe synced ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
+  document.getElementById("userSync").textContent = "Backed up ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
   renderActivity();
   renderFriends();
   renderMyDecks();
@@ -1897,6 +1958,7 @@ async function loadMe() {
     me_profile = prof || null;
     renderAcct();
     if (me_profile) syncProfile();
+    pullCloudFinds(); // restore/merge the actual songs (backup is per-account, not per-profile)
   } catch (e) { renderAcct(); }
 }
 
@@ -1925,7 +1987,7 @@ async function doLogin() {
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
 
-async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; renderAcct(); }
+async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; renderAcct(); }
 
 async function saveUsername() {
   if (!SB || !me_session) return;
