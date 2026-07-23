@@ -216,6 +216,16 @@
   .find button.mini.rm { background: transparent; color: var(--faint); }
   .find button.mini.rm:active { color: var(--danger); }
   .find.playing { border-color: var(--line-2); background: var(--glass); }
+  /* Now-playing: animated equalizer over the cover of whichever row owns the audio */
+  .find .fcov { position: relative; flex-shrink: 0; display: block; }
+  .find .eq { position: absolute; inset: 0; display: none; align-items: flex-end; justify-content: center; gap: 3px; padding-bottom: 9px; background: rgba(0,0,0,.5); border-radius: var(--r-sm); }
+  .find.playing .eq { display: flex; }
+  .find .eq i { width: 4px; height: 8px; background: var(--accent); border-radius: 2px; animation: eqbar 1s ease-in-out infinite; }
+  .find .eq i:nth-child(2) { animation-delay: .25s; }
+  .find .eq i:nth-child(3) { animation-delay: .5s; }
+  @keyframes eqbar { 0%, 100% { height: 6px; } 50% { height: 17px; } }
+  .find.playing.paused .eq i { animation-play-state: paused; height: 8px; }
+  @media (prefers-reduced-motion: reduce) { .find .eq i { animation: none; height: 12px; } }
   .radio-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; margin: 0 4px 12px; width: calc(100% - 8px); border: 1.5px solid var(--glass-brd); border-radius: var(--r-md); background: var(--card); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
   .radio-btn svg { width: 15px; height: 15px; display: block; }
   .radio-btn.on { background: var(--accent); color: #0b0b0d; border-color: var(--accent); }
@@ -1492,9 +1502,10 @@ function showScreen(name) {
   if (name !== "discover" && name !== "deckmode") {
     if (!radioOn) audio.pause();                    // Finds radio keeps playing across these tabs
   } else if (name === "discover") {
+    findsPlayingId = null;                          // the deck owns the audio from here
     if (radioOn) { radioStop(); if (state.current) playTrack(state.current); } // hand audio back to the deck
     else if (state.current) safePlay();
-  } else if (radioOn) radioStop();                  // deck mode takes the player over
+  } else if (name === "deckmode") { findsPlayingId = null; if (radioOn) radioStop(); } // deck mode takes the player over
 
 }
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => showScreen(b.dataset.screen));
@@ -2138,9 +2149,9 @@ function updateFinds() {
     const sp = "https://open.spotify.com/search/" + q;
     const ap = t.appleUrl || ("https://music.apple.com/us/search?term=" + q); // exact song once resolved
     const yt = "https://www.youtube.com/results?search_query=" + q;   // regular YouTube — has remixes/edits
-    row.innerHTML = '<img src="' + (t.cover || "") + '" alt="" />' +
+    row.innerHTML = '<span class="fcov"><img src="' + (t.cover || "") + '" alt="" /><span class="eq"><i></i><i></i><i></i></span></span>' +
       '<div class="fmeta"><div class="n">' + esc(t.title) + '</div><div class="a">' + esc(t.artist) + '</div></div>' +
-      '<button class="mini"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.4c0-.8.9-1.3 1.6-.9l9 6.6c.6.4.6 1.4 0 1.8l-9 6.6c-.7.4-1.6-.1-1.6-.9z"/></svg></button>' +
+      '<button class="mini">' + ICON_RADIO_PLAY + '</button>' +
       '<button class="mini rm" title="Remove from Finds" aria-label="Remove from Finds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
       '<div class="svc">' +
         '<a class="sp" href="' + sp + '" target="_blank" rel="noopener" title="Open in Spotify" aria-label="Spotify">' + SVC_ICONS.sp + '</a>' +
@@ -2150,11 +2161,18 @@ function updateFinds() {
       '</div>';
     row.querySelector(".sh").onclick = () => shareFind(t);
     row.querySelector(".mini").onclick = async () => {
+      const owner = radioOn ? (radioList[radioIdx] && radioList[radioIdx].id) : findsPlayingId;
+      if (owner === t.id) {                          // tapping the playing song = pause / resume
+        if (!audio.paused) { audio.pause(); return; }
+        if (audio.src) { safePlay(); return; }
+      }
       if (radioOn) {                                 // radio running → jump it to this song
         const i = radioList.findIndex(x => x.id === t.id);
         if (i >= 0) { radioPlay(i); return; }
         radioStop();                                 // song isn't in the playing list → back to single play
       }
+      findsPlayingId = t.id;
+      markPlayingRow();                              // highlight now — the preview may take a beat to resolve
       const tok = ++audioToken; audio.onloadedmetadata = null; audio.loop = false;
       const url = await resolvePreview(t);           // stored preview may have expired → refresh it
       if (tok !== audioToken) return;
@@ -2216,6 +2234,7 @@ function maybeFetchGenres() {
 // Plays the visible list (so a genre bucket becomes a genre radio). Survives tab
 // switches to Finds/Friends/You; going back to Discover hands audio to the deck.
 let radioOn = false, radioList = [], radioIdx = -1;
+let findsPlayingId = null;   // single-tap playback owner (radio has its own pointer)
 const ICON_RADIO_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.4c0-.8.9-1.3 1.6-.9l9 6.6c.6.4.6 1.4 0 1.8l-9 6.6c-.7.4-1.6-.1-1.6-.9z"/></svg>';
 const ICON_RADIO_STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
 function currentFindsList() {
@@ -2233,9 +2252,19 @@ function radioLabel() {
   }
 }
 function markPlayingRow() {
-  const id = radioOn && radioList[radioIdx] ? radioList[radioIdx].id : null;
-  document.querySelectorAll("#findsList .find").forEach(el => el.classList.toggle("playing", !!id && el._tid === id));
+  // One owner at a time: the radio's current song, or the single-tapped one.
+  const id = radioOn && radioList[radioIdx] ? radioList[radioIdx].id : findsPlayingId;
+  document.querySelectorAll("#findsList .find").forEach(el => {
+    const on = id != null && el._tid === id;
+    el.classList.toggle("playing", on);
+    el.classList.toggle("paused", on && audio.paused);
+    const btn = el.querySelector(".mini");
+    if (btn) btn.innerHTML = on && !audio.paused ? ICON_PAUSE : ICON_RADIO_PLAY;
+  });
 }
+// Keep row highlights + play/pause icons honest whatever pauses or resumes the audio
+audio.addEventListener("play", markPlayingRow);
+audio.addEventListener("pause", markPlayingRow);
 async function radioPlay(i) {
   if (i < 0 || i >= radioList.length) { radioStop(); return; }
   radioIdx = i;
@@ -2252,7 +2281,10 @@ function radioStop() {
   radioOn = false; radioIdx = -1;
   audio.pause(); markPlayingRow(); radioLabel();
 }
-audio.addEventListener("ended", () => { if (radioOn) radioPlay(radioIdx + 1); });
+audio.addEventListener("ended", () => {
+  if (radioOn) { radioPlay(radioIdx + 1); return; }
+  if (findsPlayingId != null) { findsPlayingId = null; markPlayingRow(); }
+});
 document.getElementById("btnRadio").onclick = () => {
   if (radioOn) { radioStop(); return; }
   radioList = currentFindsList();
