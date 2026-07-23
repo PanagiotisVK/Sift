@@ -793,6 +793,7 @@ audio.preload = "auto";
 let audioToken = 0;                 // guards against stale seeks when cards change fast
 const hotStarts = {};               // trackId -> seconds to jump to ("best part")
 const waveShapes = {};              // trackId -> real loudness envelope for the scrubber (0..1 per bar)
+const waveFine = {};                // trackId -> 0.1s-step loudness (drives the live playhead bounce)
 const hotPending = new Set();
 let _audioCtx = null;
 function getCtx() { if (!_audioCtx) { try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return _audioCtx; }
@@ -1666,24 +1667,54 @@ function renderWave(track) {
   }
 }
 let scrubbing = false;
-function updateSeekUI(frac) {
+// The displayed fill EASES toward the true position instead of snapping: a new song
+// visibly sweeps back to empty, the best-part jump glides forward, the loop restart
+// slides home. snap=true (scrubbing, new card) moves instantly.
+let waveDisp = 0;
+function updateSeekUI(frac, snap) {
   frac = Math.max(0, Math.min(1, frac || 0));
-  if (waveOnEl) waveOnEl.style.clipPath = "inset(0 " + ((1 - frac) * 100).toFixed(3) + "% 0 0)";
+  waveDisp = snap ? frac : waveDisp + (frac - waveDisp) * 0.16;
+  if (Math.abs(frac - waveDisp) < 0.0015) waveDisp = frac;
+  if (waveOnEl) waveOnEl.style.clipPath = "inset(0 " + ((1 - waveDisp) * 100).toFixed(3) + "% 0 0)";
+}
+// Live bounce: the bars around the playhead swell with the song's REAL loudness
+// (decoded 0.1s energy track) — synced to what you're hearing, not random.
+const WAVE_MOTION_OK = !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+let bounceIdx = -1;
+function clearBounce() {
+  for (const w of waveEls) for (let d = -4; d <= 4; d++) { const b = w.children[bounceIdx + d]; if (b) b.style.transform = ""; }
+}
+function waveBounce() {
+  const t = state.current, fine = t && waveFine[t.id];
+  const idx = Math.min(WAVE_N - 1, Math.floor(waveDisp * WAVE_N));
+  if (idx !== bounceIdx) { clearBounce(); bounceIdx = idx; }
+  if (!fine || audio.paused || !audio.duration) return;
+  const pos = audio.currentTime / 0.1, k = Math.floor(pos);
+  const a0 = fine[Math.min(k, fine.length - 1)] || 0, a1 = fine[Math.min(k + 1, fine.length - 1)] || 0;
+  const amp = a0 + (a1 - a0) * (pos - k);
+  for (const w of waveEls) for (let d = -3; d <= 3; d++) {
+    const b = w.children[idx + d];
+    if (b) b.style.transform = "scaleY(" + (1 + amp * 0.45 * Math.exp(-d * d / 3.5)).toFixed(3) + ")";
+  }
 }
 // timeupdate only fires ~4x/sec — too chunky for a moving fill edge. While audio
 // plays, drive the wave from the frame clock instead.
 let waveRaf = 0;
 function waveTick() {
   // Skip the work when the dock player isn't on screen (Finds radio, deck mode)
-  if (!scrubbing && audio.duration && seekEl && seekEl.offsetParent) updateSeekUI(audio.currentTime / audio.duration);
+  if (!scrubbing && audio.duration && seekEl && seekEl.offsetParent) {
+    updateSeekUI(audio.currentTime / audio.duration);
+    if (WAVE_MOTION_OK) waveBounce();
+  }
   waveRaf = audio.paused ? 0 : requestAnimationFrame(waveTick);
 }
 audio.addEventListener("play", () => { if (!waveRaf) waveRaf = requestAnimationFrame(waveTick); });
+audio.addEventListener("pause", () => { clearBounce(); bounceIdx = -1; });
 function seekToClientX(x) {
   const r = seekEl.getBoundingClientRect();
   let frac = (x - r.left) / r.width; frac = Math.max(0, Math.min(1, frac));
   if (audio.duration) { try { audio.currentTime = frac * audio.duration; } catch (_) {} }
-  updateSeekUI(frac);
+  updateSeekUI(frac, true);
 }
 if (seekEl) {
   seekEl.addEventListener("pointerdown", e => { scrubbing = true; try { seekEl.setPointerCapture(e.pointerId); } catch (_) {} seekToClientX(e.clientX); });
@@ -1739,6 +1770,21 @@ function findHotStart(buf) {
     shape.push(s / (b - a)); peak = Math.max(peak, shape[i]);
   }
   for (let i = 0; i < WAVE_N; i++) shape[i] = peak > 0 ? Math.pow(shape[i] / peak, 0.7) : 0.4;
+  // Fine 0.1s loudness track for the live bounce — full-range normalized so the
+  // motion actually breathes between quiet and loud moments
+  const f2 = Math.floor(sr * 0.1), n2 = Math.floor(data.length / f2);
+  let fine = null;
+  if (n2 > 2) {
+    fine = new Array(n2);
+    let mn = Infinity, mx = 0;
+    for (let i = 0; i < n2; i++) {
+      let s = 0; const off = i * f2;
+      for (let j = 0; j < f2; j += 16) { const v = data[off + j]; s += v * v; }
+      const e = Math.sqrt(s / (f2 / 16));
+      fine[i] = e; if (e < mn) mn = e; if (e > mx) mx = e;
+    }
+    for (let i = 0; i < n2; i++) fine[i] = mx > mn ? (fine[i] - mn) / (mx - mn) : 0.5;
+  }
   const win = 8;                                    // smooth over ~2s to favour sustained energy
   const sm = new Float32Array(frames);
   for (let i = 0; i < frames; i++) {
@@ -1752,7 +1798,7 @@ function findHotStart(buf) {
   let t = best * 0.25 - 1.5;                         // ease in just before the peak
   if (t < 1.5) t = 0;                                // hot part is basically the start → don't jump
   else if (t > dur - 10) t = Math.max(0, dur - 10); // leave ~10s of runway before the clip ends
-  return { sec: t, shape: shape };
+  return { sec: t, shape: shape, fine: fine };
 }
 function ensureHot(track) {
   if (!track || hotStarts[track.id] !== undefined || hotPending.has(track.id)) return Promise.resolve();
@@ -1760,6 +1806,7 @@ function ensureHot(track) {
   return analyzeHot(track.preview)
     .then(r => {
       hotStarts[track.id] = (r && r.sec) || 0;
+      if (r && r.fine) waveFine[track.id] = r.fine;
       if (r && r.shape) {
         waveShapes[track.id] = r.shape;
         // If this song is on the card right now, morph the placeholder into the real wave
@@ -1778,7 +1825,8 @@ function playTrack(track) {
   audio.src = track.preview;
   try { audio.currentTime = 0; } catch (_) {}
   renderWave(track);
-  updateSeekUI(0);
+  updateSeekUI(0, true);
+  clearBounce(); bounceIdx = -1;
   const applyHot = () => {
     if (token !== audioToken) return;               // a newer card took over
     const h = hotStarts[track.id];
