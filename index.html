@@ -181,7 +181,9 @@
      placeholder shape stands in. Still fully draggable. */
   .seek { position: relative; flex: 1; height: 30px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
   .wave { position: absolute; inset: 0; display: flex; align-items: center; gap: 2px; }
-  .wave i { flex: 1; min-width: 2px; height: 26%; border-radius: 2px; background: rgba(255,255,255,.16); transform-origin: center; transition: height .25s ease; }
+  /* --d staggers each bar's height transition so a new song's wave ripples in
+     left-to-right; color fades trail the continuously-moving fill edge */
+  .wave i { flex: 1; min-width: 2px; height: 26%; border-radius: 2px; background: rgba(255,255,255,.16); transform-origin: center; transition: height .5s cubic-bezier(.22,.9,.35,1) var(--d, 0s), background-color .22s ease; }
   .wave i.on { background: var(--accent); }
   .player.live .wave i.cur { animation: wavepulse .8s ease-in-out infinite; }
   @keyframes wavepulse { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.4); } }
@@ -1639,7 +1641,11 @@ function safePlay() { const p = audio.play(); if (p && p.catch) p.catch(() => {}
 const seekEl = document.getElementById("seek");
 const waveEl = document.getElementById("wave");
 const WAVE_N = 40;
-if (waveEl) for (let i = 0; i < WAVE_N; i++) waveEl.appendChild(document.createElement("i"));
+if (waveEl) for (let i = 0; i < WAVE_N; i++) {
+  const b = document.createElement("i");
+  b.style.setProperty("--d", (i * 12) + "ms");      // ripple: bars morph in order, not at once
+  waveEl.appendChild(b);
+}
 const waveBars = waveEl ? Array.from(waveEl.children) : [];
 // Stable per-song placeholder shape (seeded by track id) shown until the real
 // envelope is decoded — so the bar never visibly "pops" from flat to wavy twice.
@@ -1656,17 +1662,32 @@ function renderWave(track) {
   waveBars.forEach((b, i) => {
     b.style.height = (shape ? 14 + shape[i] * 86 : 26) + "%";
     b.classList.remove("on", "cur");
+    b.style.background = "";
   });
 }
 let scrubbing = false;
 function updateSeekUI(frac) {
   frac = Math.max(0, Math.min(1, frac || 0));
-  const cut = frac * WAVE_N, curIdx = Math.min(WAVE_N - 1, Math.floor(cut));
+  const cut = frac * WAVE_N, full = Math.floor(cut), curIdx = Math.min(WAVE_N - 1, full);
   waveBars.forEach((b, i) => {
-    b.classList.toggle("on", i < cut);
+    b.classList.toggle("on", i < full);
     b.classList.toggle("cur", frac > 0 && i === curIdx);
+    // The boundary bar fills partially so the edge glides instead of stepping
+    if (frac > 0 && i === curIdx && cut < WAVE_N) {
+      const p = ((cut - full) * 100).toFixed(1);
+      b.style.background = "linear-gradient(90deg, var(--accent) " + p + "%, rgba(255,255,255,.16) " + p + "%)";
+    } else b.style.background = "";
   });
 }
+// timeupdate only fires ~4x/sec — too chunky for a moving fill edge. While audio
+// plays, drive the wave from the frame clock instead.
+let waveRaf = 0;
+function waveTick() {
+  // Skip the work when the dock player isn't on screen (Finds radio, deck mode)
+  if (!scrubbing && audio.duration && seekEl && seekEl.offsetParent) updateSeekUI(audio.currentTime / audio.duration);
+  waveRaf = audio.paused ? 0 : requestAnimationFrame(waveTick);
+}
+audio.addEventListener("play", () => { if (!waveRaf) waveRaf = requestAnimationFrame(waveTick); });
 function seekToClientX(x) {
   const r = seekEl.getBoundingClientRect();
   let frac = (x - r.left) / r.width; frac = Math.max(0, Math.min(1, frac));
