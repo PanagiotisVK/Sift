@@ -733,8 +733,10 @@ function getCtx() { if (!_audioCtx) { try { _audioCtx = new (window.AudioContext
                artist:{ id, name }, album:{ id, cover_big|cover_medium|cover } }
      artist: { id, name, nb_fan, picture_small|picture_medium|picture_big|picture_xl }
      album:  { id, title, release_date }
-   The Apple/ListenBrainz provider (migration phases 2–3) must emit these same
-   fields — rank from normalized listen counts, nb_fan from artist listener counts.
+   Popularity scales differ per catalog, so each provider also declares its own
+   tuning constants: fanNoun (UI copy), freshFanCap (below = "small artist"),
+   fanNorm (count that reads as maximally popular). The engine reads them off
+   PROVIDER instead of hardcoding Deezer's numbers.
    ============================================================ */
 
 /* ---------- Deezer transport (JSONP — runs from file:// with no server) ---------- */
@@ -758,6 +760,8 @@ function deezer(path, params) {
 const DeezerProvider = {
   name: "deezer",
   fanNoun: "fans on Deezer",
+  freshFanCap: 40000,
+  fanNorm: 800000,
   async searchArtist(name) { const d = await deezer("search/artist", { q: name, limit: 1 }); return d && d.data && d.data[0]; },
   async searchTracks(q, limit) { const d = await deezer("search", { q: q, limit: limit || 20 }); return (d && d.data) || []; },
   async relatedArtists(id) { const d = await deezer("artist/" + id + "/related", { limit: 8 }); return (d && d.data) || []; },
@@ -789,9 +793,176 @@ const DeezerProvider = {
   async artistAlbums(id, limit) { const r = await deezer("artist/" + id + "/albums", { limit: limit || 25 }); return (r && r.data) || []; },
 };
 
-// Registry + selection. The Apple/ListenBrainz provider registers here when it lands,
-// and can then be A/B'd live via ?provider=apple (or localStorage sift_provider).
-const PROVIDERS = { deezer: DeezerProvider };
+/* ---------- Apple + ListenBrainz provider (migration phase 2) ----------
+   The App Store launch stack. Graph + popularity come from open, commercial-safe
+   data: MusicBrainz (name -> MBID), ListenBrainz labs similar-artists (the graph)
+   and per-artist listener counts (the popularity signal — the bulk popularity API
+   is unreliable, so we use the always-on stats endpoint, cached hard). Audio,
+   artwork, store links and genre all come from Apple's keyless iTunes API in one
+   lookup per artist. A/B live via ?provider=apple — Deezer stays the default. */
+const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
+const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const lbArtist = {};   // mbid -> { name, users, appleId }
+const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on repeat lookups)
+try { const c = JSON.parse(localStorage.getItem("sift_lb_cache") || "{}"); Object.assign(lbArtist, c.a || {}); Object.assign(lbNames, c.n || {}); } catch (_) {}
+let lbSaveT = null;
+function lbCacheSave() {
+  clearTimeout(lbSaveT);
+  lbSaveT = setTimeout(() => { try { localStorage.setItem("sift_lb_cache", JSON.stringify({ a: lbArtist, n: lbNames })); } catch (_) {} }, 1500);
+}
+// MusicBrainz allows 1 request/second — every MB call goes through this spaced chain.
+let mbChain = Promise.resolve();
+function mbApi(path, params) {
+  const qs = Object.entries(params || {}).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
+  const run = () => fetch("https://musicbrainz.org/ws/2/" + path + (qs ? "?" + qs : "")).then(r => r.ok ? r.json() : null).catch(() => null);
+  const p = mbChain.then(run, run);
+  mbChain = p.then(() => new Promise(r => setTimeout(r, 1100)));
+  return p;
+}
+function lbApi(url) { return fetch(url).then(r => r.ok ? r.json() : null).catch(() => null); }
+function itunesApi(path, params) {  // JSONP like deezer() — works everywhere, incl. file://
+  return new Promise((resolve) => {
+    const cb = "sonar_ap_" + (jsonpId++);
+    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 9000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (script.parentNode) script.parentNode.removeChild(script); }
+    window[cb] = (data) => { cleanup(); resolve(data); };
+    const qs = Object.entries(params || {}).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
+    const script = document.createElement("script");
+    script.src = "https://itunes.apple.com/" + path + "?" + qs + "&callback=" + cb;
+    script.onerror = () => { cleanup(); resolve(null); };
+    document.body.appendChild(script);
+  });
+}
+async function lbListeners(mbid) {  // artist listener count — this provider's nb_fan
+  if (!MBID_RE.test(mbid || "")) return 0;
+  const m = lbArtist[mbid] = lbArtist[mbid] || {};
+  if (m.users != null) return m.users;
+  const d = await lbApi("https://api.listenbrainz.org/1/stats/artist/" + mbid + "/listeners?range=all_time");
+  m.users = (d && d.payload && d.payload.total_user_count) || 0;
+  lbCacheSave();
+  return m.users;
+}
+async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified name match
+  if (!MBID_RE.test(mbid || "")) return null;
+  const m = lbArtist[mbid] = lbArtist[mbid] || {};
+  if (m.appleId !== undefined) return m.appleId;
+  if (!m.name) { const d = await mbApi("artist/" + mbid, { fmt: "json" }); m.name = (d && d.name) || null; }
+  if (!m.name) { m.appleId = null; return null; }
+  const s = await itunesApi("search", { term: m.name, entity: "musicArtist", limit: 5 });
+  const want = nameKey(m.name);
+  const list = (s && s.results) || [];
+  const hit = list.find(r => nameKey(r.artistName) === want) || list[0];
+  m.appleId = (hit && hit.artistId) || null;
+  lbCacheSave();
+  return m.appleId;
+}
+const AppleLBProvider = {
+  name: "apple",
+  fanNoun: "listeners",
+  // ListenBrainz listener counts run ~100x smaller than Deezer fan counts and
+  // saturate near ~25k even for global stars (measured 2026-07-23: Taylor Swift
+  // 24.5k, Tame Impala 24.1k, Men I Trust 10.3k, Marina Satti 0.7k) — hence
+  // provider-scale thresholds. Phase-4 retune adjusts these two numbers by ear.
+  freshFanCap: 4000,
+  fanNorm: 20000,
+  // iTunes results are ordered biggest-hits-first; synthesize the contract's
+  // rank (0..1M) from artist listener count decayed by chart position.
+  _track(r, artistId, base, i) {
+    if (r.collectionId && r.primaryGenreName) albumGenreCache[r.collectionId] = r.primaryGenreName;
+    const art = r.artworkUrl100 || "";
+    return {
+      id: r.trackId, title: r.trackName, preview: r.previewUrl, link: r.trackViewUrl,
+      rank: Math.max(1, Math.round(base * Math.max(0.25, 1 - i * 0.05))),
+      artist: { id: artistId != null ? artistId : "ap-" + r.artistId, name: r.artistName },
+      album: { id: r.collectionId, cover_big: art.replace("100x100bb", "600x600bb"), cover_medium: art },
+    };
+  },
+  async searchArtist(name) {
+    let mbid = lbNames[nameKey(name)], aName = null;
+    if (!mbid) {
+      let d = await mbApi("artist/", { query: 'artist:"' + name + '"', fmt: "json", limit: 3 });
+      let list = (d && d.artists) || [];
+      if (!list.length) { d = await mbApi("artist/", { query: name, fmt: "json", limit: 3 }); list = (d && d.artists) || []; }
+      const want = nameKey(name);
+      const a = list.find(x => nameKey(x.name) === want) || list[0];
+      if (!a) return null;
+      mbid = a.id; aName = a.name;
+      lbNames[nameKey(name)] = mbid;
+    }
+    const m = lbArtist[mbid] = lbArtist[mbid] || {};
+    if (aName) m.name = aName;
+    lbCacheSave();
+    return { id: mbid, name: m.name || name, nb_fan: await lbListeners(mbid) };
+  },
+  async searchTracks(q, limit) {
+    const d = await itunesApi("search", { term: q, entity: "song", limit: limit || 20 });
+    return ((d && d.results) || []).filter(r => r.trackId && r.previewUrl).map((r, i) => this._track(r, null, 400000, i));
+  },
+  async relatedArtists(id) {
+    if (!MBID_RE.test(id || "")) return [];
+    const d = await lbApi("https://labs.api.listenbrainz.org/similar-artists/json?artist_mbids=" + encodeURIComponent(id) + "&algorithm=" + LB_ALG);
+    const top = (Array.isArray(d) ? d : []).slice(0, 8);
+    return Promise.all(top.map(async r => {
+      (lbArtist[r.artist_mbid] = lbArtist[r.artist_mbid] || {}).name = r.name;
+      return { id: r.artist_mbid, name: r.name, nb_fan: await lbListeners(r.artist_mbid) };
+    }));
+  },
+  async artistTop(id, limit) {
+    const aid = await appleArtistId(id);
+    if (!aid) return [];
+    const users = await lbListeners(id);
+    const d = await itunesApi("lookup", { id: aid, entity: "song", limit: Math.min(200, limit || 6) });
+    const songs = ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
+    const base = Math.max(0.02, Math.min(1, users / this.fanNorm)) * 1000000;
+    return songs.slice(0, limit || 6).map((r, i) => this._track(r, id, base, i));
+  },
+  // Apple preview URLs are stable — anything Apple-hosted is trusted as-is; tracks
+  // saved under other providers (old Deezer Finds, shared decks) resolve by name.
+  async resolvePreview(track) {
+    if (track._fresh && track.preview) return track.preview;
+    if (track.preview && /mzstatic\.com|itunes\.apple/.test(track.preview)) { track._fresh = true; return track.preview; }
+    try {
+      const d = await itunesApi("search", { term: track.artist + " " + track.title, entity: "song", limit: 5 });
+      const list = ((d && d.results) || []).filter(x => x.previewUrl);
+      const want = nameKey(track.artist);
+      const r = list.find(x => { const got = nameKey(x.artistName); return got && (got.includes(want) || want.includes(got)); }) || list[0];
+      if (r) { track.preview = r.previewUrl; track._fresh = true; if (!track.albumId && r.collectionId) track.albumId = r.collectionId; return track.preview; }
+    } catch (_) {}
+    return track.preview;
+  },
+  async trackGenre(t) {
+    if (t.albumId && albumGenreCache[t.albumId]) return albumGenreCache[t.albumId];
+    const d = await itunesApi("search", { term: t.artist + " " + t.title, entity: "song", limit: 1 });
+    const r = d && d.results && d.results[0];
+    const g = r && r.primaryGenreName;
+    if (g) { if (!t.albumId && r.collectionId) t.albumId = r.collectionId; if (t.albumId) albumGenreCache[t.albumId] = g; }
+    return g || "Mixed";
+  },
+  async artistInfo(id) {
+    const aid = await appleArtistId(id);
+    const m = lbArtist[id] || {};
+    if (!m.name) return null;
+    const out = { id, name: m.name, nb_fan: await lbListeners(id) };
+    if (aid) {  // artist photo: their top song's artwork (iTunes has no artist images)
+      const d = await itunesApi("lookup", { id: aid, entity: "song", limit: 2 });
+      const t0 = ((d && d.results) || []).find(r => r.wrapperType === "track");
+      const art = (t0 && t0.artworkUrl100) || "";
+      if (art) { out.picture_xl = out.picture_big = art.replace("100x100bb", "600x600bb"); out.picture_medium = art.replace("100x100bb", "250x250bb"); }
+    }
+    return out;
+  },
+  async artistAlbums(id, limit) {
+    const aid = await appleArtistId(id);
+    if (!aid) return [];
+    const d = await itunesApi("lookup", { id: aid, entity: "album", limit: limit || 25 });
+    return ((d && d.results) || []).filter(r => r.wrapperType === "collection")
+      .map(r => ({ id: r.collectionId, title: r.collectionName, release_date: (r.releaseDate || "").slice(0, 10) }));
+  },
+};
+
+// Registry + selection. A/B the two engines live via ?provider=apple (or
+// localStorage sift_provider) — Deezer remains the default until phase 4.
+const PROVIDERS = { deezer: DeezerProvider, apple: AppleLBProvider };
 let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") || localStorage.getItem("sift_provider") || "deezer"] || DeezerProvider;
 
 // The verbs the rest of the app uses — always dispatched through the active provider.
@@ -966,14 +1137,14 @@ function orderQueue() {
   const fresh = state.freshFinds;
   const fam = state.familiarity || 0;
   state.queue.forEach(t => {
-    const pop = (t.rank || 0) / 1000000; // ~0..1 track popularity (Deezer rank)
+    const pop = (t.rank || 0) / 1000000; // ~0..1 track popularity (provider rank)
     // Sift's whole promise is NEW songs, so lean away from the biggest hits in EVERY
     // mode (cozy least, adventurous most). "Heard it" history digs deeper still.
     let bias = (adv === 0 ? -0.35 : adv === 2 ? -1.1 : -0.7) * pop;
     bias -= fam * pop * 0.25;
     if (fresh) {
       // Fresh Finds: champion smaller artists — favour low fan-count + low track rank.
-      const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / 800000);
+      const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / (PROVIDER.fanNorm || 800000));
       bias += -(fan * 1.3) - pop * 0.6;
     }
     t._ord = bias + Math.random() * (fresh ? 0.4 : 0.75); // less noise so the novelty signal actually wins
@@ -1219,7 +1390,7 @@ function renderCard(track) {
     '<div class="besttag">🔥 best part</div>' +
     '<div class="stamp love"></div><div class="stamp nope"></div><div class="stamp heard"></div>' +
     '<div class="art" style="background-image:url(\'' + (track.cover || "") + '\')"></div>' +
-    '<div class="meta">' + (track.nbFan != null && track.nbFan < 40000 ? '<span class="freshtag">✦ Fresh Find</span>' : '') +
+    '<div class="meta">' + (track.nbFan != null && track.nbFan < (PROVIDER.freshFanCap || 40000) ? '<span class="freshtag">✦ Fresh Find</span>' : '') +
     '<span class="reason">' + esc(track.reason || "Discovery") + '</span>' +
     '<h2 class="title">' + esc(track.title) + '</h2>' +
     '<p class="artist">' + esc(track.artist) + '<span class="artist-go">›</span></p></div>';
@@ -2543,7 +2714,7 @@ async function openArtist(artistId, name) {
     document.getElementById("artistName").textContent = info.name;
     document.getElementById("artistPhoto").src = info.picture_xl || info.picture_big || info.picture_medium || "";
     const fans = info.nb_fan || 0;
-    document.getElementById("artistSub").textContent = (fans && fans < 40000 ? "✦ Emerging · " : "") + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
+    document.getElementById("artistSub").textContent = (fans && fans < (PROVIDER.freshFanCap || 40000) ? "✦ Emerging · " : "") + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
     updateFollowBtn(artistId, name);
   } else {
     document.getElementById("artistSub").textContent = "";
