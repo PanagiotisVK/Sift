@@ -311,6 +311,15 @@
   .friend .match { text-align: center; flex-shrink: 0; }
   .friend .match .pct { font-weight: 700; font-size: 19px; color: var(--text); }
   .friend .match .ml { font-size: 9px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  .friend { cursor: pointer; }
+  /* Expandable friend detail: shared taste + swipe-their-taste */
+  .fdet { display: none; padding: 0 0 14px 54px; }
+  .fdet.open { display: block; }
+  .fdet-lbl { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 7px; }
+  .fdet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+  .fdet-chips span { background: var(--glass); border: 1px solid var(--glass-brd); border-radius: 999px; padding: 5px 11px; font-size: 12px; }
+  .fdet-note { color: var(--muted); font-size: 12.5px; margin-bottom: 4px; }
+  .fdet-swipe { margin-top: 2px; }
   /* Send-a-deck */
   .dm-title { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 20px; }
   #deckmode { padding: 0; }
@@ -538,7 +547,7 @@
         <div class="acct-title">Activity</div>
         <div id="activityFeed"></div>
         <div class="acct-title" style="margin-top:18px;">Friends</div>
-        <div class="acct-sub">Add a friend by their username to compare tastes.</div>
+        <div class="acct-sub">Add a friend by their username — then tap them to see what you share and swipe their taste.</div>
         <div class="acct-row">
           <input id="friendInput" placeholder="friend's username" autocomplete="off" maxlength="20" />
           <button class="btn-mini" id="btnAddFriend" style="flex:0 0 auto;padding:12px 18px;">Add</button>
@@ -603,6 +612,11 @@
           </div>
           <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
         </div>
+        <button class="tune-fresh" id="shareFindsBtn" style="margin-top:12px;">
+          <span class="tf-star">🎁</span>
+          <span class="tf-txt"><b>Friends can swipe my taste</b><small>share your 12 latest Finds with friends</small></span>
+          <span class="tf-state" id="shareFindsState">On</span>
+        </button>
       </div>
 
       <button class="startover" id="startOver">Start over — clear my taste</button>
@@ -617,14 +631,18 @@
         <div class="dm-intro-t" id="dmIntroTitle">A deck for you</div>
         <div class="dm-intro-s" id="dmIntroSub">swipe right on the ones you love</div>
         <button class="btn-primary" id="dmStart" style="max-width:280px;margin-top:22px;">Start swiping</button>
-        <div class="dm-intro-note">The songs you love get sent back to them</div>
+        <div class="dm-intro-note" id="dmIntroNote">The songs you love get sent back to them</div>
+        <button class="btn-mini ghost" id="dmIntroBack" style="display:none;margin-top:14px;">Maybe later</button>
       </div>
       <!-- swipe view -->
       <div id="dmSwipe" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div class="dm-progress" id="dmBars"></div>
-        <div style="padding:8px 18px 0;">
-          <div class="dm-title" id="dmTitle">Deck</div>
-          <div class="sub" id="dmSub" style="margin:2px 4px 0;">swipe right to love, left to pass</div>
+        <div style="padding:8px 18px 0;display:flex;align-items:flex-start;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div class="dm-title" id="dmTitle">Deck</div>
+            <div class="sub" id="dmSub" style="margin:2px 4px 0;">swipe right to love, left to pass</div>
+          </div>
+          <button class="btn-mini ghost" id="dmClose" style="display:none;flex:0 0 auto;padding:8px 13px;">✕</button>
         </div>
         <div class="deck" id="dmDeck" style="margin:8px 18px 2px;"></div>
         <div class="burst" id="dmBurst"></div>
@@ -728,6 +746,7 @@ const state = {
   familiarity: 0,       // climbs on "heard it" → dig deeper for songs you don't know
   freshFinds: false,    // when true, champion smaller/emerging artists
   following: {},        // artistId -> {id,name,picture} you follow
+  shareFinds: true,     // when true, your latest Finds are visible to friends ("swipe their taste")
   activitySeen: 0,      // ms timestamp of newest activity event you've seen
   seenCount: 0,         // total songs judged (love+nope+heard) — for the discovery scorecard
   heardCount: 0,        // songs you already knew ("Heard it") — the rest were new to you
@@ -1344,6 +1363,7 @@ function save() {
       familiarity: state.familiarity,
       freshFinds: state.freshFinds,
       following: state.following,
+      shareFinds: state.shareFinds,
       activitySeen: state.activitySeen,
       seenCount: state.seenCount,
       heardCount: state.heardCount,
@@ -1373,6 +1393,7 @@ function load() {
     if (typeof d.familiarity === "number") state.familiarity = d.familiarity;
     if (typeof d.freshFinds === "boolean") state.freshFinds = d.freshFinds;
     state.following = d.following || {};
+    if (typeof d.shareFinds === "boolean") state.shareFinds = d.shareFinds;
     if (typeof d.activitySeen === "number") state.activitySeen = d.activitySeen;
     if (typeof d.seenCount === "number") state.seenCount = d.seenCount;
     if (typeof d.heardCount === "number") state.heardCount = d.heardCount;
@@ -2565,6 +2586,14 @@ async function syncProfile() {
   try {
     await SB.from("profiles").update({ archetype: t.archetype, top_genres: t.top_genres, top_artists: t.top_artists, finds_count: t.finds_count, adventure: t.adventure, updated_at: new Date().toISOString() }).eq("id", me_profile.id);
     me_profile = Object.assign(me_profile, t);
+    // Separate, tolerant write: friends can swipe your 12 latest Finds (opt-out in You tab).
+    // Kept apart from the main update so a missing column can't break profile sync.
+    try {
+      const recent = state.shareFinds
+        ? [...state.liked].slice(-12).reverse().map(x => ({ id: x.id, title: x.title, artist: x.artist, cover: x.cover, preview: x.preview, albumId: x.albumId, artistId: x.artistId, genre: x.genre }))
+        : [];
+      await SB.from("profiles").update({ recent_finds: recent }).eq("id", me_profile.id);
+    } catch (_) { /* recent_finds column not created yet — taste swiping simply inactive */ }
     const us = document.getElementById("userSync"); if (us) us.textContent = "Backed up ✓ · " + t.finds_count + (t.finds_count === 1 ? " find" : " finds");
   } catch (e) { /* offline → keep local */ }
 }
@@ -2583,7 +2612,8 @@ function scheduleFindsSync() {
 async function pushFindsToCloud() {
   if (!SB || !me_session) return;
   try {
-    await SB.from("user_finds").upsert({ user_id: me_session.user.id, data: state.liked, updated_at: new Date().toISOString() });
+    // v2 payload: tracks + followed artists in one jsonb blob (old rows were a bare array)
+    await SB.from("user_finds").upsert({ user_id: me_session.user.id, data: { v: 2, tracks: state.liked, following: state.following }, updated_at: new Date().toISOString() });
   } catch (e) { /* offline or table missing — next save() retries */ }
 }
 async function pullCloudFinds() {
@@ -2591,8 +2621,14 @@ async function pullCloudFinds() {
   findsPulled = true;
   try {
     const { data } = await SB.from("user_finds").select("data").eq("user_id", me_session.user.id).maybeSingle();
-    const cloud = (data && data.data) || [];
+    const raw = (data && data.data) || [];
+    const cloud = Array.isArray(raw) ? raw : (raw.tracks || []);                 // v1 rows were a bare array
+    const cloudFollowing = (!Array.isArray(raw) && raw.following) || {};
     cloud.forEach(t => { delete t._fresh; }); // cloud copies carry stale preview links — force a re-resolve on first play
+    // Followed artists restore/merge independently of the tracks below
+    let newFollows = false;
+    Object.keys(cloudFollowing).forEach(id => { if (!state.following[id]) { state.following[id] = cloudFollowing[id]; newFollows = true; } });
+    if (newFollows) { save(); renderFollowing(); }
     if (!cloud.length) { pushFindsToCloud(); return; }   // first backup for this account
     if (!state.liked.length) {
       // fresh/purged device → restore the whole library
@@ -2631,7 +2667,25 @@ function renderAcct() {
   renderActivity();
   renderFriends();
   renderMyDecks();
+  applyShareUI();
 }
+
+// "Friends can swipe my taste" toggle (You tab) — controls the recent_finds profile field
+function applyShareUI() {
+  const b = document.getElementById("shareFindsBtn");
+  if (!b) return;
+  b.classList.toggle("on", !!state.shareFinds);
+  const s = document.getElementById("shareFindsState"); if (s) s.textContent = state.shareFinds ? "On" : "Off";
+}
+(function initShareToggle() {
+  const b = document.getElementById("shareFindsBtn");
+  if (!b) return;
+  b.onclick = () => {
+    state.shareFinds = !state.shareFinds;
+    applyShareUI(); save(); syncProfile();
+    toast(state.shareFinds ? "Friends can now swipe your recent Finds" : "Your Finds are private again");
+  };
+})();
 
 async function renderFriends() {
   const list = document.getElementById("friendsList");
@@ -2649,8 +2703,28 @@ async function renderFriends() {
       row.innerHTML =
         '<div class="fav">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
         '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">' + esc(p.archetype || "Fresh Ears") + ' · ' + (p.finds_count || 0) + ' finds</div></div>' +
-        '<div class="match"><div class="pct">' + pct + '%</div><div class="ml">match</div></div>';
+        '<div class="match"><div class="pct">' + pct + '%</div><div class="ml">match ▾</div></div>';
+      // Tap a friend → what you share + swipe their recent Finds
+      const low = a => (a || []).map(x => String(x).toLowerCase());
+      const meG = new Set(low(mine.top_genres)), meA = new Set(low(mine.top_artists));
+      const chips = (p.top_genres || []).filter(g => meG.has(String(g).toLowerCase()))
+        .concat((p.top_artists || []).filter(a => meA.has(String(a).toLowerCase())));
+      const fresh = (p.recent_finds || []).filter(t => t && t.id && t.preview && !state.knownIds.has(t.id) && !state.liked.some(x => x.id === t.id));
+      const det = document.createElement("div"); det.className = "fdet";
+      det.innerHTML =
+        (chips.length
+          ? '<div class="fdet-lbl">You both love</div><div class="fdet-chips">' + chips.slice(0, 8).map(c => '<span>' + esc(c) + '</span>').join("") + '</div>'
+          : '<div class="fdet-note">No shared favorites yet — one of you is about to influence the other.</div>') +
+        (fresh.length
+          ? '<button class="btn-mini fdet-swipe">🔥 Swipe their taste · ' + fresh.length + (fresh.length === 1 ? ' song' : ' songs') + '</button>'
+          : ((p.recent_finds || []).length
+            ? '<div class="fdet-note">You’ve already heard everything they shared ✓</div>'
+            : '<div class="fdet-note">Their recent Finds will show up here once they share some.</div>'));
+      const sw = det.querySelector(".fdet-swipe");
+      if (sw) sw.onclick = (e) => { e.stopPropagation(); startTasteSwipe(p, fresh); };
+      row.onclick = () => det.classList.toggle("open");
       list.appendChild(row);
+      list.appendChild(det);
     });
   } catch (e) { /* offline */ }
 }
@@ -2867,13 +2941,56 @@ async function renderMyDecks() {
   } catch (e) { /* offline */ }
 }
 
+// --- "Swipe their taste": a friend's recent Finds as an instant in-app deck.
+// No DB deck row — loves land straight in YOUR Finds instead of being sent back.
+let dmFriendMode = false;
+function startTasteSwipe(p, fresh) {
+  const q = (fresh || []).slice(0, 20);
+  if (!q.length) { toast("Nothing new to swipe right now"); return; }
+  dmFriendMode = true; dmDeckMeta = null;
+  if (radioOn) radioStop();                          // the deck owns the audio now
+  findsPlayingId = null; artistPlayingId = null;
+  audio.pause();
+  dmQueue = q.map(t => Object.assign({}, t));       // copies — never mutate the profile data
+  dmTotal = dmQueue.length; dmIndex = 0; dmLoved = [];
+  dmSender = "@" + (p.username || "friend");
+  document.getElementById("dmIntroTitle").textContent = dmSender + "'s recent taste";
+  document.getElementById("dmIntroSub").textContent = dmTotal + (dmTotal === 1 ? " song" : " songs") + " they loved lately";
+  document.getElementById("dmIntroNote").textContent = "Swipe right to save songs straight to your Finds";
+  document.getElementById("dmIntroBack").style.display = "";
+  document.getElementById("dmClose").style.display = "";
+  document.getElementById("dmIntro").style.display = "flex";
+  document.getElementById("dmSwipe").style.display = "none";
+  document.getElementById("tabbar").style.display = "none";
+  showScreen("deckmode");
+  dmQueue.forEach(t => resolvePreview(t).catch(() => {}));
+}
+// Loves collected so far → your Finds (deduped); used on finish AND on early exit
+function dmSaveFriendLoves() {
+  let added = 0;
+  dmLoved.forEach(x => { if (!state.liked.some(l => l.id === x.id)) { state.liked.push(x); state.knownIds.add(x.id); added++; } });
+  if (added) { save(); updateFinds(); syncProfile(); }
+  return added;
+}
+function dmExitToFriends() {
+  const added = dmFriendMode ? dmSaveFriendLoves() : 0;
+  dmFriendMode = false;
+  audio.pause();
+  document.getElementById("tabbar").style.display = "flex";
+  showScreen("friends");
+  if (added) toast(added + (added === 1 ? " song" : " songs") + " saved to your Finds ♥");
+}
+
 // --- Receiver: open a shared deck and swipe it ---
 async function openDeck(deckId) {
   if (!SB) return false;
   try {
     const { data: deck } = await SB.from("decks").select("*").eq("id", deckId).maybeSingle();
     if (!deck || !deck.tracks || !deck.tracks.length) { toast("That deck couldn't be found."); return false; }
-    dmDeckMeta = deck;
+    dmDeckMeta = deck; dmFriendMode = false;
+    document.getElementById("dmIntroNote").textContent = "The songs you love get sent back to them";
+    document.getElementById("dmIntroBack").style.display = "none";
+    document.getElementById("dmClose").style.display = "none";
     dmQueue = deck.tracks.filter(t => t && (t.id || t.preview)).slice();
     dmTotal = dmQueue.length; dmIndex = 0; dmLoved = [];
     dmSender = "A friend";
@@ -2960,7 +3077,9 @@ async function playDm(track) {
 function dmDecide(kind, kin) {
   if (!dmCurrent) return;
   showDmBurst(kind);
-  if (kind === "love") dmLoved.push({ id: dmCurrent.id, title: dmCurrent.title, artist: dmCurrent.artist, cover: dmCurrent.cover });
+  // friend mode keeps the whole track (it's headed for your Finds); deck results stay slim
+  if (kind === "love") dmLoved.push(dmFriendMode ? dmCurrent : { id: dmCurrent.id, title: dmCurrent.title, artist: dmCurrent.artist, cover: dmCurrent.cover });
+  if (dmFriendMode && dmCurrent.id) state.knownIds.add(dmCurrent.id); // seen either way — won't resurface on Discover or next taste-swipe
   const card = document.getElementById("dmDeck").querySelector(".card:not(.ghost)");
   if (!card) { dmNext(); return; }
   let x = kind === "love" ? 650 : -650, y = 60, rot = kind === "love" ? 25 : -25;
@@ -2999,7 +3118,7 @@ async function dmFinish() {
   audio.pause();
   const n = dmLoved.length;
   dmIndex = dmTotal + 1; updateDmBars();
-  const t = document.getElementById("dmTitle"); if (t) t.textContent = "Deck complete 🎉";
+  const t = document.getElementById("dmTitle"); if (t) t.textContent = dmFriendMode ? "You sifted their taste 🎉" : "Deck complete 🎉";
   const sub = document.getElementById("dmSub"); if (sub) sub.textContent = "";
   const dmDeck = document.getElementById("dmDeck");
   const lovedHtml = dmLoved.map(x => '<div class="dm-loved"><img src="' + (x.cover || "") + '" alt="" /><div class="dl-meta"><div class="dl-t">' + esc(x.title) + '</div><div class="dl-a">' + esc(x.artist) + '</div></div><span class="dl-heart">♥</span></div>').join("");
@@ -3012,7 +3131,10 @@ async function dmFinish() {
     '</div>';
   const endWrap = dmDeck.querySelector(".dm-end");
   const setSave = (txt) => { const m = document.getElementById("dmSaveMsg"); if (m) m.textContent = txt; };
-  if (SB && me_session && me_profile && dmDeckMeta) {
+  if (dmFriendMode) {
+    const added = dmSaveFriendLoves();
+    setSave(added ? ("Saved to your Finds ♥") : (n ? "Already in your Finds ✓" : ""));
+  } else if (SB && me_session && me_profile && dmDeckMeta) {
     try { await SB.from("deck_results").upsert({ deck_id: dmDeckMeta.id, swiper: me_session.user.id, swiper_name: me_profile.username, loved: dmLoved }); setSave("Sent back to " + dmSender + " ✓"); }
     catch (e) { setSave("Couldn't save — check your connection."); }
   } else {
@@ -3020,8 +3142,8 @@ async function dmFinish() {
   }
   const cont = document.createElement("button");
   cont.className = "btn-primary"; cont.style.maxWidth = "260px"; cont.style.margin = "18px auto 0";
-  cont.textContent = (me_profile ? "Back to Sift" : "Try Sift yourself →");
-  cont.onclick = () => { location.href = location.pathname; };
+  cont.textContent = dmFriendMode ? "Back to Friends" : (me_profile ? "Back to Sift" : "Try Sift yourself →");
+  cont.onclick = dmFriendMode ? dmExitToFriends : () => { location.href = location.pathname; };
   endWrap.appendChild(cont);
 }
 audio.addEventListener("timeupdate", () => { const p = document.getElementById("dmProg"); if (p && audio.duration) p.style.width = (audio.currentTime / audio.duration * 100) + "%"; });
@@ -3033,6 +3155,8 @@ audio.addEventListener("pause", () => { const h = document.getElementById("dmHin
   const l = document.getElementById("dmLove"); if (l) l.onclick = () => dmDecide("love");
   const nn = document.getElementById("dmNope"); if (nn) nn.onclick = () => dmDecide("nope");
   const pp = document.getElementById("dmPlay"); if (pp) { pp.onclick = () => { if (audio.paused) safePlay(); else audio.pause(); }; pp.innerHTML = ICON_PLAY; }
+  const cx = document.getElementById("dmClose"); if (cx) cx.onclick = dmExitToFriends;
+  const ib = document.getElementById("dmIntroBack"); if (ib) ib.onclick = dmExitToFriends;
 })();
 
 /* ============================================================
