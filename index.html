@@ -250,8 +250,9 @@
   .find .eq i:nth-child(2) { animation-delay: .25s; }
   .find .eq i:nth-child(3) { animation-delay: .5s; }
   @keyframes eqbar { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+  /* The eq keeps animating under Reduce Motion on purpose — it's a status light,
+     not decoration, and Apple Music's own now-playing bars behave the same way. */
   .find.playing.paused .eq i { animation: none; transform: scaleY(.5); }
-  @media (prefers-reduced-motion: reduce) { .find .eq i { animation: none; transform: scaleY(.7); } }
   .radio-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; margin: 0 4px 12px; width: calc(100% - 8px); border: 1.5px solid var(--glass-brd); border-radius: var(--r-md); background: var(--card); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
   .radio-btn svg { width: 15px; height: 15px; display: block; }
   .radio-btn.on { background: var(--accent); color: #0b0b0d; border-color: var(--accent); }
