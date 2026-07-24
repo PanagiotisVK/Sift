@@ -244,12 +244,14 @@
   .find .fcov { position: relative; flex-shrink: 0; display: block; }
   .find .eq { position: absolute; inset: 0; display: none; align-items: flex-end; justify-content: center; gap: 3px; padding-bottom: 9px; background: rgba(0,0,0,.5); border-radius: var(--r-sm); }
   .find.playing .eq { display: flex; }
-  .find .eq i { width: 4px; height: 8px; background: var(--accent); border-radius: 2px; animation: eqbar 1s ease-in-out infinite; }
+  /* scaleY, not height: composited transform animations keep running inside the
+     native WKWebView, where layout-property keyframes can freeze */
+  .find .eq i { width: 4px; height: 17px; background: var(--accent); border-radius: 2px; transform-origin: bottom; transform: scaleY(.35); animation: eqbar 1s ease-in-out infinite; will-change: transform; }
   .find .eq i:nth-child(2) { animation-delay: .25s; }
   .find .eq i:nth-child(3) { animation-delay: .5s; }
-  @keyframes eqbar { 0%, 100% { height: 6px; } 50% { height: 17px; } }
-  .find.playing.paused .eq i { animation-play-state: paused; height: 8px; }
-  @media (prefers-reduced-motion: reduce) { .find .eq i { animation: none; height: 12px; } }
+  @keyframes eqbar { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+  .find.playing.paused .eq i { animation: none; transform: scaleY(.5); }
+  @media (prefers-reduced-motion: reduce) { .find .eq i { animation: none; transform: scaleY(.7); } }
   .radio-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; margin: 0 4px 12px; width: calc(100% - 8px); border: 1.5px solid var(--glass-brd); border-radius: var(--r-md); background: var(--card); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
   .radio-btn svg { width: 15px; height: 15px; display: block; }
   .radio-btn.on { background: var(--accent); color: #0b0b0d; border-color: var(--accent); }
@@ -418,6 +420,8 @@
   #artistFollow.following { background: transparent; border: 1.5px solid var(--glass-brd); color: var(--text); box-shadow: none; }
   .artist-tracks-lbl { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 18px 4px 10px; }
   .atrack { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--glass-brd); border-radius: var(--r-md); padding: 8px; margin-bottom: 8px; }
+  .atrack.playing { border-color: var(--accent); background: var(--glass); }
+  .atrack.playing .at-t { color: var(--accent); }
   .atrack img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
   .atrack .at-meta { flex: 1; min-width: 0; }
   .atrack .at-t { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2307,6 +2311,7 @@ function updateFinds() {
         radioStop();                                 // song isn't in the playing list → back to single play
       }
       findsPlayingId = t.id;
+      artistPlayingId = null;                        // a Finds row takes over from any artist track
       markPlayingRow();                              // highlight now — the preview may take a beat to resolve
       const tok = ++audioToken; audio.onloadedmetadata = null; audio.loop = false;
       const url = await resolvePreview(t);           // stored preview may have expired → refresh it
@@ -2424,6 +2429,7 @@ audio.addEventListener("error", () => {
   if (!audio.src) return;
   if (radioOn) { radioPlay(radioIdx + 1); return; }        // radio: skip the dead track
   if (findsPlayingId != null) { findsPlayingId = null; markPlayingRow(); toast("Couldn't load that preview"); }
+  if (artistPlayingId != null) { artistPlayingId = null; markArtistRows(); toast("Couldn't load that preview"); }
 });
 async function radioPlay(i) {
   if (i < 0 || i >= radioList.length) { radioStop(); return; }
@@ -3074,6 +3080,7 @@ async function openArtist(artistId, name) {
   const active = document.querySelector(".screen.active");
   artistBackTo = (active && active.id) || "discover";
   audio.pause();
+  artistPlayingId = null;
   showScreen("artist");
   document.getElementById("artist").scrollTop = 0;
   document.getElementById("artistName").textContent = name || "Artist";
@@ -3108,6 +3115,20 @@ function updateFollowBtn(artistId, name) {
     updateFollowBtn(artistId, name);
   };
 }
+// Which artist-page track owns the audio right now (so the row can light up)
+let artistPlayingId = null;
+function markArtistRows() {
+  document.querySelectorAll("#artistTracks .atrack").forEach(el => {
+    const on = artistPlayingId != null && el._tid === artistPlayingId;
+    el.classList.toggle("playing", on);
+    const btn = el.querySelector(".at-btn.play");
+    if (btn) btn.innerHTML = on && !audio.paused ? ICON_PAUSE : ICON_PLAY;
+  });
+}
+audio.addEventListener("play", markArtistRows);
+audio.addEventListener("playing", markArtistRows);
+audio.addEventListener("pause", markArtistRows);
+audio.addEventListener("ended", () => { if (artistPlayingId != null) { artistPlayingId = null; markArtistRows(); } });
 function renderArtistTracks(name, tracks) {
   const wrap = document.getElementById("artistTracks");
   if (!wrap) return;
@@ -3118,11 +3139,19 @@ function renderArtistTracks(name, tracks) {
     const cover = t.album && (t.album.cover_medium || t.album.cover);
     const norm = normalize(t, "From " + name);
     const row = document.createElement("div"); row.className = "atrack";
+    row._tid = norm.id;
     row.innerHTML = '<img src="' + (cover || "") + '" alt="" />' +
       '<div class="at-meta"><div class="at-t">' + esc(t.title) + '</div><div class="at-a">' + esc(name) + '</div></div>' +
       '<button class="at-btn play" aria-label="Preview">' + ICON_PLAY + '</button>' +
       '<button class="at-btn love" aria-label="Add to Finds"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
     row.querySelector(".play").onclick = async () => {
+      if (artistPlayingId === norm.id) {           // tapping the playing song = pause / resume
+        if (!audio.paused) { audio.pause(); return; }
+        if (audio.src) { safePlay(); return; }
+      }
+      artistPlayingId = norm.id;
+      findsPlayingId = null; markPlayingRow();     // an artist track takes over from any Finds row
+      markArtistRows();                            // light the row now — resolving may take a beat
       const tok = ++audioToken; audio.onloadedmetadata = null; audio.loop = false;
       const url = await resolvePreview(norm);
       if (tok !== audioToken) return;
