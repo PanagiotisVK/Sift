@@ -1360,6 +1360,7 @@ function load() {
     state.artists = d.artists || {};
     state.disliked = new Set(d.disliked || []);
     state.liked = d.liked || [];
+    state.liked.forEach(t => { delete t._fresh; }); // preview links go stale between sessions — never trust a saved "fresh" flag
     state.knownIds = new Set(d.knownIds || []);
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
@@ -2327,6 +2328,7 @@ function updateFinds() {
   markPlayingRow();       // re-highlight the radio's row after a re-render
   maybeFetchGenres();     // fill in any missing genres in the background, then re-render
   maybeFetchAppleLinks(); // and upgrade the Apple buttons from search → exact song
+  maybeFreshenPreviews(); // re-resolve expired preview links so play starts instantly
 }
 
 // Resolve exact Apple links for Finds in the background. Sequential with a small gap —
@@ -2348,6 +2350,23 @@ async function maybeFetchAppleLinks() {
   fetchingApple = false;
   save();
   if (found) updateFinds(); // re-render with the exact links (also picks up the next batch)
+}
+
+// Preview links expire between sessions — quietly re-resolve them while the list is
+// on screen, newest (topmost) first, so tapping play is instant instead of waiting
+// on a round trip. Each visit works through another batch.
+let fresheningPreviews = false;
+async function maybeFreshenPreviews() {
+  if (fresheningPreviews) return;
+  const stale = currentFindsList().filter(t => !t._fresh);
+  if (!stale.length) return;
+  fresheningPreviews = true;
+  for (const t of stale.slice(0, 15)) {
+    try { await resolvePreview(t); } catch (_) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+  fresheningPreviews = false;
+  save(); // keep the freshest links (and the cloud backup) for next time
 }
 
 // Look up each loved song's genre so we can bucket them (catalog details live on the provider).
@@ -2566,6 +2585,7 @@ async function pullCloudFinds() {
   try {
     const { data } = await SB.from("user_finds").select("data").eq("user_id", me_session.user.id).maybeSingle();
     const cloud = (data && data.data) || [];
+    cloud.forEach(t => { delete t._fresh; }); // cloud copies carry stale preview links — force a re-resolve on first play
     if (!cloud.length) { pushFindsToCloud(); return; }   // first backup for this account
     if (!state.liked.length) {
       // fresh/purged device → restore the whole library
