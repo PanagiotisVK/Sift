@@ -293,6 +293,7 @@
   .btn-mini.ghost { background: transparent; border: 1.5px solid var(--glass-brd); color: var(--text); }
   .btn-mini:disabled { opacity: .5; cursor: not-allowed; }
   .acct-link { background: transparent; border: 0; color: var(--muted); font-size: 12.5px; font-weight: 600; margin-top: 10px; padding: 4px 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+  .acct-link.armed { color: var(--danger); }
   .acct-msg { font-size: 12.5px; margin-top: 10px; color: var(--muted); line-height: 1.5; }
   .acct-msg:empty { margin-top: 0; }
   .acct-msg.err { color: var(--nope); }
@@ -633,6 +634,8 @@
           <span class="tf-txt"><b>Friends can swipe my taste</b><small>share your 12 latest Finds with friends</small></span>
           <span class="tf-state" id="shareFindsState">On</span>
         </button>
+        <button class="acct-link" id="btnDeleteAcct">Delete my account…</button>
+        <div class="acct-msg" id="deleteMsg"></div>
       </div>
 
       <button class="startover" id="startOver">Start over — clear my taste</button>
@@ -2847,6 +2850,35 @@ async function doLogin() {
 
 async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; renderAcct(); }
 
+// Account deletion (Apple App Store requirement). Two-tap confirm like Start over;
+// the wipe itself runs in the delete_account RPC (security definer) because
+// client-side code must never hold the power to touch auth.users directly.
+// Local Finds survive — the app simply returns to its logged-out state.
+let deleteAcctTimer = null;
+async function deleteAccount() {
+  if (!SB || !me_session) return;
+  const b = document.getElementById("btnDeleteAcct");
+  if (!b.classList.contains("armed")) {
+    b.classList.add("armed");
+    b.textContent = "This erases your account, cloud backup, friends and decks forever. Tap again to confirm";
+    deleteAcctTimer = setTimeout(() => { b.classList.remove("armed"); b.textContent = "Delete my account…"; }, 6000);
+    return;
+  }
+  clearTimeout(deleteAcctTimer);
+  b.classList.remove("armed");
+  b.textContent = "Delete my account…";
+  acctMsg("deleteMsg", "Deleting your account…");
+  try {
+    const { error } = await SB.rpc("delete_account");
+    if (error) { acctMsg("deleteMsg", error.message, "err"); return; }
+    try { await SB.auth.signOut({ scope: "local" }); } catch (e) {}
+    me_session = null; me_profile = null; findsPulled = false;
+    acctMsg("deleteMsg", "");
+    renderAcct();
+    toast("Account deleted. Your Finds are still on this device.");
+  } catch (e) { acctMsg("deleteMsg", "Network error — please try again.", "err"); }
+}
+
 // Password reset, step 1: email a recovery link. The link always points at the web
 // app (a capacitor:// origin can't receive it) — the account is shared either way.
 async function doForgotPass() {
@@ -2918,6 +2950,7 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   document.getElementById("btnLogin").onclick = doLogin;
   document.getElementById("btnLogout").onclick = doLogout;
   document.getElementById("btnForgot").onclick = doForgotPass;
+  document.getElementById("btnDeleteAcct").onclick = deleteAccount;
   document.getElementById("btnSaveReset").onclick = saveNewPass;
   document.getElementById("resetPass").addEventListener("keydown", e => { if (e.key === "Enter") saveNewPass(); });
   document.getElementById("btnSaveUname").onclick = saveUsername;
