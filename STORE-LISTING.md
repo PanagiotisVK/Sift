@@ -116,7 +116,32 @@ Upload in order 1→5:
 4. **Taste card** — "Your taste, on a card" *(pink)*
 5. **Artist page** — "Follow what you unearth" *(blue)*
 
-Rebuilt 2026-07-25 (v1 kept in `v1-old/`). What changed and why:
+**Style: "liner notes"** (2026-07-25, third pass). Earlier versions are kept in
+`v1-old/` (original) and `v2-glow/` (centred type over a coloured radial glow).
+
+The glow version was competent but its ingredients — centred system-sans headline,
+accent-coloured second line, soft radial glow behind a floating device — are the
+default template you see on every generated app page. This version swaps the
+ingredients instead of adjusting them:
+
+- **The background is a real album cover, blown up and blurred**, not a synthetic
+  gradient. That's the app's own backdrop treatment, so the poster and the product
+  share a visual language — and the five frames differ from each other for an honest
+  reason rather than a decorative one. Covers chosen for colour separation across the
+  strip: Currents (violet), After Hours (amber), Future Nostalgia (blue), Lo Siento
+  BB:/ (pink), The Slow Rush (gold).
+- **Bahnschrift Condensed caps, hard left**, with a tracked-out section label over a
+  short rule in the frame's colour. DIN-ish condensed reads as music press and gig
+  poster; a system UI sans reads as software.
+- **The phone bleeds off the bottom edge** instead of floating in the middle, which
+  makes it a poster rather than a slide. Cropped so the Nope / Heard it / Love row
+  still shows — that trio is the product in one glance.
+- **A fine film grain** over everything, to kill the flat digital-gradient look.
+- The header block is a fixed height with its contents bottom-aligned, so a two-line
+  and a three-line headline still place the phone at the same y. The strip reads as
+  a set rather than five loose images.
+
+Earlier pass (kept for reference) — what changed from the original:
 
 - **Each frame has its own accent colour.** All five were near-identical dark
   rectangles, and the App Store shows about two and a half of them at a time while
