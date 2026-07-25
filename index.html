@@ -292,6 +292,7 @@
   .btn-mini:active { transform: scale(.96); }
   .btn-mini.ghost { background: transparent; border: 1.5px solid var(--glass-brd); color: var(--text); }
   .btn-mini:disabled { opacity: .5; cursor: not-allowed; }
+  .acct-link { background: transparent; border: 0; color: var(--muted); font-size: 12.5px; font-weight: 600; margin-top: 10px; padding: 4px 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
   .acct-msg { font-size: 12.5px; margin-top: 10px; color: var(--muted); line-height: 1.5; }
   .acct-msg:empty { margin-top: 0; }
   .acct-msg.err { color: var(--nope); }
@@ -592,7 +593,19 @@
           <button class="btn-mini" id="btnSignup">Create account</button>
           <button class="btn-mini ghost" id="btnLogin">Log in</button>
         </div>
+        <button class="acct-link" id="btnForgot">Forgot your password?</button>
         <div class="acct-msg" id="authMsg"></div>
+      </div>
+
+      <!-- Arrived via a password-reset email link: the reset session is live, set a new one -->
+      <div class="acct" id="resetBox" style="display:none;">
+        <div class="acct-title">Set a new password</div>
+        <div class="acct-sub">Your reset link signed you in — choose a new password to finish.</div>
+        <div class="acct-row">
+          <input id="resetPass" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" />
+          <button class="btn-mini" id="btnSaveReset" style="flex:0 0 auto;padding:12px 18px;">Save</button>
+        </div>
+        <div class="acct-msg" id="resetMsg"></div>
       </div>
 
       <!-- Logged in, no username yet: pick one -->
@@ -2834,6 +2847,38 @@ async function doLogin() {
 
 async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; renderAcct(); }
 
+// Password reset, step 1: email a recovery link. The link always points at the web
+// app (a capacitor:// origin can't receive it) — the account is shared either way.
+async function doForgotPass() {
+  if (!SB) return;
+  const email = document.getElementById("authEmail").value.trim();
+  if (!email) { acctMsg("authMsg", "Type your email in the box above, then tap the link again.", "err"); return; }
+  acctMsg("authMsg", "Sending reset link…");
+  try {
+    const { error } = await SB.auth.resetPasswordForEmail(email, { redirectTo: "https://panagiotisvk.github.io/Sift/" });
+    if (error) { acctMsg("authMsg", error.message, "err"); return; }
+    acctMsg("authMsg", "Reset link sent — check your email (spam too). It works on any device.", "ok");
+  } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
+}
+
+// Password reset, step 2: the emailed link lands back here with a recovery session
+// (initSocial catches the PASSWORD_RECOVERY event and reveals resetBox).
+async function saveNewPass() {
+  if (!SB) return;
+  const pw = document.getElementById("resetPass").value;
+  if (pw.length < 6) { acctMsg("resetMsg", "Password needs at least 6 characters.", "err"); return; }
+  acctMsg("resetMsg", "Saving…");
+  try {
+    const { error } = await SB.auth.updateUser({ password: pw });
+    if (error) { acctMsg("resetMsg", error.message, "err"); return; }
+    document.getElementById("resetPass").value = "";
+    document.getElementById("resetBox").style.display = "none";
+    acctMsg("resetMsg", "");
+    toast("Password updated ✓");
+    loadMe();
+  } catch (e) { acctMsg("resetMsg", "Something went wrong — try again.", "err"); }
+}
+
 async function saveUsername() {
   if (!SB || !me_session) return;
   const v = cleanHandle(document.getElementById("unameInput").value);
@@ -2872,12 +2917,26 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   document.getElementById("btnSignup").onclick = doSignup;
   document.getElementById("btnLogin").onclick = doLogin;
   document.getElementById("btnLogout").onclick = doLogout;
+  document.getElementById("btnForgot").onclick = doForgotPass;
+  document.getElementById("btnSaveReset").onclick = saveNewPass;
+  document.getElementById("resetPass").addEventListener("keydown", e => { if (e.key === "Enter") saveNewPass(); });
   document.getElementById("btnSaveUname").onclick = saveUsername;
   document.getElementById("btnAddFriend").onclick = addFriend;
   document.getElementById("friendInput").addEventListener("keydown", e => { if (e.key === "Enter") addFriend(); });
   document.getElementById("unameInput").addEventListener("keydown", e => { if (e.key === "Enter") saveUsername(); });
   document.getElementById("authPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
-  SB.auth.onAuthStateChange((_evt, session) => { me_session = session || null; if (!session) { me_profile = null; renderAcct(); } });
+  SB.auth.onAuthStateChange((evt, session) => {
+    me_session = session || null;
+    if (!session) { me_profile = null; renderAcct(); }
+    if (evt === "PASSWORD_RECOVERY") {
+      // User arrived from the reset email — surface the new-password box on the You tab.
+      // On a fresh device the app is still mid-onboarding: let setup finish, the box
+      // (and the recovery session) will be waiting when they reach You.
+      document.getElementById("resetBox").style.display = "";
+      if (document.getElementById("tabbar").style.display !== "none") showScreen("profile");
+      loadMe();
+    }
+  });
   loadMe();
   // quietly check for new activity in the background so the Friends dot stays live
   setInterval(() => { if (me_session) renderActivity(); }, 60000);
