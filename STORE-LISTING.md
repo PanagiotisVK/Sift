@@ -90,8 +90,11 @@ First release — welcome to Sift. Swipe through fresh songs picked for your tas
 - **Notes for reviewer:**
 
 ```
-Sift is a music discovery app using 30-second catalog previews (Apple's iTunes preview API) with links out to full songs on streaming services. An account is optional — the app is fully usable without one. The demo account above is pre-filled with a taste profile. Account deletion is available in-app: You tab → Delete my account.
+Sift is a music discovery app using 30-second catalog previews (Apple's iTunes preview API) with links out to full songs on streaming services. An account is optional — the app is fully usable without one. The demo account above is pre-filled with a taste profile. Account deletion is available in-app: You tab → Delete my account. Sign in with Apple is offered alongside email signup, on the same You tab.
 ```
+
+*(The Sign in with Apple line matters — Guideline 4.8 is checked by hand, and telling
+the reviewer exactly where the button lives saves a round trip.)*
 
 ## App Privacy questionnaire (the "nutrition label")
 
@@ -113,5 +116,11 @@ Upload in order 1→5 (Discover hero, Finds, Friends, Artist, Taste swipe).
 
 ## Reminder before submitting for App Store review (not TestFlight)
 
-- Archive a build that includes account deletion (build 3+ — build 2 predates it).
+- **Submit build 5 or later.** Build 4 and earlier predate the Sign in with Apple
+  entitlement and would be rejected under Guideline 4.8. Build 5 is verified working
+  from a release (TestFlight) build, not just a debug run — the entitlement rides on
+  the provisioning profile, so those are genuinely different tests.
+- Check the demo account below still logs in before submitting. Email confirmation is
+  now switched on in Supabase, so a reviewer typing it must land in a confirmed
+  account — an unconfirmed one would look broken to them.
 - Small Business Program: apply/confirm after enrollment fully active.
