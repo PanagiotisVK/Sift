@@ -1008,7 +1008,7 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
   // niche artist used to hand back some unrelated famous act, whose hits then leaked
   // into the deck. Niche artists missing from the artist index are found via their songs.
   const want = nameKey(m.name);
-  const match = r => { const got = nameKey(r.artistName); return got && (got === want || got.includes(want) || want.includes(got)); };
+  const match = r => sameArtist(r.artistName, want);
   const s = await itunesApi("search", { term: m.name, entity: "musicArtist", limit: 5 });
   let hit = ((s && s.results) || []).find(match);
   if (!hit) {
@@ -1071,13 +1071,53 @@ const AppleLBProvider = {
   // Suggestions with pictures despite iTunes having no artist images: one song search,
   // grouped by artist, each artist wearing their top result's album art.
   async suggestArtists(q) {
-    const d = await itunesApi("search", { term: q, entity: "song", limit: 25 });
+    // Names come from Apple's ARTIST index, not from song credits — deriving them
+    // from credits offered "Drake & 21 Savage" and "Future feat. Drake" as separate
+    // artists, and no string rule can tell those apart from a band that really is
+    // called "Simon & Garfunkel". Pictures still come from songs (iTunes has no
+    // artist images), matched by artist id.
+    const [ar, sg] = await Promise.all([
+      itunesApi("search", { term: q, entity: "musicArtist", limit: 8 }),
+      itunesApi("search", { term: q, entity: "song", limit: 25 }),
+    ]);
+    const picById = {}, picByName = {};
+    for (const r of ((sg && sg.results) || [])) {
+      const art = (r.artworkUrl100 || "").replace("100x100bb", "250x250bb");
+      if (!art) continue;
+      if (r.artistId != null && !picById[r.artistId]) picById[r.artistId] = art;
+      const pk = nameKey(primaryArtist(r.artistName));
+      if (pk && !picByName[pk]) picByName[pk] = art;
+    }
     const seen = {}, out = [];
-    for (const r of ((d && d.results) || [])) {
-      const k = nameKey(r.artistName);
+    for (const a of ((ar && ar.results) || [])) {
+      const k = nameKey(a.artistName);
       if (!k || seen[k]) continue;
       seen[k] = 1;
-      out.push({ name: r.artistName, pic: (r.artworkUrl100 || "").replace("100x100bb", "250x250bb") });
+      out.push({ id: a.artistId, name: a.artistName, pic: picById[a.artistId] || picByName[k] || "" });
+      if (out.length >= 5) break;
+    }
+    if (out.length) {
+      // A picture is what makes "is this the right artist?" instant, so backfill the
+      // ones the song search missed — all of them in a single batched lookup.
+      const missing = out.filter(x => !x.pic && x.id != null).map(x => x.id);
+      if (missing.length) {
+        const d2 = await itunesApi("lookup", { id: missing.join(","), entity: "song", limit: 5 });
+        const extra = {};
+        for (const r of ((d2 && d2.results) || [])) {
+          if (r.wrapperType !== "track" || r.artistId == null || extra[r.artistId]) continue;
+          const art = (r.artworkUrl100 || "").replace("100x100bb", "250x250bb");
+          if (art) extra[r.artistId] = art;
+        }
+        out.forEach(x => { if (!x.pic) x.pic = extra[x.id] || ""; });
+      }
+      return out;
+    }
+    // Niche acts missing from the artist index: fall back to their songs' primary credit.
+    for (const r of ((sg && sg.results) || [])) {
+      const name = primaryArtist(r.artistName), k = nameKey(name);
+      if (!k || seen[k]) continue;
+      seen[k] = 1;
+      out.push({ name: name, pic: (r.artworkUrl100 || "").replace("100x100bb", "250x250bb") });
       if (out.length >= 5) break;
     }
     return out;
@@ -1113,16 +1153,22 @@ const AppleLBProvider = {
   async _artistIds(id, nameHint) {
     if (MBID_RE.test(id || "")) return { mbid: id, appleId: await appleArtistId(id) };
     const ap = /^ap-(\d+)$/.exec(id || "");
+    const want = nameKey(nameHint);
     let mbid = null;
     if (nameHint) {
-      mbid = lbNames[nameKey(nameHint)] || null;
-      if (!mbid) { const a = await this.searchArtist(nameHint); mbid = (a && a.id) || null; }
+      mbid = lbNames[want] || null;
+      if (!mbid) {
+        // searchArtist is deliberately fuzzy (it serves the typed-input path), but here
+        // we're opening a KNOWN artist — accept its answer only on an exact name match,
+        // or we'd open a same-named stranger.
+        const a = await this.searchArtist(nameHint);
+        if (a && nameKey(a.name) === want) mbid = a.id;
+      }
     }
     let appleId = ap ? ap[1] : (mbid ? await appleArtistId(mbid) : null);
     if (!appleId && nameHint) {   // last resort: find them through their songs
-      const s = await itunesApi("search", { term: nameHint, entity: "song", limit: 5 });
-      const want = nameKey(nameHint);
-      const hit = ((s && s.results) || []).find(r => { const got = nameKey(r.artistName); return got && (got.includes(want) || want.includes(got)); });
+      const s = await itunesApi("search", { term: nameHint, entity: "song", limit: 10 });
+      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, want));
       appleId = (hit && hit.artistId) || null;
     }
     return { mbid, appleId };
@@ -1147,7 +1193,7 @@ const AppleLBProvider = {
       const d = await itunesApi("search", { term: track.artist + " " + track.title, entity: "song", limit: 5 });
       const list = ((d && d.results) || []).filter(x => x.previewUrl);
       const want = nameKey(track.artist);
-      const r = list.find(x => { const got = nameKey(x.artistName); return got && (got.includes(want) || want.includes(got)); }) || list[0];
+      const r = list.find(x => sameArtist(x.artistName, want)) || list[0];
       if (r) { track.preview = r.previewUrl; track._fresh = true; if (!track.albumId && r.collectionId) track.albumId = r.collectionId; return track.preview; }
     } catch (_) {}
     return track.preview;
@@ -1216,14 +1262,30 @@ function itunes(term) {
   });
 }
 const nameKey = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Apple credits a collaboration as ONE string ("A feat. B", "A & B", "A x B"), so a
+// raw substring test both surfaces collaborators as if they were the artist you asked
+// for and lets short names match longer unrelated ones ("Sia" inside "Siames").
+// Split the credit into individual artists and compare whole names instead.
+// Commas are deliberately NOT separators — plenty of acts have one in their name
+// ("Tyler, The Creator", "Earth, Wind & Fire").
+const CREDIT_SPLIT = /\s*(?:\bfeat\.?|\bft\.?|\bfeaturing\b|\bwith\b|\bpresents\b|\bvs\.?|&|\bx\b|×)\s*/i;
+const splitArtists = s => (s || "").split(CREDIT_SPLIT).map(x => x.trim()).filter(Boolean);
+const primaryArtist = s => splitArtists(s)[0] || (s || "");
+// True when `credit` names exactly this artist (alone or among collaborators).
+// The whole-string check comes first so bands whose own name contains a separator
+// ("Simon & Garfunkel", "Nick Cave & the Bad Seeds") still match themselves.
+const sameArtist = (credit, wantKey) => {
+  if (!wantKey) return false;
+  if (nameKey(credit) === wantKey) return true;
+  return splitArtists(credit).some(a => nameKey(a) === wantKey);
+};
 // Returns the exact Apple Music URL, or "" when we can't be confident it's the right song.
 async function appleTrackUrl(t) {
   const want = nameKey(t.artist);
   if (!want) return "";
   const res = await itunes(t.artist + " " + t.title);
   for (const r of (res && res.results) || []) {
-    const got = nameKey(r.artistName);   // substring both ways catches collabs: "Fred again.. & Delilah Montagu"
-    if (got && r.trackViewUrl && (got.includes(want) || want.includes(got))) return r.trackViewUrl;
+    if (r.trackViewUrl && sameArtist(r.artistName, want)) return r.trackViewUrl;   // handles collabs: "Fred again.. & Delilah Montagu"
   }
   return "";
 }
