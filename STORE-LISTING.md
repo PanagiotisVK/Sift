@@ -107,8 +107,38 @@ Data is **not** used for tracking. No third-party advertising.
 
 ## Screenshots
 
-Done — `design-previews/app-store/sift-store-1..5.png` (1320×2868, 6.9" iPhone size).
-Upload in order 1→5 (Discover hero, Finds, Friends, Artist, Taste swipe).
+`design-previews/app-store/sift-store-1..5.png` (1320×2868, 6.9" iPhone size).
+Upload in order 1→5:
+
+1. **Discover** — "Songs you've never heard. Found." *(violet)*
+2. **Finds + the 83% stat** — "Love it? Swipe. It's yours." *(amber)*
+3. **Friends** — "Swipe your friends' taste" *(emerald)*
+4. **Taste card** — "Your taste, on a card" *(pink)*
+5. **Artist page** — "Follow what you unearth" *(blue)*
+
+Rebuilt 2026-07-25 (v1 kept in `v1-old/`). What changed and why:
+
+- **Each frame has its own accent colour.** All five were near-identical dark
+  rectangles, and the App Store shows about two and a half of them at a time while
+  scrolling — there was nothing to pull the eye along. The second headline line now
+  carries that accent too.
+- **The phones are straight.** The tilt shrank the type on exactly the screens that
+  had the most of it.
+- **The old #5 is gone.** It was the deck-intro screen, more than half empty black,
+  sitting in the last position. Replaced by the taste card, which is the thing people
+  actually screenshot and post.
+- **The artist page is now captured through the real `openArtist()`.** The old one
+  pasted in a Deezer promo photo and repeated one album cover five times; the shipping
+  app uses the artist's top-song artwork and each track's own cover. Screenshots have
+  to show the app that ships.
+- **Fake handles have some personality** — `@mrsift`, `@nightbus`, and `@peter` on the
+  taste card.
+
+Known judgement call: screenshot 2 shows the Spotify / Apple Music / YouTube link
+buttons in their brand colours, because that is genuinely what the Finds list looks
+like. Cropping them out would misrepresent the app; leaving them in carries a small
+risk of a metadata query about promoting competing services. Kept them — accuracy
+wins, and it's the minimum-buttons view of that screen already.
 
 ## Pricing & Availability
 
