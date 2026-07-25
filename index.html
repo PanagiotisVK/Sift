@@ -3013,10 +3013,18 @@ async function doAppleSignIn() {
     loadMe();
   } catch (e) {
     // Tapping Cancel on Apple's sheet rejects the promise (ASAuthorizationError 1001).
-    // That's a choice, not a failure — say nothing.
+    // That's a choice, not a failure — say nothing. Everything else gets surfaced
+    // verbatim: a TestFlight build has no console, so an opaque "please try again"
+    // leaves nothing to debug with. The two failures we can actually name, we name.
     const m = String((e && e.message) || e);
     if (/1001|cancell?ed/i.test(m)) { acctMsg("authMsg", ""); return; }
-    acctMsg("authMsg", "Apple sign-in didn't complete — please try again.", "err");
+    if (/not implemented|unimplemented|does not have an implementation/i.test(m)) {
+      acctMsg("authMsg", "Setup: the Apple sign-in plugin isn't in this build — run npm install, then npm run sync, and rebuild.", "err"); return;
+    }
+    if (/error 1000|\(1000\)/i.test(m)) {
+      acctMsg("authMsg", "Setup: Sign in with Apple isn't enabled for this build — Xcode → App target → Signing & Capabilities → + Sign in with Apple.", "err"); return;
+    }
+    acctMsg("authMsg", "Apple sign-in didn't complete: " + m, "err");
   }
 }
 
