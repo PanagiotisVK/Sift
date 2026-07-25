@@ -1106,14 +1106,37 @@ const AppleLBProvider = {
       return { id: r.artist_mbid, name: r.name, nb_fan: await lbListeners(r.artist_mbid) };
     }));
   },
-  async artistTop(id, limit) {
-    const aid = await appleArtistId(id);
-    if (!aid) return [];
-    const users = await lbListeners(id);
-    const d = await itunesApi("lookup", { id: aid, entity: "song", limit: Math.min(200, limit || 6) });
+  // Artist ids in the wild aren't all MBIDs: Finds and follows saved under Deezer
+  // carry its numeric ids, and song-search tracks carry synthesized "ap-<appleId>"
+  // ones. Both would dead-end at appleArtistId's MBID check, so re-resolve them
+  // from the artist NAME (which every call site has) and cache the mapping.
+  async _artistIds(id, nameHint) {
+    if (MBID_RE.test(id || "")) return { mbid: id, appleId: await appleArtistId(id) };
+    const ap = /^ap-(\d+)$/.exec(id || "");
+    let mbid = null;
+    if (nameHint) {
+      mbid = lbNames[nameKey(nameHint)] || null;
+      if (!mbid) { const a = await this.searchArtist(nameHint); mbid = (a && a.id) || null; }
+    }
+    let appleId = ap ? ap[1] : (mbid ? await appleArtistId(mbid) : null);
+    if (!appleId && nameHint) {   // last resort: find them through their songs
+      const s = await itunesApi("search", { term: nameHint, entity: "song", limit: 5 });
+      const want = nameKey(nameHint);
+      const hit = ((s && s.results) || []).find(r => { const got = nameKey(r.artistName); return got && (got.includes(want) || want.includes(got)); });
+      appleId = (hit && hit.artistId) || null;
+    }
+    return { mbid, appleId };
+  },
+  async artistTop(id, limit, nameHint) {
+    const { mbid, appleId } = await this._artistIds(id, nameHint);
+    if (!appleId) return [];
+    const users = mbid ? await lbListeners(mbid) : 0;
+    const d = await itunesApi("lookup", { id: appleId, entity: "song", limit: Math.min(200, limit || 6) });
     const songs = ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
     const base = Math.max(0.02, Math.min(1, users / this.fanNorm)) * 1000000;
-    return songs.slice(0, limit || 6).map((r, i) => this._track(r, id, base, i));
+    // Tag tracks with the MBID when we have one, so anything saved from here on
+    // carries a first-class id instead of the legacy one that sent us down this path.
+    return songs.slice(0, limit || 6).map((r, i) => this._track(r, mbid || id, base, i));
   },
   // Apple preview URLs are stable — anything Apple-hosted is trusted as-is; tracks
   // saved under other providers (old Deezer Finds, shared decks) resolve by name.
@@ -1137,23 +1160,23 @@ const AppleLBProvider = {
     if (g) { if (!t.albumId && r.collectionId) t.albumId = r.collectionId; if (t.albumId) albumGenreCache[t.albumId] = g; }
     return g || "Mixed";
   },
-  async artistInfo(id) {
-    const aid = await appleArtistId(id);
-    const m = lbArtist[id] || {};
-    if (!m.name) return null;
-    const out = { id, name: m.name, nb_fan: await lbListeners(id) };
-    if (aid) {  // artist photo: their top song's artwork (iTunes has no artist images)
-      const d = await itunesApi("lookup", { id: aid, entity: "song", limit: 2 });
+  async artistInfo(id, nameHint) {
+    const { mbid, appleId } = await this._artistIds(id, nameHint);
+    const name = (mbid && lbArtist[mbid] && lbArtist[mbid].name) || nameHint;
+    if (!name) return null;
+    const out = { id, name: name, nb_fan: mbid ? await lbListeners(mbid) : 0 };
+    if (appleId) {  // artist photo: their top song's artwork (iTunes has no artist images)
+      const d = await itunesApi("lookup", { id: appleId, entity: "song", limit: 2 });
       const t0 = ((d && d.results) || []).find(r => r.wrapperType === "track");
       const art = (t0 && t0.artworkUrl100) || "";
       if (art) { out.picture_xl = out.picture_big = art.replace("100x100bb", "600x600bb"); out.picture_medium = art.replace("100x100bb", "250x250bb"); }
     }
     return out;
   },
-  async artistAlbums(id, limit) {
-    const aid = await appleArtistId(id);
-    if (!aid) return [];
-    const d = await itunesApi("lookup", { id: aid, entity: "album", limit: limit || 25 });
+  async artistAlbums(id, limit, nameHint) {
+    const { appleId } = await this._artistIds(id, nameHint);
+    if (!appleId) return [];
+    const d = await itunesApi("lookup", { id: appleId, entity: "album", limit: limit || 25 });
     return ((d && d.results) || []).filter(r => r.wrapperType === "collection")
       .map(r => ({ id: r.collectionId, title: r.collectionName, release_date: (r.releaseDate || "").slice(0, 10) }));
   },
@@ -1169,7 +1192,7 @@ let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") ||
 async function searchArtist(name) { return PROVIDER.searchArtist(name); }
 async function searchTracks(q, limit) { return PROVIDER.searchTracks(q, limit); }
 async function relatedArtists(id) { return PROVIDER.relatedArtists(id); }
-async function artistTop(id, limit) { return PROVIDER.artistTop(id, limit); }
+async function artistTop(id, limit, nameHint) { return PROVIDER.artistTop(id, limit, nameHint); }
 async function resolvePreview(track) { return PROVIDER.resolvePreview(track); }
 
 /* ---------- Apple Music exact-track lookup (iTunes Search API — free, no key, JSONP) ----------
@@ -3284,7 +3307,7 @@ async function checkFollowingReleases() {
   let changed = false;
   for (const a of arts) {
     try {
-      const albums = await PROVIDER.artistAlbums(a.id, 25);
+      const albums = await PROVIDER.artistAlbums(a.id, 25, a.name);
       if (!albums.length) continue;
       let newest = albums[0];
       for (const al of albums) { if ((al.release_date || "") > (newest.release_date || "")) newest = al; }
@@ -3309,7 +3332,7 @@ async function openArtist(artistId, name) {
   document.getElementById("artistPhoto").src = "";
   document.getElementById("artistTracks").innerHTML = '<div class="empty-finds">Loading tracks…</div>';
   updateFollowBtn(artistId, name);
-  const info = await PROVIDER.artistInfo(artistId);
+  const info = await PROVIDER.artistInfo(artistId, name);
   if (info && info.name) {
     name = info.name;
     document.getElementById("artistName").textContent = info.name;
@@ -3320,7 +3343,7 @@ async function openArtist(artistId, name) {
   } else {
     document.getElementById("artistSub").textContent = "";
   }
-  const top = await artistTop(artistId, 15);
+  const top = await artistTop(artistId, 15, name);
   renderArtistTracks(name, top || []);
 }
 function updateFollowBtn(artistId, name) {
