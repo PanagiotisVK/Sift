@@ -110,9 +110,59 @@ Data is **not** used for tracking. No third-party advertising.
 Done — `design-previews/app-store/sift-store-1..5.png` (1320×2868, 6.9" iPhone size).
 Upload in order 1→5 (Discover hero, Finds, Friends, Artist, Taste swipe).
 
-## Pricing
+## Pricing & Availability
 
-- Free, all countries (Sift Pro IAP comes later — don't configure IAP for 1.0).
+- Free, all countries and regions.
+- Sift Pro IAP comes later — do **not** configure in-app purchases for 1.0.
+
+## Age Rating (App Store Connect asks this as a questionnaire — it won't let you submit without it)
+
+Sift plays 30-second previews from the general music catalog, so some of them will
+contain explicit lyrics. Answer honestly rather than optimistically — a reviewer who
+finds swearing in an app rated 4+ treats it as a misrepresentation.
+
+Recommended answers:
+
+- **Profanity or Crude Humor:** *Infrequent/Mild* — catalog previews can contain
+  explicit lyrics. (This is what lands the app at **12+**, in line with other music
+  apps.)
+- **Violence, Sexual Content, Nudity, Horror, Alcohol/Tobacco/Drugs, Gambling,
+  Contests, Medical/Treatment Info, Simulated Gambling:** *None*
+- **Unrestricted Web Access:** **No.** Sift opens external links in the system
+  browser or the streaming app; it has no built-in browser.
+- **User Generated Content:** **No.** Friends share songs from a fixed catalog —
+  there is no free-text posting, no comments, no uploads.
+
+Expected result: **12+**.
+
+## Content Rights
+
+App Store Connect asks: *"Does your app contain, show, or access third-party content?"*
+
+- Answer **Yes**, then confirm you have the necessary rights.
+- What that content is, if anyone asks: 30-second previews and artwork from Apple's
+  public iTunes Search/Lookup API (used as intended, with links out to the store),
+  plus open music data from MusicBrainz and ListenBrainz (CC0). No audio is hosted,
+  cached or redistributed by Sift.
+
+## Copyright field (App Information page)
+
+```
+2026 Peter Vlahos
+```
+
+*(Format is year + the name of the rights holder — your own legal name unless you've
+formed a company. No © symbol, App Store Connect adds it.)*
+
+## Agreements, Tax and Banking — the one people forget
+
+**Business** (or **Agreements, Tax, and Banking**) in App Store Connect must show the
+free-apps agreement as **Active**. If it's pending — an unaccepted contract or missing
+tax details — the app can pass review and still not appear on the store. Check it
+before submitting, not after.
+
+Banking details are only needed if you ever charge for something; free apps don't
+need them.
 
 ## Reminder before submitting for App Store review (not TestFlight)
 
