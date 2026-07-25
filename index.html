@@ -867,7 +867,7 @@ function deezer(path, params) {
   });
 }
 
-/* ---------- Deezer provider (prototype-only license — swapped for Apple+ListenBrainz before the App Store) ---------- */
+/* ---------- Deezer provider (prototype-only license — no longer the default; reachable via ?provider=deezer for A/B) ---------- */
 const DeezerProvider = {
   name: "deezer",
   fanNoun: "fans on Deezer",
@@ -915,7 +915,7 @@ const DeezerProvider = {
    and per-artist listener counts (the popularity signal — the bulk popularity API
    is unreliable, so we use the always-on stats endpoint, cached hard). Audio,
    artwork, store links and genre all come from Apple's keyless iTunes API in one
-   lookup per artist. A/B live via ?provider=apple — Deezer stays the default. */
+   lookup per artist. This is the default engine; ?provider=deezer for A/B. */
 const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
 const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const lbArtist = {};   // mbid -> { name, users, appleId }
@@ -1143,10 +1143,11 @@ const AppleLBProvider = {
   },
 };
 
-// Registry + selection. A/B the two engines live via ?provider=apple (or
-// localStorage sift_provider) — Deezer remains the default until phase 4.
+// Registry + selection. Apple+ListenBrainz is the shipping default;
+// ?provider=deezer (or localStorage sift_provider) keeps the prototype engine
+// reachable for A/B comparison.
 const PROVIDERS = { deezer: DeezerProvider, apple: AppleLBProvider };
-let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") || localStorage.getItem("sift_provider") || "deezer"] || DeezerProvider;
+let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") || localStorage.getItem("sift_provider") || "apple"] || AppleLBProvider;
 
 // The verbs the rest of the app uses — always dispatched through the active provider.
 async function searchArtist(name) { return PROVIDER.searchArtist(name); }
