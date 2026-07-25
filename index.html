@@ -298,6 +298,14 @@
   .acct-msg:empty { margin-top: 0; }
   .acct-msg.err { color: var(--nope); }
   .acct-msg.ok { color: var(--love); }
+  /* Sign in with Apple. Apple's HIG fixes the look of this button — white on a dark
+     UI, their mark, their wording, nothing else inside it — so it deliberately does
+     NOT use our accent or type. Hidden until JS confirms we're in the iOS app. */
+  .siwa { display: none; width: 100%; align-items: center; justify-content: center; gap: 8px; height: 46px; border: 0; border-radius: var(--r-sm); background: #fff; color: #000; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; font-size: 17px; font-weight: 500; letter-spacing: -.01em; cursor: pointer; transition: transform .1s; }
+  .siwa:active { transform: scale(.97); }
+  .siwa svg { width: 16px; height: 19px; margin-top: -2px; }
+  .siwa-or { display: none; align-items: center; gap: 10px; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; margin: 14px 0; }
+  .siwa-or::before, .siwa-or::after { content: ""; flex: 1; height: 1px; background: var(--glass-brd); }
   /* Activity feed */
   .act { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.08); }
   .act:first-child { border-top: 0; padding-top: 6px; }
@@ -588,6 +596,11 @@
       <div class="acct" id="acctBox" style="display:none;">
         <div class="acct-title">Save your vibe &amp; add friends</div>
         <div class="acct-sub">Create a free account to sync your taste across devices and compare it with friends.</div>
+        <button class="siwa" id="btnApple">
+          <svg viewBox="0 0 384 512" aria-hidden="true"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+          Sign in with Apple
+        </button>
+        <div class="siwa-or" id="siwaOr">OR</div>
         <input id="authEmail" type="email" placeholder="Email" autocomplete="email" />
         <input id="authPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" />
         <div class="acct-row">
@@ -746,7 +759,8 @@
    SIFT — Phase 2
    Real discovery graph (related artists), 30-sec previews,
    persistent taste, "why this pick", smart exploration.
-   Data: Deezer open API via JSONP. No server, no login, no key.
+   Data: MusicBrainz + ListenBrainz (graph) and Apple's iTunes API (audio,
+   artwork, store links) via JSONP. No server, no login, no key.
    ============================================================ */
 
 const LS_KEY = "sonar_profile_v2";
@@ -867,64 +881,15 @@ function getCtx() { if (!_audioCtx) { try { _audioCtx = new (window.AudioContext
    PROVIDER instead of hardcoding Deezer's numbers.
    ============================================================ */
 
-/* ---------- Deezer transport (JSONP — runs from file:// with no server) ---------- */
+/* ---------- Deezer: removed 2026-07-25, before App Store submission ----------
+   Deezer's open API was the prototype's engine, but their developer terms limit it
+   to "non-commercial purposes in a non-commercial environment". A paid App Store
+   binary is a commercial environment, so shipping even a dormant, flag-reachable
+   Deezer path would be using an API we aren't licensed for. The whole transport and
+   provider are gone rather than disabled; git history has them if we ever sign a
+   deal. Apple + ListenBrainz below is the only engine now.
+   Note: jsonpId is shared with the iTunes JSONP helpers, so it stays. */
 let jsonpId = 0;
-function deezer(path, params) {
-  return new Promise((resolve) => {
-    const cb = "sonar_jp_" + (jsonpId++);
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 9000);
-    function cleanup() { clearTimeout(timeout); delete window[cb]; if (script.parentNode) script.parentNode.removeChild(script); }
-    window[cb] = (data) => { cleanup(); resolve(data); };
-    let qs = Object.entries(params || {}).map(([k,v]) => k + "=" + encodeURIComponent(v)).join("&");
-    const url = "https://api.deezer.com/" + path + "?" + qs + (qs ? "&" : "") + "output=jsonp&callback=" + cb;
-    const script = document.createElement("script");
-    script.src = url;
-    script.onerror = () => { cleanup(); resolve(null); };
-    document.body.appendChild(script);
-  });
-}
-
-/* ---------- Deezer provider (prototype-only license — no longer the default; reachable via ?provider=deezer for A/B) ---------- */
-const DeezerProvider = {
-  name: "deezer",
-  fanNoun: "fans on Deezer",
-  freshFanCap: 40000,
-  fanNorm: 800000,
-  async searchArtist(name) { const d = await deezer("search/artist", { q: name, limit: 1 }); return d && d.data && d.data[0]; },
-  // Live artist suggestions for the onboarding search box: [{name, pic}], display-only.
-  async suggestArtists(q) {
-    const d = await deezer("search/artist", { q: q, limit: 5 });
-    return ((d && d.data) || []).map(a => ({ name: a.name, pic: a.picture_medium || a.picture || "" }));
-  },
-  async searchTracks(q, limit) { const d = await deezer("search", { q: q, limit: limit || 20 }); return (d && d.data) || []; },
-  async relatedArtists(id) { const d = await deezer("artist/" + id + "/related", { limit: 8 }); return (d && d.data) || []; },
-  async artistTop(id, limit) { const d = await deezer("artist/" + id + "/top", { limit: limit || 6 }); return (d && d.data) || []; },
-  // Deezer preview URLs expire (403 after a while) — any track played from storage
-  // (a deck, old Finds) re-fetches a live preview by id, falling back to search.
-  async resolvePreview(track) {
-    if (track._fresh && track.preview) return track.preview;
-    try { const d = await deezer("track/" + track.id, {}); if (d && d.preview) { track.preview = d.preview; track._fresh = true; return d.preview; } } catch (_) {}
-    try { const s = await deezer("search", { q: track.artist + " " + track.title, limit: 1 }); if (s && s.data && s.data[0] && s.data[0].preview) { track.preview = s.data[0].preview; track._fresh = true; return s.data[0].preview; } } catch (_) {}
-    return track.preview;
-  },
-  // Genre for a loved track, via its album (backfills albumId by search for older finds).
-  async trackGenre(t) {
-    let albumId = t.albumId;
-    if (!albumId) {
-      const s = await deezer("search", { q: t.artist + " " + t.title, limit: 1 });
-      albumId = s && s.data && s.data[0] && s.data[0].album && s.data[0].album.id;
-      if (albumId) t.albumId = albumId;
-    }
-    if (!albumId) return "Mixed";
-    if (albumGenreCache[albumId]) return albumGenreCache[albumId];
-    const al = await deezer("album/" + albumId, {});
-    const genre = (al && al.genres && al.genres.data && al.genres.data[0] && al.genres.data[0].name) || "Mixed";
-    albumGenreCache[albumId] = genre;
-    return genre;
-  },
-  async artistInfo(id) { const info = await deezer("artist/" + id, {}); return (info && info.name) ? info : null; },
-  async artistAlbums(id, limit) { const r = await deezer("artist/" + id + "/albums", { limit: limit || 25 }); return (r && r.data) || []; },
-};
 
 /* ---------- Apple + ListenBrainz provider (migration phase 2) ----------
    The App Store launch stack. Graph + popularity come from open, commercial-safe
@@ -932,7 +897,7 @@ const DeezerProvider = {
    and per-artist listener counts (the popularity signal — the bulk popularity API
    is unreliable, so we use the always-on stats endpoint, cached hard). Audio,
    artwork, store links and genre all come from Apple's keyless iTunes API in one
-   lookup per artist. This is the default engine; ?provider=deezer for A/B. */
+   lookup per artist. This is the engine. */
 const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
 const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const lbArtist = {};   // mbid -> { name, users, appleId }
@@ -953,7 +918,7 @@ function mbApi(path, params) {
   return p;
 }
 function lbApi(url) { return fetch(url).then(r => r.ok ? r.json() : null).catch(() => null); }
-function itunesApi(path, params) {  // JSONP like deezer() — works everywhere, incl. file://
+function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
   return new Promise((resolve) => {
     const cb = "sonar_ap_" + (jsonpId++);
     const timeout = setTimeout(() => { cleanup(); resolve(null); }, 9000);
@@ -1229,10 +1194,11 @@ const AppleLBProvider = {
   },
 };
 
-// Registry + selection. Apple+ListenBrainz is the shipping default;
-// ?provider=deezer (or localStorage sift_provider) keeps the prototype engine
-// reachable for A/B comparison.
-const PROVIDERS = { deezer: DeezerProvider, apple: AppleLBProvider };
+// Registry + selection. Apple+ListenBrainz is now the only engine — the seam stays
+// so a future provider slots in without touching the app, and so any device still
+// holding sift_provider="deezer" from the A/B era falls through to Apple instead of
+// breaking.
+const PROVIDERS = { apple: AppleLBProvider };
 let PROVIDER = PROVIDERS[new URLSearchParams(location.search).get("provider") || localStorage.getItem("sift_provider") || "apple"] || AppleLBProvider;
 
 // The verbs the rest of the app uses — always dispatched through the active provider.
@@ -2997,6 +2963,63 @@ async function doLogin() {
 
 async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; renderAcct(); }
 
+/* ---------- Sign in with Apple ----------
+   App Store Guideline 4.8 makes this mandatory the moment an app offers its own email
+   signup, so it ships in the same build as the store submission. iOS only: the native
+   sheet comes from the @capacitor-community/apple-sign-in plugin, and Supabase swaps
+   Apple's identity token for a normal Sift session — so an Apple user is the same kind
+   of account as an email user (same profile row, same Finds backup, same delete_account).
+   The web build hides the button: Apple's browser flow needs a separate Services ID and
+   nothing outside the App Store requires it. */
+function isNativeIOS() {
+  const C = window.Capacitor;
+  if (!C) return false;
+  const native = C.isNativePlatform ? C.isNativePlatform() : !!C.isNative;
+  return native && (C.getPlatform ? C.getPlatform() === "ios" : true);
+}
+
+// Apple echoes our nonce into the identity token and Supabase compares it against the
+// SHA-256 of the raw one — so Apple gets the hash, Supabase gets the raw string. If the
+// webview has no crypto.subtle we send no nonce at all rather than fail the sign-in:
+// Apple then issues a token without the claim, which Supabase accepts.
+async function appleNonce() {
+  try {
+    const hex = (bytes) => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    const raw = hex(crypto.getRandomValues(new Uint8Array(32)));
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+    return { raw: raw, hashed: hex(new Uint8Array(digest)) };
+  } catch (e) { return null; }
+}
+
+async function doAppleSignIn() {
+  const C = window.Capacitor;
+  const plugin = (C && C.registerPlugin) ? C.registerPlugin("SignInWithApple")
+               : (C && C.Plugins && C.Plugins.SignInWithApple) || null;
+  if (!SB || !plugin) { acctMsg("authMsg", "Sign in with Apple isn't available on this device.", "err"); return; }
+  acctMsg("authMsg", "Opening Apple…");
+  try {
+    const n = await appleNonce();
+    const opts = { clientId: "com.pvk.sift", redirectURI: "https://panagiotisvk.github.io/Sift/", scopes: "email name" };
+    if (n) opts.nonce = n.hashed;
+    const res = await plugin.authorize(opts);
+    const token = res && res.response && res.response.identityToken;
+    if (!token) { acctMsg("authMsg", "Apple didn't return a sign-in token — please try again.", "err"); return; }
+    const creds = { provider: "apple", token: token };
+    if (n) creds.nonce = n.raw;
+    const { data, error } = await SB.auth.signInWithIdToken(creds);
+    if (error) { acctMsg("authMsg", error.message, "err"); return; }
+    me_session = data.session;
+    acctMsg("authMsg", "");
+    loadMe();
+  } catch (e) {
+    // Tapping Cancel on Apple's sheet rejects the promise (ASAuthorizationError 1001).
+    // That's a choice, not a failure — say nothing.
+    const m = String((e && e.message) || e);
+    if (/1001|cancell?ed/i.test(m)) { acctMsg("authMsg", ""); return; }
+    acctMsg("authMsg", "Apple sign-in didn't complete — please try again.", "err");
+  }
+}
+
 // Account deletion (Apple App Store requirement). Two-tap confirm like Start over;
 // the wipe itself runs in the delete_account RPC (security definer) because
 // client-side code must never hold the power to touch auth.users directly.
@@ -3095,6 +3118,14 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   if (!SB) { renderAcct(); return; }   // offline / no backend → all account UI stays hidden
   document.getElementById("btnSignup").onclick = doSignup;
   document.getElementById("btnLogin").onclick = doLogin;
+  // Apple's button only appears in the iOS app, and 4.8 wants it at least as prominent
+  // as our own signup — so it sits above the email fields, not below them.
+  if (isNativeIOS()) {
+    const ab = document.getElementById("btnApple");
+    ab.style.display = "flex";
+    document.getElementById("siwaOr").style.display = "flex";
+    ab.onclick = doAppleSignIn;
+  }
   document.getElementById("btnLogout").onclick = doLogout;
   document.getElementById("btnForgot").onclick = doForgotPass;
   document.getElementById("btnDeleteAcct").onclick = deleteAccount;
