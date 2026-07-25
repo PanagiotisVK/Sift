@@ -753,7 +753,8 @@ const LS_KEY = "sonar_profile_v2";
 
 const state = {
   artists: {},          // id -> {id,name,score,origin,related,relatedFetched,topPulled,exhausted,genreSeed,genreName}
-  disliked: new Set(),  // artist names to avoid
+  disliked: new Set(),  // artist names to avoid entirely (earned, not from one skip)
+  nopes: {},            // artist name -> songs of theirs you've skipped (NOPE_BAN_AT = banned)
   liked: [],            // loved tracks (normalized)
   knownIds: new Set(),  // track ids already seen/queued
   knownKeys: new Set(), // "title|artist" already seen (kills near-dupes)
@@ -1329,6 +1330,9 @@ function queueTracks(list, reason, srcFan) {
 }
 
 /* ---------- The recommendation engine ---------- */
+// How many skipped songs it takes to write an artist off completely.
+const NOPE_BAN_AT = 2;
+
 function pickSource(explore) {
   const pool = Object.values(state.artists).filter(a => !state.disliked.has(a.name) && !a.exhausted);
   if (!pool.length) return null;
@@ -1434,8 +1438,13 @@ function orderQueue() {
     }
     t._ord = bias + Math.random() * (fresh ? 0.4 : 0.75); // less noise so the novelty signal actually wins
   });
-  state.queue.sort((a, b) => b._ord - a._ord);
-  state.queue = spreadByArtist(state.queue);
+  // queue[0] is already on screen as the blurred peek behind the current card, so it is
+  // pinned: re-ranking it would make that peek show a cover the user never gets served.
+  const head = state.queue.slice(0, 1), tail = state.queue.slice(1);
+  tail.sort((a, b) => b._ord - a._ord);
+  // spreadByArtist keeps relative order, so the pinned head stays first and the rest
+  // still de-clusters against it.
+  state.queue = spreadByArtist(head.concat(tail));
 }
 // Greedy de-cluster: keep the score order, but never let two tracks by the same artist
 // sit back-to-back. This is what stops "the next song is the same musician again".
@@ -1453,6 +1462,36 @@ function spreadByArtist(list) {
   return out;
 }
 
+// A love used to change nothing for the next ~10 cards: the queue was already built and
+// ordered, and only "heard it" re-ranked it. Now the strongest signal a user can give
+// re-ranks immediately AND pulls a song from a neighbour of the artist they just loved,
+// slotted right behind the visible peek card — so the deck answers "more like that"
+// within a swipe or two instead of eventually.
+async function respondToLove(track) {
+  const a = state.artists[track.artistId];
+  orderQueue();                       // their score just jumped to 3 — let that bite now
+  if (!a) return;
+  try {
+    await fetchRelatedInto(a);        // no-op when we already hold their neighbours
+    const cand = (a.related || []).map(id => state.artists[id])
+      .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
+    if (!cand.length) return;
+    const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
+    const picks = pickArtistTracks(await artistTop(T.id, 25, T.name));
+    T.topPulled = true;
+    // Identify the new tracks by diffing, not by index — a background refill() may have
+    // appended to the queue while we were on the network.
+    const seen = new Set(state.queue.map(t => t.id));
+    if (!queueTracks(picks, "Because you love " + a.name, T.nbFan)) return;
+    const fresh = state.queue.filter(t => !seen.has(t.id));
+    const rest = state.queue.filter(t => seen.has(t.id));
+    // queue[0] is already drawn as the blurred peek behind the current card — leave it
+    // alone (yanking it would make the peek lie) and put the answer immediately after.
+    state.queue = rest.slice(0, 1).concat(spreadByArtist(fresh.concat(rest.slice(1))));
+    save();
+  } catch (e) { /* the deck is perfectly fine without the bonus track */ }
+}
+
 /* ---------- Persistence ---------- */
 function save() {
   try {
@@ -1460,6 +1499,7 @@ function save() {
       v: 2,
       artists: state.artists,
       disliked: [...state.disliked],
+      nopes: state.nopes,
       liked: state.liked,
       knownIds: [...state.knownIds].slice(-1200),
       knownKeys: [...state.knownKeys].slice(-1200),
@@ -1489,6 +1529,14 @@ function load() {
     const d = JSON.parse(raw);
     state.artists = d.artists || {};
     state.disliked = new Set(d.disliked || []);
+    state.nopes = d.nopes || {};
+    if (!d.nopes && state.disliked.size) {
+      // Profiles saved before the two-strike rule banned an artist on a single skip.
+      // Those bans were mostly accidental, so convert them to one strike and give the
+      // artist one more song — skip them again and they're out for good.
+      state.disliked.forEach(nm => { state.nopes[nm] = 1; });
+      state.disliked.clear();
+    }
     state.liked = d.liked || [];
     state.liked.forEach(t => { delete t._fresh; }); // preview links go stale between sessions — never trust a saved "fresh" flag
     state.knownIds = new Set(d.knownIds || []);
@@ -2005,6 +2053,7 @@ function decide(kind, kin) {
     scoreBefore: a ? a.score : null,
     originBefore: a ? a.origin : null,
     wasDisliked: state.disliked.has(track.artist),
+    nopesBefore: state.nopes[track.artist] || 0,
     exploreBoostBefore: state.exploreBoost,
   };
   state.seenCount = (state.seenCount || 0) + 1;          // every swipe counts toward the scorecard
@@ -2016,9 +2065,19 @@ function decide(kind, kin) {
     state.familiarity = Math.max(0, (state.familiarity || 0) - 0.1); // found you a keeper at this depth — ease off
     toast("♥ Added to your Finds");
     flyOut("right", kin);
+    respondToLove(track); // background: make the deck answer this love within a card or two
   } else if (kind === "nope") {
-    state.disliked.add(track.artist);
-    if (a) a.score -= 2;
+    // A skip is a verdict on a SONG, not a life sentence for the artist. The track
+    // itself can never come back (knownIds/knownKeys), so the first nope just docks
+    // the artist's score. A second skip of the same artist IS a pattern — ban them.
+    const nm = track.artist;
+    const n = state.nopes[nm] = (state.nopes[nm] || 0) + 1;
+    if (a) a.score -= n >= NOPE_BAN_AT ? 2 : 0.8;
+    if (n >= NOPE_BAN_AT) {
+      state.disliked.add(nm);
+      lastAction.purged = state.queue.filter(t => t.artist === nm); // Undo restores these
+      if (lastAction.purged.length) state.queue = state.queue.filter(t => t.artist !== nm);
+    }
     flyOut("left", kin);
   } else if (kind === "heard") {
     // already knew it → not novel enough; reach further out AND learn to dig deeper
@@ -2076,8 +2135,11 @@ function undoLast() {
     const i = state.liked.findIndex(t => t.id === s.track.id);
     if (i >= 0) state.liked.splice(i, 1);
     updateFinds();
-  } else if (s.kind === "nope" && !s.wasDisliked) {
-    state.disliked.delete(s.track.artist);
+  } else if (s.kind === "nope") {
+    if (!s.wasDisliked) state.disliked.delete(s.track.artist);
+    if (s.nopesBefore) state.nopes[s.track.artist] = s.nopesBefore;
+    else delete state.nopes[s.track.artist];
+    if (s.purged && s.purged.length) state.queue = s.purged.concat(state.queue); // un-ban puts their queued songs back
   }
   // bring the swiped track back as the current card
   if (state.current) state.queue.unshift(state.current);
