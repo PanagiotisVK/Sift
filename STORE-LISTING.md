@@ -98,12 +98,34 @@ the reviewer exactly where the button lives saves a round trip.)*
 
 ## App Privacy questionnaire (the "nutrition label")
 
-Answer "Yes, we collect data":
-- **Contact Info → Email Address** — for App Functionality (account), linked to identity
-- **User Content → Other User Content** (saved songs / taste profile) — App Functionality, linked to identity
-- Everything else: **Not collected** (no tracking, no ads, no location, no analytics SDKs)
+Answer "Yes, we collect data from this app", then tick exactly three boxes:
 
-Data is **not** used for tracking. No third-party advertising.
+- **Contact Info → Email Address** — signup, and Apple's private relay address for
+  Hide My Email users
+- **Identifiers → User ID** — the Supabase account id and the username friends can
+  see. Apple's definition of User ID explicitly covers "screen name, handle,
+  account ID", so this one counts even though it isn't a tracking identifier.
+- **User Content → Other User Content** — saved Finds, taste summary, friend
+  connections, shared decks
+
+Everything else: **Not collected.** No location, contacts, browsing or search
+history, purchases, usage data or diagnostics — there is no analytics SDK and no
+crash reporter in the build.
+
+For all three, the follow-up answers are identical:
+
+- **Purpose: App Functionality** only. Not Product Personalization — the
+  recommendation engine runs on-device from local storage; the cloud copy exists to
+  restore a library and to power friends. Ticking Personalization would overstate
+  what the server does on your public privacy label.
+- **Linked to identity: Yes** — all three hang off an account.
+- **Used for tracking: No.** "Tracking" here means combining data with other
+  companies' data for advertising, or selling to data brokers. Sift does neither.
+
+**Do not declare Name.** Sign in with Apple is called with `scopes: "email name"`,
+but the handler reads only `identityToken` — the name is never stored, so it isn't
+collected. (Worth dropping `name` from the scope string post-launch, since it asks
+for something unused.)
 
 ## Screenshots
 
@@ -206,8 +228,15 @@ App Store Connect asks: *"Does your app contain, show, or access third-party con
 2026 Peter Vlahos
 ```
 
-*(Format is year + the name of the rights holder — your own legal name unless you've
-formed a company. No © symbol, App Store Connect adds it.)*
+*(Format is year + the rights holder. No © symbol, App Store Connect adds it.)*
+
+Use **Peter**, not Panagiotis, even though Panagiotis is the legal name. The rule
+isn't "legal name" — it's "match the rights holder as Apple lists you", and the
+Apple Developer account is registered as Peter Vlahos. That name is also what
+shows publicly as the app's seller, so the two should agree. The legal name is
+already on file where it actually matters — Agreements, Tax and Banking — and a
+display-name mismatch there is normal. If you ever incorporate, this becomes the
+company name.
 
 ## Agreements, Tax and Banking — the one people forget
 
