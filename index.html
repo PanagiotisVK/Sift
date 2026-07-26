@@ -829,7 +829,13 @@ const GENRE_ANCHORS = {
   "Euro Summer": ["Meduza","ANOTR"], "Corridos Tumbados": ["Peso Pluma","Natanael Cano"],
   "Jersey Club": ["DJ Sliink","Cookiee Kawaii"],
   // World / regional scenes — the related-artist graph explores outward in any language.
-  "Greek": ["Konstantinos Argiros","Marina Satti"], "Turkish": ["Tarkan","Sezen Aksu"],
+  // Anchors are chosen for how well-connected they are in the graph, not just for fame:
+  // Marina Satti was an anchor here and has exactly two neighbours (a Moroccan singer
+  // and a German electronic producer), so the Greek chip used to open onto neither.
+  // Dalaras and Alexiou each carry 40+ genuine Greek neighbours.
+  "Greek": ["Giorgos Dalaras","Konstantinos Argiros","Haris Alexiou"],
+  "Rebetiko/Laiko": ["Stelios Kazantzidis","Vasilis Tsitsanis","Giorgos Dalaras"],
+  "Turkish": ["Tarkan","Sezen Aksu"],
   "Arabic": ["Amr Diab","Fairuz"], "Bollywood/Desi": ["Arijit Singh","A.R. Rahman"]
 };
 const GENRES = Object.keys(GENRE_ANCHORS).sort(); // alphabetized for easy scanning
@@ -848,7 +854,8 @@ const GENRE_EMOJI = {
   "Electronic":"🎛️","House":"🏠","Afro House":"🥁","Techno":"🤖","Trance":"💫","EDM":"🎉","Dubstep":"💥","Drum & Bass":"🏃","Ambient":"☁️",
   "Afrobeats":"🌍","Amapiano":"🎹","K-Pop":"💖","J-Pop":"🌸","J-Rock":"⛩️","Latin":"💃","Reggaeton":"🔥","Dancehall":"🇯🇲","Reggae":"🌴","Salsa":"🌶️","Bossa Nova":"🏖️","Flamenco":"🇪🇸",
   "Jazz":"🎷","Blues":"💙","Country":"🤠","Folk":"🪕","Bluegrass":"🌾","Americana":"🇺🇸","Classical":"🎻","Opera":"🎭","Soundtrack":"🎬",
-  "Euro Summer":"☀️","Corridos Tumbados":"🇲🇽","Jersey Club":"🔀"
+  "Euro Summer":"☀️","Corridos Tumbados":"🇲🇽","Jersey Club":"🔀",
+  "Greek":"🇬🇷","Rebetiko/Laiko":"🏛️","Turkish":"🇹🇷","Arabic":"🕌","Bollywood/Desi":"🇮🇳"
 };
 
 const audio = new Audio();
@@ -902,11 +909,15 @@ const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_
 const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const lbArtist = {};   // mbid -> { name, users, appleId }
 const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on repeat lookups)
-try { const c = JSON.parse(localStorage.getItem("sift_lb_cache2") || "{}"); Object.assign(lbArtist, c.a || {}); Object.assign(lbNames, c.n || {}); } catch (_) {}
+// cache3, not cache2: every install built under the old nameKey has `appleId: null`
+// cached against each non-Latin artist and a single garbage lbNames[""] entry shared by
+// all of them. Those would outlive the fix, so the old bucket is abandoned rather than
+// migrated — the cost is one slower first deck.
+try { const c = JSON.parse(localStorage.getItem("sift_lb_cache3") || "{}"); Object.assign(lbArtist, c.a || {}); Object.assign(lbNames, c.n || {}); } catch (_) {}
 let lbSaveT = null;
 function lbCacheSave() {
   clearTimeout(lbSaveT);
-  lbSaveT = setTimeout(() => { try { localStorage.setItem("sift_lb_cache2", JSON.stringify({ a: lbArtist, n: lbNames })); } catch (_) {} }, 1500);
+  lbSaveT = setTimeout(() => { try { localStorage.removeItem("sift_lb_cache2"); localStorage.setItem("sift_lb_cache3", JSON.stringify({ a: lbArtist, n: lbNames })); } catch (_) {} }, 1500);
 }
 // MusicBrainz allows 1 request/second — every MB call goes through this spaced chain.
 let mbChain = Promise.resolve();
@@ -937,13 +948,31 @@ function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
 const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres
 const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative"]);  // umbrella genres half the catalog wears
 const normTag = t => t.toLowerCase().replace(/-/g, " ").trim();
-async function mbTagsFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
+async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
   const need = mbids.filter(id => MBID_RE.test(id) && !(lbArtist[id] && lbArtist[id].tags));
   if (need.length) {
     const d = await mbApi("artist/", { query: "arid:(" + need.join(" OR ") + ")", fmt: "json", limit: 100 });
-    const got = {};
-    ((d && d.artists) || []).forEach(a => { got[a.id] = (a.tags || []).sort((x, y) => y.count - x.count).slice(0, 10).map(t => normTag(t.name)).filter(t => !TAG_SKIP.test(t)); });
-    need.forEach(id => { (lbArtist[id] = lbArtist[id] || {}).tags = got[id] || []; });
+    // A failed call is not the same as "these artists have no tags". Caching [] on a
+    // timeout would permanently disable the genre filter for this whole neighbourhood —
+    // and an unfiltered neighbourhood is precisely how the deck drifts off-genre. Leave
+    // it uncached and let the next refill try again.
+    if (!d) return Object.fromEntries(mbids.map(id => [id, (lbArtist[id] && lbArtist[id].tags) || []]));
+    const got = {}, alias = {}, nm = {};
+    ((d && d.artists) || []).forEach(a => {
+      got[a.id] = (a.tags || []).sort((x, y) => y.count - x.count).slice(0, 10).map(t => normTag(t.name)).filter(t => !TAG_SKIP.test(t));
+      // Aliases ride along in this response for free. appleArtistId needs them to find
+      // non-Latin artists in Apple's catalogue, and taking them here saves it a
+      // rate-limited (1/sec) MusicBrainz call per artist — the difference between a
+      // Greek deck building in a second and building in ten.
+      alias[a.id] = [...new Set((a.aliases || []).map(x => x.name))].filter(hasLatin).slice(0, 3);
+      nm[a.id] = a.name;
+    });
+    need.forEach(id => {
+      const m = lbArtist[id] = lbArtist[id] || {};
+      m.tags = got[id] || [];
+      if (!m.aliases) m.aliases = alias[id] || [];
+      if (!m.name && nm[id]) m.name = nm[id];
+    });
     lbCacheSave();
   }
   const out = {};
@@ -964,24 +993,65 @@ async function lbListeners(mbid) {  // artist listener count — this provider's
   lbCacheSave();
   return m.users;
 }
+// Apple artist-index entries whose name really IS this name. Only a VERIFIED match
+// counts — taking Apple's first result for an unmatched niche artist used to hand back
+// some unrelated famous act, whose hits then leaked into the deck.
+async function appleCandidates(name) {
+  const want = nameKey(name);
+  if (!want) return [];
+  const s = await itunesApi("search", { term: name, entity: "musicArtist", limit: 5 });
+  return ((s && s.results) || []).filter(r => r.artistId != null && nameKey(r.artistName) === want)
+    .map(r => ({ id: r.artistId, name: r.artistName }));
+}
+// How much previewable catalogue an Apple artist entry actually has behind it.
+async function appleDepth(id) {
+  const d = await itunesApi("lookup", { id: id, entity: "song", limit: 25 });
+  return ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.previewUrl).length;
+}
 async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified name match
   if (!MBID_RE.test(mbid || "")) return null;
   const m = lbArtist[mbid] = lbArtist[mbid] || {};
   if (m.appleId !== undefined) return m.appleId;
   if (!m.name) { const d = await mbApi("artist/" + mbid, { fmt: "json" }); m.name = (d && d.name) || null; }
   if (!m.name) { m.appleId = null; return null; }
-  // Only a VERIFIED name match counts — taking Apple's first result for an unmatched
-  // niche artist used to hand back some unrelated famous act, whose hits then leaked
-  // into the deck. Niche artists missing from the artist index are found via their songs.
-  const want = nameKey(m.name);
-  const match = r => sameArtist(r.artistName, want);
-  const s = await itunesApi("search", { term: m.name, entity: "musicArtist", limit: 5 });
-  let hit = ((s && s.results) || []).find(match);
-  if (!hit) {
-    const s2 = await itunesApi("search", { term: m.name, entity: "song", limit: 25 });
-    hit = ((s2 && s2.results) || []).find(match);
+
+  // MusicBrainz stores these artists under their native spelling; Apple files them
+  // under a transliteration. Neither side is wrong and no string rule bridges them, so
+  // for a non-Latin name we also try MusicBrainz's curated aliases — that's what turns
+  // Γιώργος Νταλάρας into "George Dalaras" and finds his 25 previewable tracks.
+  const names = [m.name];
+  if (!hasLatin(m.name)) {
+    if (!m.aliases) {   // normally already filled, free, by the batched mbMetaFor lookup
+      const d = await mbApi("artist/" + mbid, { fmt: "json", inc: "aliases" });
+      m.aliases = [...new Set(((d && d.aliases) || []).map(a => a.name))].filter(hasLatin).slice(0, 3);
+      lbCacheSave();
+    }
+    names.push(...m.aliases);
   }
-  m.appleId = (hit && hit.artistId) || null;
+
+  const cands = [], seen = new Set();
+  for (const n of names) {
+    for (const c of await appleCandidates(n)) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
+  }
+
+  let appleId = cands.length ? cands[0].id : null;
+  if (cands.length > 1) {
+    // Apple keeps several entries for one artist and they differ wildly: "George
+    // Dalaras" carries 25 previewable tracks, "Γιώργος Νταλάρας" carries 1. Land on the
+    // stub and the deck gets a single song from an artist that then looks exhausted.
+    const depth = await Promise.all(cands.map(c => appleDepth(c.id)));
+    let best = 0;
+    depth.forEach((n, i) => { if (n > depth[best]) best = i; });
+    appleId = cands[best].id;
+  }
+  if (!appleId) {   // niche acts missing from the artist index are reachable via their songs
+    for (const n of names) {
+      const s = await itunesApi("search", { term: n, entity: "song", limit: 25 });
+      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, nameKey(n)));
+      if (hit) { appleId = hit.artistId; break; }
+    }
+  }
+  m.appleId = appleId || null;
   lbCacheSave();
   return m.appleId;
 }
@@ -1009,13 +1079,29 @@ const AppleLBProvider = {
   async searchArtist(name) {
     let mbid = lbNames[nameKey(name)], aName = null;
     if (!mbid) {
+      const want = nameKey(name);
+      // Aliases count as an exact match: someone typing "Haris Alexiou" means Χάρις
+      // Αλεξίου. Matching on the primary name alone left non-Latin artists to luck —
+      // whether MusicBrainz happened to rank the right one first.
+      const matches = l => l.filter(x => nameKey(x.name) === want ||
+        (x.aliases || []).some(al => nameKey(al.name) === want));
       let d = await mbApi("artist/", { query: 'artist:"' + name + '"', fmt: "json", limit: 5 });
       let list = (d && d.artists) || [];
-      if (!list.length) { d = await mbApi("artist/", { query: name, fmt: "json", limit: 5 }); list = (d && d.artists) || []; }
-      const want = nameKey(name);
+      let exact = matches(list);
+      // The quoted query returning SOMETHING is not the same as it returning the right
+      // person. "Fairuz" yields five Malaysian singers before it yields فيروز, and
+      // "Hikaru Utada" yields an entity literally named "[Hikaru Utada's son]" — both
+      // non-empty, so the old gate (`if (!list.length)`) skipped the retry and the app
+      // seeded the wrong artist. Retry whenever nothing matched by name or alias.
+      if (!exact.length) {
+        const d2 = await mbApi("artist/", { query: name, fmt: "json", limit: 8 });
+        const l2 = (d2 && d2.artists) || [];
+        const e2 = matches(l2);
+        if (e2.length) { list = l2; exact = e2; }
+        else if (!list.length) list = l2;
+      }
       // MB ranks by text relevance, not fame — with several same-named artists
       // ("Rema", "BTS"…), let real listener counts pick the one people mean.
-      const exact = list.filter(x => nameKey(x.name) === want);
       let a = exact[0] || list[0];
       if (exact.length > 1) {
         const counts = await Promise.all(exact.map(x => lbListeners(x.id)));
@@ -1097,14 +1183,25 @@ const AppleLBProvider = {
     // Burna Boy's "similar" list; (2) similarity-weighted sampling from the survivors
     // instead of always taking the top of a ranked list, so neighborhoods vary.
     const cand = all.slice(0, 60);
-    const tags = await mbTagsFor([id].concat(cand.map(r => r.artist_mbid)));
-    let pool = cand.filter(r => tagsCompatible(tags[id], tags[r.artist_mbid])).slice(0, 40);
+    const tags = await mbMetaFor([id].concat(cand.map(r => r.artist_mbid)));
+    const compat = cand.filter(r => tagsCompatible(tags[id], tags[r.artist_mbid]));
+    // Untagged neighbours clear the kinship filter on benefit of the doubt rather than
+    // on evidence. That rule protects genuinely niche artists, who often carry no
+    // MusicBrainz tags — but where the source IS well tagged and verifiable kin are
+    // plentiful, an untagged neighbour is far likelier to be graph noise than a hidden
+    // gem: Καζαντζίδης's list came back seeded with Baltimore club producers. So they
+    // become a reserve for thin neighbourhoods instead of peers in rich ones.
+    const tagged = compat.filter(r => (tags[r.artist_mbid] || []).length);
+    let pool = ((tags[id] || []).length && tagged.length >= 6 ? tagged : compat).slice(0, 40);
     if (pool.length < 3) pool = cand.slice(0, 10);  // thin or untagged graph: better off-genre than starved
     const picked = [];
+    // In the thin case untagged artists are still in the pool; keep them reachable but
+    // not dominant.
+    const wt = r => (r.score || 1) * ((tags[r.artist_mbid] || []).length ? 1 : 0.35);
     while (picked.length < 8 && pool.length) {
-      let x = Math.random() * pool.reduce((s, r) => s + (r.score || 1), 0);
+      let x = Math.random() * pool.reduce((s, r) => s + wt(r), 0);
       let idx = pool.length - 1;
-      for (let i = 0; i < pool.length; i++) { x -= (pool[i].score || 1); if (x <= 0) { idx = i; break; } }
+      for (let i = 0; i < pool.length; i++) { x -= wt(pool[i]); if (x <= 0) { idx = i; break; } }
       picked.push(pool.splice(idx, 1)[0]);
     }
     return Promise.all(picked.map(async r => {
@@ -1228,7 +1325,16 @@ function itunes(term) {
     document.body.appendChild(script);
   });
 }
-const nameKey = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Fold a credit down to a comparable key. Two jobs: strip accents so "Stélios" and
+// "Stelios" agree, and keep letters from EVERY script. The old [^a-z0-9] filter reduced
+// "Χάρις Αλεξίου" to the empty string — which matched nothing (sameArtist bails on an
+// empty key), collided with every other non-Latin name in the caches, and quietly cost
+// us the entire Greek, Japanese, Korean, Arabic and Cyrillic catalogue.
+const nameKey = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+// Does this name contain Latin letters at all? Decides whether we need to go looking
+// for a transliteration — Apple files Γιώργος Νταλάρας under "George Dalaras".
+const hasLatin = s => /[a-z]/.test((s || "").normalize("NFKD").toLowerCase());
 // Apple credits a collaboration as ONE string ("A feat. B", "A & B", "A x B"), so a
 // raw substring test both surfaces collaborators as if they were the artist you asked
 // for and lets short names match longer unrelated ones ("Sia" inside "Siames").
@@ -1354,8 +1460,14 @@ async function refill() {
       let targets = [], reasonOverride = null;
 
       if (explore && S.related && S.related.length) {
-        // reach 2 hops out for genuine novelty
-        const rid = S.related[Math.floor(Math.random() * S.related.length)];
+        // reach 2 hops out for genuine novelty — but pick the bridge deliberately.
+        // Two hops is where a deck slips its genre: an untagged artist passes the
+        // kinship filter unverified, and expanding from THAT one lands somewhere
+        // unrelated entirely (a rebetiko seed reaching U2 and the Rolling Stones via an
+        // untagged club producer). Cross on an artist whose genre we can actually check.
+        const verified = S.related.filter(id => ((lbArtist[id] && lbArtist[id].tags) || []).length);
+        const bridge = verified.length ? verified : S.related;
+        const rid = bridge[Math.floor(Math.random() * bridge.length)];
         const RA = state.artists[rid];
         if (RA) { await fetchRelatedInto(RA);
           targets = (RA.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 3);
@@ -1366,7 +1478,16 @@ async function refill() {
         targets = (S.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 3);
       }
 
-      if (!targets.length) { S.exhausted = true; continue; }
+      // A dead end in the graph shouldn't erase the artist you actually asked for.
+      // ListenBrainz simply has no neighbours for plenty of niche acts (Βασίλης
+      // Τσιτσάνης returns zero), and marking the source exhausted meant its own songs
+      // never got pulled either — so a deck seeded entirely from artists like that came
+      // back empty. Fall back to the source's own catalogue before writing it off.
+      if (!targets.length) {
+        if (S.topPulled) { S.exhausted = true; continue; }
+        targets = [S];
+        reasonOverride = (S.genreName && S.origin === "seed") ? "Exploring " + S.genreName : "More from " + S.name;
+      }
 
       for (const T of targets) {
         const pool = await artistTop(T.id, 25);   // pull deep, then reach past the hits
