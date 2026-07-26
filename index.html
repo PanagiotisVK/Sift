@@ -811,11 +811,20 @@ const GENRE_ANCHORS = {
   "Post-Punk": ["Joy Division","Interpol"], "Post-Rock": ["Explosions in the Sky","Mogwai"],
   "Shoegaze": ["Slowdive","My Bloody Valentine"], "Psychedelic": ["King Gizzard & The Lizard Wizard","Pink Floyd"],
   "Math Rock": ["American Football","tricot"],
-  "Electronic": ["ODESZA","Flume"], "House": ["Disclosure","Fisher"], "Afro House": ["Black Coffee","Keinemusik"],
+  "Electronic": ["ODESZA","Flume"], "House": ["Disclosure","Fisher"],
+  // &ME is a Keinemusik member and, unlike the group, has a real neighbourhood (29) —
+  // Keinemusik stays for its own catalogue but can't expand the deck on its own.
+  "Afro House": ["Black Coffee","&ME","Keinemusik"],
   "Techno": ["Charlotte de Witte","Boris Brejcha"], "Trance": ["Armin van Buuren","Above & Beyond"],
   "EDM": ["Martin Garrix","Zedd"], "Dubstep": ["Skrillex","Excision"],
   "Drum & Bass": ["Sub Focus","Netsky"], "Ambient": ["Brian Eno","Tycho"],
-  "Afrobeats": ["Burna Boy","Wizkid"], "Amapiano": ["Kabza De Small","Tyler ICU"],
+  "Afrobeats": ["Burna Boy","Wizkid"],
+  // Amapiano is the one genre no anchor can expand: ListenBrainz has no co-listening
+  // data for the scene at all — nine of its biggest names all return zero neighbours.
+  // Nothing to swap in, so breadth has to come from the anchor list itself. Each of
+  // these resolves exactly and has 25 previewable tracks, which the graph-dead-end
+  // fallback now serves instead of writing the artist off.
+  "Amapiano": ["Kabza De Small","Tyler ICU","DJ Maphorisa","Uncle Waffles","Musa Keys","Young Stunna"],
   "K-Pop": ["BTS","NewJeans"], "J-Pop": ["YOASOBI","Kenshi Yonezu"],
   "J-Rock": ["ONE OK ROCK","RADWIMPS"], "Latin": ["Bad Bunny","Rosalía"],
   "Reggaeton": ["Daddy Yankee","J Balvin"], "Dancehall": ["Sean Paul","Popcaan"],
@@ -826,7 +835,12 @@ const GENRE_ANCHORS = {
   "Bluegrass": ["Billy Strings","Alison Krauss"], "Americana": ["Jason Isbell","The Lumineers"],
   "Classical": ["Ludovico Einaudi","Max Richter"], "Opera": ["Luciano Pavarotti","Andrea Bocelli"],
   "Soundtrack": ["Hans Zimmer","John Williams"],
-  "Euro Summer": ["Meduza","ANOTR"], "Corridos Tumbados": ["Peso Pluma","Natanael Cano"],
+  // Second anchor in each pair replaces one with an empty neighbourhood (ANOTR, Peso
+  // Pluma); both are kept on the end for their own catalogues. Fuerza Regida's
+  // neighbours are genuinely corridos — El Fantasma, Grupo Codiciado, El De La
+  // Guitarra — where Natanael Cano's drift straight to Bad Bunny and Travis Scott.
+  "Euro Summer": ["Meduza","Purple Disco Machine","ANOTR"],
+  "Corridos Tumbados": ["Natanael Cano","Fuerza Regida","Peso Pluma"],
   "Jersey Club": ["DJ Sliink","Cookiee Kawaii"],
   // World / regional scenes — the related-artist graph explores outward in any language.
   // Anchors are chosen for how well-connected they are in the graph, not just for fame:
@@ -834,7 +848,10 @@ const GENRE_ANCHORS = {
   // and a German electronic producer), so the Greek chip used to open onto neither.
   // Dalaras and Alexiou each carry 40+ genuine Greek neighbours.
   "Greek": ["Giorgos Dalaras","Konstantinos Argiros","Haris Alexiou"],
-  "Rebetiko/Laiko": ["Stelios Kazantzidis","Vasilis Tsitsanis","Giorgos Dalaras"],
+  // "Vassilis" with two s's — that's MusicBrainz's alias and Apple's spelling, so it
+  // matches exactly. The single-s spelling resolved only because MB happened to rank
+  // him first, which is luck rather than a check.
+  "Rebetiko/Laiko": ["Stelios Kazantzidis","Vassilis Tsitsanis","Giorgos Dalaras"],
   "Turkish": ["Tarkan","Sezen Aksu"],
   "Arabic": ["Amr Diab","Fairuz"], "Bollywood/Desi": ["Arijit Singh","A.R. Rahman"]
 };
