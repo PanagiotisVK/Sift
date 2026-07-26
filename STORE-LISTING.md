@@ -221,10 +221,15 @@ need them.
 
 ## Reminder before submitting for App Store review (not TestFlight)
 
-- **Submit build 5 or later.** Build 4 and earlier predate the Sign in with Apple
-  entitlement and would be rejected under Guideline 4.8. Build 5 is verified working
-  from a release (TestFlight) build, not just a debug run — the entitlement rides on
-  the provisioning profile, so those are genuinely different tests.
+- **Submit build 6 or later.** Two separate reasons, both hard blockers:
+  - Build 4 and earlier predate the Sign in with Apple entitlement and would be
+    rejected under Guideline 4.8. Build 5 is verified working from a release
+    (TestFlight) build, not just a debug run — the entitlement rides on the
+    provisioning profile, so those are genuinely different tests.
+  - Build 5 predates the non-Latin discovery fix (commit fb84fba), which means it
+    returns an empty or off-genre deck for Greek, Japanese, Korean, Arabic and
+    Cyrillic artists. Capacitor bundles the web assets into the binary, so this
+    needs a fresh archive — pushing to GitHub Pages does not reach the app.
 - Check the demo account below still logs in before submitting. Email confirmation is
   now switched on in Supabase, so a reviewer typing it must land in a confirmed
   account — an unconfirmed one would look broken to them.
