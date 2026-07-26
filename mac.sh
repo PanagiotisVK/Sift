@@ -52,7 +52,11 @@ echo "6/6  Pushing…"
 # building the app depends on — and if git asks for a GitHub username here it will
 # sit and block forever. GIT_TERMINAL_PROMPT=0 makes it fail fast instead, and the
 # script carries on to Xcode either way.
-if GIT_TERMINAL_PROMPT=0 git push 2>/dev/null; then
+# GIT_TERMINAL_PROMPT=0 alone wasn't enough: it stops git's own prompt but not the
+# macOS keychain credential helper, which asked for a username anyway and blocked the
+# script. `-c credential.helper=` empties the helper list for this one command, so
+# there is nothing left that can prompt and it just fails fast.
+if GIT_TERMINAL_PROMPT=0 git -c credential.helper= push 2>/dev/null; then
   echo "     pushed"
 else
   echo "     couldn't push (GitHub login needed) — carrying on, this doesn't affect the build."
