@@ -22,7 +22,11 @@ fi
 
 echo ""
 echo "2/6  Pulling the latest app code…"
-git pull --no-rebase
+# --no-edit matters as much as --no-rebase. When the Mac has a local commit Xcode made
+# and GitHub has newer ones, the merge is fine — but git stops to open vim asking for a
+# commit message it has already written itself. That drops you into an editor with no
+# obvious way out, mid-script. Take the default message and keep going.
+git pull --no-rebase --no-edit
 
 echo ""
 echo "3/6  Installing dependencies…"
