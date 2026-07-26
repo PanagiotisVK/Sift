@@ -44,7 +44,16 @@ npm run sync
 
 echo ""
 echo "6/6  Pushing…"
-git push
+# Deliberately not fatal. Pushing is a backup of what Xcode changed, not something
+# building the app depends on — and if git asks for a GitHub username here it will
+# sit and block forever. GIT_TERMINAL_PROMPT=0 makes it fail fast instead, and the
+# script carries on to Xcode either way.
+if GIT_TERMINAL_PROMPT=0 git push 2>/dev/null; then
+  echo "     pushed"
+else
+  echo "     couldn't push (GitHub login needed) — carrying on, this doesn't affect the build."
+  echo "     To fix it once and for all, run:  gh auth login"
+fi
 
 echo ""
 echo "Done. Opening Xcode."

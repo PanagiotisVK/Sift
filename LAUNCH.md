@@ -4,11 +4,20 @@ Everything between here and "live on the App Store". Do the parts in order; each
 one says whether it's a browser job or a Mac job. Anything in a box is meant to
 be copied, not retyped.
 
-**Where the code stands:** Sign in with Apple, the Apple-only music engine and
-the privacy-policy update are already written and pushed. Build 3 was archived
-*before* them, so it does **not** contain Sign in with Apple — the build you
-submit to the App Store will be **build 4**. Build 3 is still useful: put it in
-front of your friends on TestFlight while you work through this list.
+**Where the code stands** *(updated 2026-07-26)*: Parts 1–4 are done and verified.
+Sign in with Apple works from a real TestFlight build, the demo account logs in,
+and the screenshots are final.
+
+**One new blocker since then.** Testing the beta with a friend who's into old
+Greek folk turned up a real engine bug: any artist whose name isn't in the Latin
+alphabet — Greek, Japanese, Korean, Arabic, Cyrillic — resolved correctly and
+then contributed **zero songs**, so those decks came back empty or drifted
+wildly off-genre. Fixed and pushed (commit `fb84fba`), verified end to end.
+
+Because Capacitor bundles the web assets into the binary, **the fix is not in
+build 5** — pushing to GitHub Pages updates the website but never reaches the
+app. So the build you submit is **build 6**. Everything in Parts 1–4 stays done;
+you only need to re-run the archive (Part 5) with the new code.
 
 ---
 
@@ -154,14 +163,15 @@ ever charge. Doesn't block submission; just don't forget it.
 
 | # | Thing | Where | Done? |
 |---|-------|-------|-------|
-| 1 | Supabase: Apple provider on | browser | ☐ |
-| 2 | Supabase: email confirmation on | browser | ☐ |
-| 3 | Xcode: Sign in with Apple capability | Mac | ☐ |
-| 4 | Test sign-in on device | Mac | ☐ |
-| 5 | Archive + upload build 4 | Mac | ☐ |
-| 6 | Store listing + App Privacy + submit | browser | ☐ |
-| 7 | Trademark check | browser | ☐ |
-| 8 | Small Business Program | browser | ☐ |
+| 1 | Supabase: Apple provider on | browser | ☑ |
+| 2 | Supabase: email confirmation on | browser | ☑ |
+| 3 | Xcode: Sign in with Apple capability | Mac | ☑ |
+| 4 | Test sign-in on device | Mac | ☑ (build 5, TestFlight) |
+| 5 | Archive + upload **build 6** (has the non-Latin fix) | Mac | ☐ |
+| 6 | Agreements, Tax and Banking shows **Active** | browser | ☐ |
+| 7 | Store listing + Age Rating + App Privacy + submit | browser | ☐ |
+| 8 | Trademark check | browser | ☐ |
+| 9 | Small Business Program | browser | ☐ |
 
 Already done in code: Sign in with Apple, account deletion, password reset,
 Apple-only music engine (Deezer removed for licensing), privacy policy.
