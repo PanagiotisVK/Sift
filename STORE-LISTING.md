@@ -198,19 +198,75 @@ Sift plays 30-second previews from the general music catalog, so some of them wi
 contain explicit lyrics. Answer honestly rather than optimistically — a reviewer who
 finds swearing in an app rated 4+ treats it as a misrepresentation.
 
-Recommended answers:
+**These are the answers actually submitted for 1.0 on 2026-07-26, which produced
+13+.** The 2025 redesign splits the old single questions into seven steps with
+None / Infrequent / Frequent per row.
 
-- **Profanity or Crude Humor:** *Infrequent/Mild* — catalog previews can contain
-  explicit lyrics. (This is what lands the app at **12+**, in line with other music
-  apps.)
-- **Violence, Sexual Content, Nudity, Horror, Alcohol/Tobacco/Drugs, Gambling,
-  Contests, Medical/Treatment Info, Simulated Gambling:** *None*
-- **Unrestricted Web Access:** **No.** Sift opens external links in the system
-  browser or the streaming app; it has no built-in browser.
-- **User Generated Content:** **No.** Friends share songs from a fixed catalog —
-  there is no free-text posting, no comments, no uploads.
+The rule that resolves every row: **Sift depicts nothing.** It shows album artwork
+from Apple's curated store and plays 30-second audio. So rows about *references and
+themes* get **Infrequent**; rows about *graphic or explicit depictions* get
+**None**. The one exception is the weapons row, which explicitly counts references.
 
-Expected result: **12+**.
+- **Profanity or Crude Humor:** *Infrequent* — catalog previews contain explicit
+  lyrics. On its own this only produced **9+**, which is why the rows below matter.
+- **Mature or Suggestive Themes:** *Infrequent* — lyrics reference mature topics
+  constantly.
+- **Sexual Content or Nudity:** *Infrequent* — non-explicit lyrical content plus the
+  occasional suggestive album cover. This is what Apple Music declares.
+- **Graphic Sexual Content and Nudity:** *None* — there are no depictions of sexual
+  activity anywhere in the app.
+- **Alcohol, Tobacco, or Drug Use or References:** *Infrequent* — lyrics, constantly.
+- **Guns or Other Weapons:** *Infrequent* — this row counts "references to", and
+  rap, drill, metal and rock lyrics reference weapons. Declaring drug references but
+  not weapon references would be inconsistent.
+- **Cartoon/Fantasy Violence, Realistic Violence, Prolonged Graphic or Sadistic
+  Violence:** *None* — all three are about depicting physical conflict.
+- **Horror/Fear Themes, Medical/Treatment Information, Gambling, Contests:** *None*
+
+Don't stop at "Infrequent profanity and nothing else" — that describes a podcast
+app, not a general music catalog, and it under-rates at 9+.
+
+**Step 7 — Additional Information:** leave **Not Applicable** selected. Never pick
+*Made for Kids*: the Kids Category forbids external links without a parental gate,
+and Sift links out to Spotify and Apple Music, so it would be rejected outright.
+Leave the Age Suitability URL blank. Only use *Override to Higher Age Rating* if the
+calculated number looks too low for what the app actually plays.
+
+**Expected side effect:** App Store Connect will warn that a 13+ app can't be sold
+in **Afghanistan** under local content law. That's normal for this band and affects
+a negligible market. Do not soften the content answers to recover it.
+### In-App Controls — both **NO**
+
+- **Parental Controls** ("settings or tools that allow parents/guardians to monitor,
+  manage or restrict a child's access") — Sift has none.
+- **Age Assurance** ("mechanism to confirm an individual's age") — Sift never asks
+  anyone's age.
+
+Only ever answer Yes here if the safeguard genuinely exists in the build. Claiming
+a protection you don't have is a misrepresentation, and worse than a high rating.
+
+### Capabilities — every row **NO**
+
+- **Unrestricted Web Access** — Sift opens external links in Safari or the streaming
+  app; it has no built-in browser.
+- **User-Generated Content** ("broad distribution of content created by users") —
+  users don't create content. They save catalog songs. No posts, comments, uploads
+  or bios.
+- **Social Media** — the definition is narrow: *"redistribution, amplification, or
+  interaction with user-generated content through a social feed or similar discovery
+  method that visibly spreads content to many users."* Sift has no feed, nothing
+  amplifies, and a deck goes to one mutually-added friend. Not social media, despite
+  having a friends graph.
+- **Social Media Disabled for Users Under 13** — answering Yes asserts that you call
+  Apple's **Declared Age Range API** before enabling social features. Sift doesn't
+  call it and has no social capabilities to gate, so Yes would be false.
+- **Messaging and Chat** — users cannot author a message. Sending a deck transmits a
+  fixed list of catalog songs; there is no text field anywhere in the flow. That's
+  sharing, not communication.
+- **Advertising** — no ads, and the description and privacy policy both promise none.
+
+Expected result: **13+** (Apple replaced the old 12+ band with 13+ in the 2025
+questionnaire redesign). The rating comes entirely from the profanity answer.
 
 ## Content Rights
 
