@@ -322,6 +322,21 @@
   .find .svc a.yt { background: #ff0000; }
   .find .svc button.sh { background: #333a48; }   /* share — neutral ink, not a brand */
   .find .svc a:active, .find .svc button:active { filter: brightness(.85); }
+  /* Deck picker — Finds rows shrunk to selection size; the tick carries the state */
+  .deck-title-in { width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--card); color: var(--text); font-size: 14px; outline: none; }
+  .deck-title-in::placeholder { color: var(--faint); }
+  .deck-picks { overflow-y: auto; max-height: 42vh; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+  .dp-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--card); margin-bottom: 8px; cursor: pointer; }
+  .dp-row img { width: 44px; height: 44px; border-radius: var(--r-sm); object-fit: cover; flex-shrink: 0; }
+  .dp-meta { flex: 1; min-width: 0; }
+  .dp-n { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dp-a { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dp-tick { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--glass-brd); display: grid; place-items: center; color: transparent; font-size: 14px; font-weight: 700; flex-shrink: 0; transition: background .12s, color .12s, border-color .12s; }
+  .dp-row.on { border-color: rgba(255,255,255,.35); }
+  .dp-row.on .dp-tick { background: var(--love); border-color: var(--love); color: #111; }
+  .deck-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 12px; }
+  .deck-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .deck-foot .btn-mini[disabled] { opacity: .45; pointer-events: none; }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .find button.mini.rm { background: transparent; color: var(--faint); }
@@ -696,8 +711,8 @@
         <div id="friendsList"></div>
 
         <div class="acct-title" style="margin-top:18px;">Send a deck</div>
-        <div class="acct-sub">Bundle your latest Finds into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
-        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Create a deck from my Finds</button>
+        <div class="acct-sub">Pick Finds to bundle into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
+        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Pick songs for a deck</button>
         <div class="acct-msg" id="deckMsg"></div>
         <div id="myDecks"></div>
       </div>
@@ -869,6 +884,20 @@
     </div>
   </div>
 
+  <!-- Deck picker — choose exactly which Finds ride in a shared deck -->
+  <div class="gsheet-ov" id="deckSheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
+      <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
+      <div class="deck-picks" id="deckPicks"></div>
+      <div class="deck-foot">
+        <span class="deck-count" id="deckCount">0/12</span>
+        <button class="btn-mini" id="btnDeckSend">Create &amp; share</button>
+      </div>
+    </div>
+  </div>
+
   <!-- First-card coach — shown once, over the very first song -->
   <div class="coach-ov" id="coachOv" style="display:none;">
     <div class="coach">
@@ -932,6 +961,7 @@ const state = {
   lastDailyDone: "",    // date the daily 20 was last finished ("YYYY-MM-DD")
   seedLabels: [],       // for display
   tagProfile: null,     // tag -> weight: what this deck is ABOUT (see "Deck coherence profile")
+  eraProfile: null,     // decade -> weight: which eras your loves cluster in
   haptics: 2,           // 2 = Full, 1 = Light (verdicts only), 0 = Off
 };
 
@@ -1201,6 +1231,10 @@ let jsonpId = 0;
    artwork, store links and genre all come from Apple's keyless iTunes API in one
    lookup per artist. This is the engine. */
 const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
+// Song-level co-listening — same session data, but between RECORDINGS. Loving one
+// moody album cut and loving the radio hit are different signals; this is the dataset
+// that can tell them apart.
+const LB_REC_ALG = "session_based_days_7500_session_300_contribution_5_threshold_15_limit_50_skip_30";
 const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const lbArtist = {};   // mbid -> { name, users, appleId }
 const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on repeat lookups)
@@ -1209,6 +1243,24 @@ const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on
 // all of them. Those would outlive the fix, so the old bucket is abandoned rather than
 // migrated — the cost is one slower first deck.
 try { const c = JSON.parse(localStorage.getItem("sift_lb_cache3") || "{}"); Object.assign(lbArtist, c.a || {}); Object.assign(lbNames, c.n || {}); } catch (_) {}
+// Installs that hit an iTunes rate-limit burst have appleId:null cached for perfectly
+// findable artists (a failed search used to look identical to "no match on Apple"),
+// which starved their decks for good. Those verdicts can't be trusted — drop them
+// once; from here on null is only ever cached after a search that actually completed.
+try {
+  if (!localStorage.getItem("sift_apfix1")) {
+    Object.values(lbArtist).forEach(m => { if (m && m.appleId === null) delete m.appleId; });
+    localStorage.setItem("sift_apfix1", "1");
+  }
+  // Second sweep: apple ids resolved under the punctuation-blind matcher may belong to
+  // a SAME-KEYED different artist (KNGZ's mbid was wearing KNG-Z's apple id). Drop them
+  // all once — baked anchors refill instantly below, the rest re-resolve on demand
+  // under the tiered matcher.
+  if (!localStorage.getItem("sift_apfix2")) {
+    Object.values(lbArtist).forEach(m => { if (m && m.appleId !== undefined) delete m.appleId; });
+    localStorage.setItem("sift_apfix2", "1");
+  }
+} catch (_) {}
 let lbSaveT = null;
 function lbCacheSave() {
   clearTimeout(lbSaveT);
@@ -1224,16 +1276,23 @@ function mbApi(path, params) {
   return p;
 }
 function lbApi(url) { return fetch(url).then(r => r.ok ? r.json() : null).catch(() => null); }
+// One failed iTunes call (rate limit, offline) almost always means the NEXT twenty
+// fail too — and a burst of failures used to cascade into "no Apple id" verdicts all
+// over the graph. Pause all iTunes traffic briefly instead; callers see null (the
+// same signal as a single failure) and already know not to treat it as an answer.
+let itunesBackoffUntil = 0;
 function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
   return new Promise((resolve) => {
+    if (Date.now() < itunesBackoffUntil) return resolve(null);
     const cb = "sonar_ap_" + (jsonpId++);
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 9000);
+    const timeout = setTimeout(fail, 9000);
     function cleanup() { clearTimeout(timeout); delete window[cb]; if (script.parentNode) script.parentNode.removeChild(script); }
-    window[cb] = (data) => { cleanup(); resolve(data); };
+    function fail() { itunesBackoffUntil = Date.now() + 12000; cleanup(); resolve(null); }
+    window[cb] = (data) => { itunesBackoffUntil = 0; cleanup(); resolve(data); };
     const qs = Object.entries(params || {}).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
     const script = document.createElement("script");
     script.src = "https://itunes.apple.com/" + path + "?" + qs + "&callback=" + cb;
-    script.onerror = () => { cleanup(); resolve(null); };
+    script.onerror = fail;
     document.body.appendChild(script);
   });
 }
@@ -1293,6 +1352,27 @@ function tagsCompatible(src, cand) {
    Every graph decision multiplies by affinity to THIS, so hop N is judged
    against the deck — not against hop N-1. */
 function tagsOf(id) { return (lbArtist[id] && lbArtist[id].tags) || []; }
+// Era affinity — the decade a song came out is a taste signal genre tags can't carry
+// (loving 80s synth-pop ≠ loving its 2020s revivalists). iTunes sends every track's
+// release date anyway; loves teach the deck WHICH decades feel like home.
+function bumpEra(year, delta) {
+  if (!year || year < 1900) return;
+  const p = state.eraProfile = state.eraProfile || {};
+  const d = Math.floor(year / 10) * 10;
+  const w = Math.max(-3, Math.min(10, (p[d] || 0) + delta));
+  if (w === 0) delete p[d]; else p[d] = w;
+}
+function eraMult(year) {
+  const p = state.eraProfile;
+  if (!p || !year || year < 1900) return 1;
+  let total = 0;
+  for (const k in p) if (p[k] > 0) total += p[k];
+  if (total < 3) return 1;   // a decade needs a few loves before it means anything
+  const d = Math.floor(year / 10) * 10;
+  // Neighbouring decades get half credit — a love for 1989 says something about 1991.
+  const eff = (p[d] || 0) + 0.5 * ((p[d - 10] || 0) + (p[d + 10] || 0));
+  return Math.max(0.8, Math.min(1.25, 1 + eff * 0.05));
+}
 function bumpProfile(tags, delta) {
   if (!tags || !tags.length) return;
   const p = state.tagProfile = state.tagProfile || {};
@@ -1371,7 +1451,8 @@ async function appleCandidates(name) {
   const want = nameKey(name);
   if (!want) return [];
   const s = await itunesApi("search", { term: name, entity: "musicArtist", limit: 5 });
-  return ((s && s.results) || []).filter(r => r.artistId != null && nameKey(r.artistName) === want)
+  if (!s) return null;   // the call failed — that's "couldn't look", NOT "no match"
+  return (s.results || []).filter(r => r.artistId != null && nameKey(r.artistName) === want)
     .map(r => ({ id: r.artistId, name: r.artistName }));
 }
 // How much previewable catalogue an Apple artist entry actually has behind it.
@@ -1401,8 +1482,18 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
   }
 
   const cands = [], seen = new Set();
+  let blind = false;   // a lookup that never completed leaves "no match" unproven
   for (const n of names) {
-    for (const c of await appleCandidates(n)) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
+    const cs = await appleCandidates(n);
+    if (cs === null) { blind = true; continue; }
+    for (const c of cs) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
+  }
+  // Tiered matching: when any candidate matches with punctuation intact, drop the
+  // loose-only ones BEFORE the depth tie-break — or "KNG-Z"'s bigger catalogue beats
+  // the "KNGZ" the user actually asked for.
+  for (const n of names) {
+    const strict = cands.filter(c => nameKeyStrict(c.name) === nameKeyStrict(n));
+    if (strict.length) { cands.length = 0; cands.push(...strict); break; }
   }
 
   let appleId = cands.length ? cands[0].id : null;
@@ -1418,10 +1509,17 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
   if (!appleId) {   // niche acts missing from the artist index are reachable via their songs
     for (const n of names) {
       const s = await itunesApi("search", { term: n, entity: "song", limit: 25 });
-      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, nameKey(n)));
+      if (!s) { blind = true; continue; }
+      const list = s.results || [];
+      const hit = list.find(r => nameKeyStrict(r.artistName) === nameKeyStrict(n)) ||
+                  list.find(r => sameArtist(r.artistName, nameKey(n)));
       if (hit) { appleId = hit.artistId; break; }
     }
   }
+  // Cache null ONLY when every search actually ran and came back empty. Caching a
+  // rate-limited failure as "this artist isn't on Apple Music" is what starved whole
+  // decks: one bad minute of network wrote off good artists forever (localStorage).
+  if (!appleId && blind) return null;
   m.appleId = appleId || null;
   lbCacheSave();
   return m.appleId;
@@ -1443,12 +1541,21 @@ const AppleLBProvider = {
     return {
       id: r.trackId, title: r.trackName, preview: r.previewUrl, link: r.trackViewUrl,
       rank: Math.max(1, Math.round(base * Math.max(0.25, 1 - i * 0.05))),
+      year: r.releaseDate ? +String(r.releaseDate).slice(0, 4) || 0 : 0,
       artist: { id: artistId != null ? artistId : "ap-" + r.artistId, name: r.artistName },
       album: { id: r.collectionId, cover_big: art.replace("100x100bb", "600x600bb"), cover_medium: art },
     };
   },
   async searchArtist(name) {
     let mbid = lbNames[nameKey(name)], aName = null;
+    // The cache keys on the LOOSE name, so "KNG-Z" and "KNGZ" share one slot. Bypass it
+    // only for true stylization twins — same loose key, different punctuation — and
+    // search fresh. Transliteration slots (typed "George Dalaras" → cached "Γιώργος
+    // Νταλάρας") have DIFFERENT loose keys for their names, so the bake stays fast.
+    if (mbid && lbArtist[mbid] && lbArtist[mbid].name) {
+      const cn = lbArtist[mbid].name;
+      if (nameKey(cn) === nameKey(name) && nameKeyStrict(cn) !== nameKeyStrict(name)) mbid = null;
+    }
     if (!mbid) {
       const want = nameKey(name);
       // Aliases count as an exact match: someone typing "Haris Alexiou" means Χάρις
@@ -1459,6 +1566,14 @@ const AppleLBProvider = {
       let d = await mbApi("artist/", { query: 'artist:"' + name + '"', fmt: "json", limit: 5 });
       let list = (d && d.artists) || [];
       let exact = matches(list);
+      // Same tier rule as the Apple side: strict beats loose within the exact set.
+      const tier = l => {
+        const sw = nameKeyStrict(name);
+        const st = l.filter(x => nameKeyStrict(x.name) === sw ||
+          (x.aliases || []).some(al => nameKeyStrict(al.name) === sw));
+        return st.length ? st : l;
+      };
+      exact = tier(exact);
       // The quoted query returning SOMETHING is not the same as it returning the right
       // person. "Fairuz" yields five Malaysian singers before it yields فيروز, and
       // "Hikaru Utada" yields an entity literally named "[Hikaru Utada's son]" — both
@@ -1468,7 +1583,7 @@ const AppleLBProvider = {
         const d2 = await mbApi("artist/", { query: name, fmt: "json", limit: 8 });
         const l2 = (d2 && d2.artists) || [];
         const e2 = matches(l2);
-        if (e2.length) { list = l2; exact = e2; }
+        if (e2.length) { list = l2; exact = tier(e2); }
         else if (!list.length) list = l2;
       }
       // MB ranks by text relevance, not fame — with several same-named artists
@@ -1513,10 +1628,12 @@ const AppleLBProvider = {
     }
     const seen = {}, out = [];
     for (const a of ((ar && ar.results) || [])) {
-      const k = nameKey(a.artistName);
+      // Dedupe on the STRICT key: "KNGZ" and "KNG-Z" are different artists and both
+      // deserve a suggestion row — collapsing them hid whichever Apple ranked lower.
+      const k = nameKeyStrict(a.artistName);
       if (!k || seen[k]) continue;
       seen[k] = 1;
-      out.push({ id: a.artistId, name: a.artistName, pic: picById[a.artistId] || picByName[k] || "" });
+      out.push({ id: a.artistId, name: a.artistName, pic: picById[a.artistId] || picByName[nameKey(a.artistName)] || "" });
       if (out.length >= 5) break;
     }
     if (out.length) {
@@ -1537,7 +1654,7 @@ const AppleLBProvider = {
     }
     // Niche acts missing from the artist index: fall back to their songs' primary credit.
     for (const r of ((sg && sg.results) || [])) {
-      const name = primaryArtist(r.artistName), k = nameKey(name);
+      const name = primaryArtist(r.artistName), k = nameKeyStrict(name);
       if (!k || seen[k]) continue;
       seen[k] = 1;
       out.push({ name: name, pic: (r.artworkUrl100 || "").replace("100x100bb", "250x250bb") });
@@ -1607,17 +1724,22 @@ const AppleLBProvider = {
     let appleId = ap ? ap[1] : (mbid ? await appleArtistId(mbid) : null);
     if (!appleId && nameHint) {   // last resort: find them through their songs
       const s = await itunesApi("search", { term: nameHint, entity: "song", limit: 10 });
-      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, want));
+      const list = ((s && s.results) || []);
+      const hit = list.find(r => nameKeyStrict(r.artistName) === nameKeyStrict(nameHint)) ||
+                  list.find(r => sameArtist(r.artistName, want));
       appleId = (hit && hit.artistId) || null;
     }
     return { mbid, appleId };
   },
   async artistTop(id, limit, nameHint) {
     const { mbid, appleId } = await this._artistIds(id, nameHint);
-    if (!appleId) return [];
+    // null = "couldn't reach the catalogue right now" (rate limit, offline); [] = a
+    // real answer. Callers must not write an artist off over a null.
+    if (!appleId) return (mbid && lbArtist[mbid] && lbArtist[mbid].appleId === undefined) ? null : [];
     const users = mbid ? await lbListeners(mbid) : 0;
     const d = await itunesApi("lookup", { id: appleId, entity: "song", limit: Math.min(200, limit || 6) });
-    const songs = ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
+    if (!d) return null;   // a failed lookup is not an empty catalogue
+    const songs = (d.results || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
     const base = Math.max(0.02, Math.min(1, users / this.fanNorm)) * 1000000;
     // Tag tracks with the MBID when we have one, so anything saved from here on
     // carries a first-class id instead of the legacy one that sent us down this path.
@@ -1708,6 +1830,12 @@ function itunes(term) {
 // us the entire Greek, Japanese, Korean, Arabic and Cyrillic catalogue.
 const nameKey = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
   .toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+// The stricter tier: case- and diacritic-insensitive but punctuation PRESERVED.
+// nameKey alone equates "KNGZ" with "KNG-Z" — two different artists wearing the same
+// loose key. Matchers prefer a strict hit and fall back to loose, because catalogues
+// do genuinely disagree on punctuation for the same artist ("Guns N' Roses").
+const nameKeyStrict = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/\s+/g, " ").trim();
 // Does this name contain Latin letters at all? Decides whether we need to go looking
 // for a transliteration — Apple files Γιώργος Νταλάρας under "George Dalaras".
 const hasLatin = s => /[a-z]/.test((s || "").normalize("NFKD").toLowerCase());
@@ -1733,7 +1861,10 @@ async function appleTrackUrl(t) {
   const want = nameKey(t.artist);
   if (!want) return "";
   const res = await itunes(t.artist + " " + t.title);
-  for (const r of (res && res.results) || []) {
+  const list = (res && res.results) || [];
+  const strict = list.find(r => r.trackViewUrl && nameKeyStrict(r.artistName) === nameKeyStrict(t.artist));
+  if (strict) return strict.trackViewUrl;
+  for (const r of list) {
     if (r.trackViewUrl && sameArtist(r.artistName, want)) return r.trackViewUrl;   // handles collabs: "Fred again.. & Delilah Montagu"
   }
   return "";
@@ -1775,7 +1906,7 @@ function ensureArtist(id, name, score, meta) {
 /* ---------- Track normalization ---------- */
 function normalize(t, reason) {
   const cover = t.album && (t.album.cover_big || t.album.cover_medium || t.album.cover);
-  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, rank: t.rank || 0, albumId: t.album && t.album.id, reason };
+  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, rank: t.rank || 0, year: t.year || 0, albumId: t.album && t.album.id, reason };
 }
 function queueTracks(list, reason, srcFan) {
   let n = 0;
@@ -1934,6 +2065,7 @@ async function refill() {
 
       for (const T of targets) {
         const pool = await artistTop(T.id, 25);   // pull deep, then reach past the hits
+        if (!pool) continue;   // catalogue unreachable right now — leave T for a later pass
         const tracks = pickArtistTracks(pool);
         T.topPulled = true;
         let reason = reasonOverride;
@@ -1967,6 +2099,9 @@ function orderQueue() {
     // The dial sets HOW MUCH this matters: Cozy reads as "stay in my lane", which
     // used to only mean "reach fewer hops" — it now also means "stay on-genre".
     bias += (profileMult(tagsOf(t.artistId)) - 1) * [0.95, 0.45, 0.2][adv];
+    // Decades you love float too — a gentler pull than genre (eraMult is 0.8..1.25
+    // and silent until a few loves agree on a decade).
+    bias += (eraMult(t.year) - 1) * 0.5;
     if (fresh) {
       // Fresh Finds: champion smaller artists — favour low fan-count + low track rank.
       const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / (PROVIDER.fanNorm || 800000));
@@ -2003,22 +2138,88 @@ function spreadByArtist(list) {
 // re-ranks immediately AND pulls a song from a neighbour of the artist they just loved,
 // slotted right behind the visible peek card — so the deck answers "more like that"
 // within a swipe or two instead of eventually.
+// ---- Song-level similarity (ListenBrainz similar-recordings) ----
+// The artist graph answers "who else is like this musician". This answers the sharper
+// question: "what songs do people play in the same session as THIS song". Loving one
+// moody album cut and loving the radio hit are different signals — the recording
+// dataset is the only one that can tell them apart.
+async function similarSongsFor(track) {
+  const title = (track.title || "").replace(/"/g, "");
+  if (!title) return [];
+  // A song lives under several recording MBIDs (album, single, remaster) and only the
+  // canonical one carries similarity data — so gather candidates and probe them ALL in
+  // one labs call; the results tell us which reference hit.
+  const who = MBID_RE.test(track.artistId || "") ? "arid:" + track.artistId
+            : 'artist:"' + (track.artist || "").replace(/"/g, "") + '"';
+  const d = await mbApi("recording/", { query: 'recording:"' + title + '" AND ' + who, fmt: "json", limit: 8 });
+  const ids = ((d && d.recordings) || []).map(r => r.id).filter(id => MBID_RE.test(id));
+  if (!ids.length) return [];
+  const sim = await lbApi("https://labs.api.listenbrainz.org/similar-recordings/json?" +
+    ids.map(id => "recording_mbids=" + id).join("&") + "&algorithm=" + LB_REC_ALG);
+  return Array.isArray(sim) ? sim : [];
+}
+// Turn similar-recording rows into playable cards: LB's own metadata→Apple mapper
+// finds the track ids (no iTunes SEARCH, so no rate-limit exposure), then ONE batched
+// iTunes lookup fetches previews and artwork for all of them together.
+async function resolveSimilarToTracks(rows, lovedArtist, wantN) {
+  const seenArtist = new Set([nameKey(lovedArtist)]);   // variety: new artists only
+  const apIds = [], byId = {};
+  let scanned = 0;
+  for (const c of rows) {
+    if (apIds.length >= wantN + 2 || ++scanned > 10) break;
+    const nm = c.artist_credit_name || "", ak = nameKey(nm);
+    if (!nm || seenArtist.has(ak) || state.disliked.has(nm)) continue;
+    if (state.knownKeys.has(((c.recording_name || "") + "|" + nm).toLowerCase())) continue;
+    const m = await lbApi("https://labs.api.listenbrainz.org/apple-music-id-from-metadata/json?artist_name=" +
+      encodeURIComponent(nm) + "&track_name=" + encodeURIComponent(c.recording_name || "") + "&release_name=");
+    const id = m && m[0] && (m[0].apple_music_track_ids || [])[0];
+    if (!id) continue;
+    seenArtist.add(ak);
+    apIds.push(id);
+    byId[String(id)] = c;
+  }
+  if (!apIds.length) return [];
+  const d = await itunesApi("lookup", { id: apIds.join(",") });
+  if (!d) return [];
+  const out = [];
+  for (const r of (d.results || [])) {
+    if (out.length >= wantN) break;
+    if (r.wrapperType !== "track" || !r.previewUrl) continue;
+    const c = byId[String(r.trackId)] || {};
+    out.push(AppleLBProvider._track(r, (c.artist_credit_mbids || [])[0] || null, 400000, 0));
+  }
+  return out;
+}
 async function respondToLove(track) {
   const a = state.artists[track.artistId];
   orderQueue();                       // their score just jumped to 3 — let that bite now
-  if (!a) return;
   try {
-    await fetchRelatedInto(a);        // no-op when we already hold their neighbours
-    const cand = (a.related || []).map(id => state.artists[id])
-      .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
-    if (!cand.length) return;
-    const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
-    const picks = pickArtistTracks(await artistTop(T.id, 25, T.name));
-    T.topPulled = true;
+    let picks = [], reason = null, srcFan = null;
+    // First choice: neighbours of the SONG itself.
+    const sim = await similarSongsFor(track);
+    if (sim.length) {
+      picks = await resolveSimilarToTracks(sim, track.artist, 2);
+      reason = "Because you loved “" + track.title + "”";
+    }
+    if (!picks.length) {
+      // Fallback: the artist graph — thin recording coverage, niche scenes, offline.
+      if (!a) return;
+      await fetchRelatedInto(a);        // no-op when we already hold their neighbours
+      const cand = (a.related || []).map(id => state.artists[id])
+        .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
+      if (!cand.length) return;
+      const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
+      const pool = await artistTop(T.id, 25, T.name);
+      if (!pool) return;   // catalogue unreachable — don't write T off as pulled
+      picks = pickArtistTracks(pool);
+      T.topPulled = true;
+      reason = "Because you love " + a.name;
+      srcFan = T.nbFan;
+    }
     // Identify the new tracks by diffing, not by index — a background refill() may have
     // appended to the queue while we were on the network.
     const seen = new Set(state.queue.map(t => t.id));
-    if (!queueTracks(picks, "Because you love " + a.name, T.nbFan)) return;
+    if (!queueTracks(picks, reason, srcFan)) return;
     const fresh = state.queue.filter(t => !seen.has(t.id));
     const rest = state.queue.filter(t => seen.has(t.id));
     // queue[0] is already drawn as the blurred peek behind the current card — leave it
@@ -2041,6 +2242,7 @@ function save() {
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
       tagProfile: state.tagProfile,
+      eraProfile: state.eraProfile,
       haptics: state.haptics,
       adventure: state.adventure,
       familiarity: state.familiarity,
@@ -2066,6 +2268,9 @@ function load() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     state.artists = d.artists || {};
+    // "exhausted" means "found no new targets last time I looked" — a session judgment,
+    // and one a rate-limited session records falsely. Never let it outlive the session.
+    Object.values(state.artists).forEach(a => { if (a && a.exhausted) a.exhausted = false; });
     state.disliked = new Set(d.disliked || []);
     state.nopes = d.nopes || {};
     if (!d.nopes && state.disliked.size) {
@@ -2081,6 +2286,7 @@ function load() {
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
     state.tagProfile = d.tagProfile || null;
+    state.eraProfile = d.eraProfile || null;
     if (typeof d.haptics === "number") state.haptics = d.haptics;
     if (typeof d.adventure === "number") state.adventure = d.adventure;
     if (typeof d.familiarity === "number") state.familiarity = d.familiarity;
@@ -2342,7 +2548,9 @@ startBtn.onclick = async () => {
     if (!arts.length) continue;
     const a = arts[Math.floor(Math.random() * arts.length)];
     try {
-      queueTracks(pickArtistTracks(await artistTop(a.id, 25, a.name)), "Exploring " + g, a.nbFan);
+      const pool = await artistTop(a.id, 25, a.name);
+      if (!pool) continue;   // unreachable ≠ pulled — refill will get their catalogue later
+      queueTracks(pickArtistTracks(pool), "Exploring " + g, a.nbFan);
       a.topPulled = true;   // or the first refill re-pulls the exact catalogue we just took
     } catch (_) {}
   }
@@ -2476,9 +2684,23 @@ function rgbToHsl(r, g, b) {
 }
 function hsl(h, s, l) { return "hsl(" + Math.round(h * 360) + "," + Math.round(s * 100) + "%," + Math.round(l * 100) + "%)"; }
 function tintFromCover(url) { /* Ink theme keeps fixed monochrome accents — no per-cover tinting */ }
+// An empty deck is almost never a finished graph — it's a jammed pipe (iTunes rate
+// limit, a network blip). The old dead-end message stranded users permanently over a
+// bad minute of network. Now: retry, and each failed round reopens more of the graph
+// ("exhausted" and even "topPulled" are session judgments, not facts — knownIds still
+// dedupes, so re-pulling a catalogue can only surface songs the user hasn't seen).
+let emptyRetries = 0;
 function renderEmpty() {
   deck.innerHTML = '<div class="empty"><div style="font-size:40px">🎧</div><div>Digging deeper for you…</div></div>';
-  refill().then(() => { if (state.queue.length) next(); else deck.innerHTML = '<div class="empty"><div style="font-size:40px">🌌</div><div>Wow, you\'ve explored a lot! Try loving a few more to open new paths.</div></div>'; });
+  refill().then(() => {
+    if (state.queue.length) { emptyRetries = 0; next(); return; }
+    emptyRetries++;
+    if (emptyRetries >= 2) Object.values(state.artists).forEach(a => { a.exhausted = false; });
+    if (emptyRetries >= 3) Object.values(state.artists).forEach(a => { a.topPulled = false; });
+    deck.innerHTML = '<div class="empty" id="deckRetry"><div style="font-size:40px">🎧</div><div>Restocking the crates…</div><div style="opacity:.65;font-size:13px;margin-top:8px">Retrying in a moment — or tap to dig now.</div></div>';
+    document.getElementById("deckRetry").onclick = () => renderEmpty();
+    setTimeout(() => { if (document.getElementById("deckRetry") && !state.queue.length) renderEmpty(); }, 9000);
+  });
 }
 function esc(s) { return (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
@@ -2746,6 +2968,7 @@ function decide(kind, kin) {
   if (kind === "love") {
     ensureArtist(track.artistId, track.artist, 3, { origin: "loved" });
     bumpProfile(tagsOf(track.artistId), 1);   // a love teaches the deck what it's about
+    bumpEra(track.year, 1);                   // …including which decade feels like home
     state.liked.push(track); updateFinds();
     state.familiarity = Math.max(0, (state.familiarity || 0) - 0.1); // found you a keeper at this depth — ease off
     toast("♥ Added to your Finds");
@@ -2761,6 +2984,7 @@ function decide(kind, kin) {
     if (n >= NOPE_BAN_AT) {
       state.disliked.add(nm);
       bumpProfile(tagsOf(track.artistId), -1);   // two skips: this flavor isn't landing
+      bumpEra(track.year, -1);
       // (Undo restores the artist but not this nudge — it's gentle, clamped, and a
       // deliberate two-skip signal is usually meant even when one swipe gets undone.)
       lastAction.purged = state.queue.filter(t => t.artist === nm); // Undo restores these
@@ -3076,6 +3300,8 @@ function whyHtml(t) {
   let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
   if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
   rows.push(row("The cut", cut + "."));
+  // 3½ — era, only when it actually influenced the pick
+  if (t.year && eraMult(t.year) > 1.05) rows.push(row("The era", "From the " + (Math.floor(t.year / 10) * 10) + "s — a decade your loves keep landing in."));
   // 4 — the dials you set
   rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
   return rows.join("");
@@ -4015,21 +4241,61 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
    ============================================================ */
 let dmQueue = [], dmLoved = [], dmDeckMeta = null, dmCurrent = null, dmIndex = 0, dmTotal = 0, dmSender = "A friend";
 
-// --- Sender: create + share + see results ---
-async function createDeckFromFinds() {
-  if (!SB || !me_profile) return;
-  const picks = [...state.liked].reverse().slice(0, 12); // latest up to 12
-  if (picks.length < 3) { acctMsg("deckMsg", "Love at least 3 songs first — then you can send them! 🎧", "err"); return; }
+// --- Sender: pick songs, create + share + see results ---
+// The deck used to auto-grab the latest 12 Finds; now a picker sheet lets you choose.
+// The latest 12 come pre-ticked, so the old one-tap behavior is still two taps away.
+let deckSel = null;   // Set of track ids currently ticked in the picker
+function openDeckSheet() {
+  if (!SB || !me_profile) { acctMsg("deckMsg", "Log in above first — decks need somewhere to live.", "err"); return; }
+  if (!state.liked.length) { acctMsg("deckMsg", "Love at least 3 songs first — then you can send them! 🎧", "err"); return; }
+  deckSel = new Set([...state.liked].reverse().slice(0, 12).map(t => t.id));
+  document.getElementById("deckTitle").value = "";
+  renderDeckPicks();
+  document.getElementById("deckSheet").style.display = "flex";
+}
+function closeDeckSheet() { document.getElementById("deckSheet").style.display = "none"; }
+function renderDeckPicks() {
+  const wrap = document.getElementById("deckPicks");
+  wrap.innerHTML = "";
+  [...state.liked].reverse().forEach(t => {   // newest first, same order as Finds
+    const row = document.createElement("div");
+    row.className = "dp-row" + (deckSel.has(t.id) ? " on" : "");
+    row.innerHTML = '<img src="' + esc(t.cover || "") + '" alt="" loading="lazy" /><div class="dp-meta"><div class="dp-n">' + esc(t.title) + '</div><div class="dp-a">' + esc(t.artist) + '</div></div><div class="dp-tick">✓</div>';
+    row.onclick = () => {
+      if (deckSel.has(t.id)) deckSel.delete(t.id);
+      else if (deckSel.size >= 12) { toast("A deck holds 12 songs, tops — untick one first."); return; }
+      else deckSel.add(t.id);
+      row.classList.toggle("on", deckSel.has(t.id));
+      updateDeckCount();
+    };
+    wrap.appendChild(row);
+  });
+  updateDeckCount();
+}
+function updateDeckCount() {
+  document.getElementById("deckCount").textContent = deckSel.size + "/12 picked" + (deckSel.size < 3 ? " · need 3+" : "");
+  document.getElementById("btnDeckSend").disabled = deckSel.size < 3;
+}
+async function createDeckFromPicks() {
+  if (!SB || !me_profile || !deckSel) return;
+  const picks = [...state.liked].reverse().filter(t => deckSel.has(t.id)).slice(0, 12);
+  if (picks.length < 3) return;
+  const title = (document.getElementById("deckTitle").value || "").trim() || (me_profile.username + "'s picks");
   const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
+  closeDeckSheet();
   acctMsg("deckMsg", "Creating your deck…");
   try {
-    const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title: me_profile.username + "'s picks", tracks }).select().single();
+    const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title, tracks }).select().single();
     if (error) { acctMsg("deckMsg", error.message, "err"); return; }
     acctMsg("deckMsg", "Deck ready! Sharing link… 🚀", "ok");
     shareDeck(WEB_URL + "?deck=" + data.id, tracks.length);
     renderMyDecks();
   } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); }
 }
+document.getElementById("deckSheetX").onclick = closeDeckSheet;
+document.getElementById("deckSheet").onclick = e => { if (e.target.id === "deckSheet") closeDeckSheet(); };
+document.getElementById("btnDeckSend").onclick = createDeckFromPicks;
+attachSheetDrag("deckSheet", closeDeckSheet);
 async function shareDeck(link, n) {
   const text = "I made you a deck of " + n + " songs on Sift 🎧 — swipe through and tell me which you love:";
   try {
@@ -4280,7 +4546,7 @@ audio.addEventListener("timeupdate", () => { const p = document.getElementById("
 audio.addEventListener("playing", () => { const h = document.getElementById("dmHint"); if (h) h.style.display = "none"; });
 audio.addEventListener("pause", () => { const h = document.getElementById("dmHint"); if (h) h.style.display = ""; });
 (function initDeckUI() {
-  const b = document.getElementById("btnCreateDeck"); if (b) b.onclick = createDeckFromFinds;
+  const b = document.getElementById("btnCreateDeck"); if (b) b.onclick = openDeckSheet;
   const st = document.getElementById("dmStart"); if (st) st.onclick = dmStartSwiping;
   const l = document.getElementById("dmLove"); if (l) l.onclick = () => dmDecide("love");
   const nn = document.getElementById("dmNope"); if (nn) nn.onclick = () => dmDecide("nope");
