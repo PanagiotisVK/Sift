@@ -1223,6 +1223,14 @@ try {
     Object.values(lbArtist).forEach(m => { if (m && m.appleId === null) delete m.appleId; });
     localStorage.setItem("sift_apfix1", "1");
   }
+  // Second sweep: apple ids resolved under the punctuation-blind matcher may belong to
+  // a SAME-KEYED different artist (KNGZ's mbid was wearing KNG-Z's apple id). Drop them
+  // all once — baked anchors refill instantly below, the rest re-resolve on demand
+  // under the tiered matcher.
+  if (!localStorage.getItem("sift_apfix2")) {
+    Object.values(lbArtist).forEach(m => { if (m && m.appleId !== undefined) delete m.appleId; });
+    localStorage.setItem("sift_apfix2", "1");
+  }
 } catch (_) {}
 let lbSaveT = null;
 function lbCacheSave() {
@@ -1451,6 +1459,13 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
     if (cs === null) { blind = true; continue; }
     for (const c of cs) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
   }
+  // Tiered matching: when any candidate matches with punctuation intact, drop the
+  // loose-only ones BEFORE the depth tie-break — or "KNG-Z"'s bigger catalogue beats
+  // the "KNGZ" the user actually asked for.
+  for (const n of names) {
+    const strict = cands.filter(c => nameKeyStrict(c.name) === nameKeyStrict(n));
+    if (strict.length) { cands.length = 0; cands.push(...strict); break; }
+  }
 
   let appleId = cands.length ? cands[0].id : null;
   if (cands.length > 1) {
@@ -1466,7 +1481,9 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
     for (const n of names) {
       const s = await itunesApi("search", { term: n, entity: "song", limit: 25 });
       if (!s) { blind = true; continue; }
-      const hit = (s.results || []).find(r => sameArtist(r.artistName, nameKey(n)));
+      const list = s.results || [];
+      const hit = list.find(r => nameKeyStrict(r.artistName) === nameKeyStrict(n)) ||
+                  list.find(r => sameArtist(r.artistName, nameKey(n)));
       if (hit) { appleId = hit.artistId; break; }
     }
   }
@@ -1512,6 +1529,14 @@ const AppleLBProvider = {
       let d = await mbApi("artist/", { query: 'artist:"' + name + '"', fmt: "json", limit: 5 });
       let list = (d && d.artists) || [];
       let exact = matches(list);
+      // Same tier rule as the Apple side: strict beats loose within the exact set.
+      const tier = l => {
+        const sw = nameKeyStrict(name);
+        const st = l.filter(x => nameKeyStrict(x.name) === sw ||
+          (x.aliases || []).some(al => nameKeyStrict(al.name) === sw));
+        return st.length ? st : l;
+      };
+      exact = tier(exact);
       // The quoted query returning SOMETHING is not the same as it returning the right
       // person. "Fairuz" yields five Malaysian singers before it yields فيروز, and
       // "Hikaru Utada" yields an entity literally named "[Hikaru Utada's son]" — both
@@ -1521,7 +1546,7 @@ const AppleLBProvider = {
         const d2 = await mbApi("artist/", { query: name, fmt: "json", limit: 8 });
         const l2 = (d2 && d2.artists) || [];
         const e2 = matches(l2);
-        if (e2.length) { list = l2; exact = e2; }
+        if (e2.length) { list = l2; exact = tier(e2); }
         else if (!list.length) list = l2;
       }
       // MB ranks by text relevance, not fame — with several same-named artists
@@ -1566,10 +1591,12 @@ const AppleLBProvider = {
     }
     const seen = {}, out = [];
     for (const a of ((ar && ar.results) || [])) {
-      const k = nameKey(a.artistName);
+      // Dedupe on the STRICT key: "KNGZ" and "KNG-Z" are different artists and both
+      // deserve a suggestion row — collapsing them hid whichever Apple ranked lower.
+      const k = nameKeyStrict(a.artistName);
       if (!k || seen[k]) continue;
       seen[k] = 1;
-      out.push({ id: a.artistId, name: a.artistName, pic: picById[a.artistId] || picByName[k] || "" });
+      out.push({ id: a.artistId, name: a.artistName, pic: picById[a.artistId] || picByName[nameKey(a.artistName)] || "" });
       if (out.length >= 5) break;
     }
     if (out.length) {
@@ -1590,7 +1617,7 @@ const AppleLBProvider = {
     }
     // Niche acts missing from the artist index: fall back to their songs' primary credit.
     for (const r of ((sg && sg.results) || [])) {
-      const name = primaryArtist(r.artistName), k = nameKey(name);
+      const name = primaryArtist(r.artistName), k = nameKeyStrict(name);
       if (!k || seen[k]) continue;
       seen[k] = 1;
       out.push({ name: name, pic: (r.artworkUrl100 || "").replace("100x100bb", "250x250bb") });
@@ -1660,7 +1687,9 @@ const AppleLBProvider = {
     let appleId = ap ? ap[1] : (mbid ? await appleArtistId(mbid) : null);
     if (!appleId && nameHint) {   // last resort: find them through their songs
       const s = await itunesApi("search", { term: nameHint, entity: "song", limit: 10 });
-      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, want));
+      const list = ((s && s.results) || []);
+      const hit = list.find(r => nameKeyStrict(r.artistName) === nameKeyStrict(nameHint)) ||
+                  list.find(r => sameArtist(r.artistName, want));
       appleId = (hit && hit.artistId) || null;
     }
     return { mbid, appleId };
@@ -1764,6 +1793,12 @@ function itunes(term) {
 // us the entire Greek, Japanese, Korean, Arabic and Cyrillic catalogue.
 const nameKey = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
   .toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+// The stricter tier: case- and diacritic-insensitive but punctuation PRESERVED.
+// nameKey alone equates "KNGZ" with "KNG-Z" — two different artists wearing the same
+// loose key. Matchers prefer a strict hit and fall back to loose, because catalogues
+// do genuinely disagree on punctuation for the same artist ("Guns N' Roses").
+const nameKeyStrict = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/\s+/g, " ").trim();
 // Does this name contain Latin letters at all? Decides whether we need to go looking
 // for a transliteration — Apple files Γιώργος Νταλάρας under "George Dalaras".
 const hasLatin = s => /[a-z]/.test((s || "").normalize("NFKD").toLowerCase());
@@ -1789,7 +1824,10 @@ async function appleTrackUrl(t) {
   const want = nameKey(t.artist);
   if (!want) return "";
   const res = await itunes(t.artist + " " + t.title);
-  for (const r of (res && res.results) || []) {
+  const list = (res && res.results) || [];
+  const strict = list.find(r => r.trackViewUrl && nameKeyStrict(r.artistName) === nameKeyStrict(t.artist));
+  if (strict) return strict.trackViewUrl;
+  for (const r of list) {
     if (r.trackViewUrl && sameArtist(r.artistName, want)) return r.trackViewUrl;   // handles collabs: "Fred again.. & Delilah Montagu"
   }
   return "";
