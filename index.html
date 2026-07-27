@@ -1027,20 +1027,24 @@ const GENRES = Object.keys(GENRE_ANCHORS).sort(); // alphabetized for easy scann
 // order of the strip. Anything not listed lands in "More", so adding a genre to
 // GENRE_ANCHORS without touching this is a cosmetic mistake, never a broken chip.
 const GENRE_FAMILIES = {
+  // A genre may appear in more than one family, and several genuinely should: City Pop
+  // is Japanese AND pop, Oriental House is Anatolian AND house, Jazz Rap is both words
+  // in its name. Filing each in one place would hide it from half the people looking.
+  // (★ Popular has always double-listed this way, so the rendering handles it.)
   "★ Popular": [],   // filled from POPULAR_GENRES below — the default view
   "Pop": ["Pop", "Dream Pop", "Bedroom Pop", "Hyperpop", "Synthwave", "Synthpop", "City Pop"],
-  "Hip-Hop": ["Hip-Hop/Rap", "Trap", "Drill", "Grime", "Phonk", "Lo-Fi", "Boom Bap", "Cloud Rap", "Jazz Rap", "West Coast", "UK Rap", "Afroswing", "Memphis Rap"],
+  "Hip-Hop": ["Hip-Hop/Rap", "Trap", "Drill", "Grime", "Phonk", "Lo-Fi", "Boom Bap", "Cloud Rap", "Jazz Rap", "Trip-Hop", "West Coast", "UK Rap", "Afroswing", "Memphis Rap"],
   "R&B & Soul": ["R&B/Soul", "Neo-Soul", "Alt R&B", "Classic Soul", "Motown", "Funk", "Disco", "Gospel"],
-  "Rock": ["Rock", "Indie", "Alternative", "Indie Rock", "Classic Rock", "Hard Rock", "Punk", "Pop Punk", "Grunge", "Emo", "Post-Punk", "Post-Rock", "Shoegaze", "Psychedelic", "Prog Rock", "Math Rock", "Garage Rock", "Britpop", "Surf Rock"],
+  "Rock": ["Rock", "Indie", "Alternative", "Indie Rock", "Classic Rock", "Hard Rock", "Punk", "Pop Punk", "Grunge", "Emo", "Post-Punk", "Post-Rock", "Shoegaze", "Psychedelic", "Prog Rock", "Math Rock", "Garage Rock", "Britpop", "Surf Rock", "J-Rock", "Turkish Rock"],
   "Metal": ["Metal", "Metalcore", "Thrash Metal", "Death Metal", "Black Metal", "Doom Metal", "Nu Metal", "Djent", "Power Metal"],
-  "House": ["House", "Deep House", "Tech House", "Melodic House", "Progressive House", "Afro House", "Organic House", "French House", "Disco House", "Soulful House", "Bass House", "Oriental House", "UK Garage"],
+  "House": ["House", "Deep House", "Tech House", "Melodic House", "Progressive House", "Afro House", "Organic House", "French House", "Disco House", "Soulful House", "Bass House", "Oriental House", "UK Garage", "Amapiano"],
   "Techno": ["Techno", "Melodic Techno", "Minimal Techno", "Hard Techno", "Detroit Techno", "Industrial Techno"],
-  "Electronic": ["Electronic", "EDM", "Trance", "Psytrance", "Dubstep", "Drum & Bass", "Jungle", "Breakbeat", "Hardstyle", "Future Bass", "IDM", "Ambient", "Downtempo", "Trip-Hop", "Electro Swing"],
-  "Afro & Caribbean": ["Afrobeats", "Amapiano", "Gqom", "Highlife", "Ethio-Jazz", "Reggae", "Dancehall", "Dub", "Soca"],
+  "Electronic": ["Electronic", "EDM", "Trance", "Psytrance", "Dubstep", "Drum & Bass", "Jungle", "Breakbeat", "Hardstyle", "Future Bass", "IDM", "Ambient", "Downtempo", "Trip-Hop", "Electro Swing", "Synthwave", "Lo-Fi", "UK Garage", "Nu Jazz", "Dub"],
+  "Afro & Caribbean": ["Afrobeats", "Amapiano", "Gqom", "Highlife", "Ethio-Jazz", "Afro House", "Afroswing", "Reggae", "Dancehall", "Dub", "Soca"],
   "Latin": ["Latin", "Reggaeton", "Latin Trap", "Corridos Tumbados", "Mariachi", "Salsa", "Bachata", "Merengue", "Cumbia", "Tango", "Samba", "MPB", "Bossa Nova", "Flamenco"],
-  "Asia": ["K-Pop", "K-R&B", "K-Hip-Hop", "J-Pop", "J-Rock", "Mandopop", "Cantopop", "Bollywood/Desi", "Punjabi"],
-  "Mediterranean": ["Greek", "Rebetiko/Laiko", "Turkish", "Turkish Rock", "Balkan", "Arabic", "Raï", "Persian", "Mizrahi"],
-  "Jazz & Blues": ["Jazz", "Nu Jazz", "Jazz Fusion", "Bebop", "Swing", "Soul Jazz", "Smooth Jazz", "Blues"],
+  "Asia": ["K-Pop", "K-R&B", "K-Hip-Hop", "J-Pop", "J-Rock", "City Pop", "Mandopop", "Cantopop", "Bollywood/Desi", "Punjabi"],
+  "Mediterranean": ["Greek", "Rebetiko/Laiko", "Turkish", "Turkish Rock", "Balkan", "Arabic", "Raï", "Persian", "Mizrahi", "Flamenco", "Oriental House"],
+  "Jazz & Blues": ["Jazz", "Nu Jazz", "Jazz Fusion", "Bebop", "Swing", "Soul Jazz", "Smooth Jazz", "Jazz Rap", "Ethio-Jazz", "Blues"],
   "Country & Folk": ["Country", "Outlaw Country", "Americana", "Bluegrass", "Folk", "Indie Folk", "Singer-Songwriter", "Celtic"],
   "Classical": ["Classical", "Neoclassical", "Solo Piano", "Baroque", "Romantic", "Minimalism", "Opera", "Soundtrack", "Video Game"],
   "Vibes": ["Euro Summer", "Jersey Club"],
@@ -2032,7 +2036,8 @@ GENRES.forEach(g => {
    Derived once at boot. A genre added to GENRE_ANCHORS but forgotten in
    GENRE_FAMILIES still shows up (under "More") rather than silently vanishing,
    and a family naming a genre that doesn't exist is dropped so the counts on the
-   strip never lie. */
+   strip never lie. FAMILY_OF answers "is this filed anywhere at all" — genres are
+   deliberately allowed in several families, so it holds one of them, not the one. */
 GENRE_FAMILIES["★ Popular"] = GENRES.filter(g => POPULAR_GENRES.has(g));
 const FAMILY_OF = {};
 Object.keys(GENRE_FAMILIES).forEach(f => {
