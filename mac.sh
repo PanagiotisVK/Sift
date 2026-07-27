@@ -33,13 +33,19 @@ echo "3/6  Installing dependencies…"
 npm install
 
 echo ""
-echo "4/6  Checking the Apple sign-in plugin is present…"
+echo "4/6  Checking the native plugins are present…"
 if [ -d node_modules/@capacitor-community/apple-sign-in ]; then
   echo "     OK — @capacitor-community/apple-sign-in is installed"
 else
   echo "     MISSING. Sign in with Apple cannot work in this build."
   echo "     Tell Claude that step 4 failed."
   exit 1
+fi
+if [ -d node_modules/@capacitor/haptics ]; then
+  echo "     OK — @capacitor/haptics is installed (swipe feedback)"
+else
+  echo "     MISSING. The app still works, but swipes won't buzz."
+  echo "     Tell Claude that haptics didn't install."
 fi
 
 echo ""

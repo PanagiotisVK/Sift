@@ -143,7 +143,8 @@
   /* Top scrim keeps the floating brand/Tune/Undo legible over bright artwork */
   .card .art::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 130px; background: linear-gradient(to bottom, rgba(12,11,18,.58), rgba(12,11,18,0)); }
   .card .meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 22px; z-index: 2; }
-  .card .reason { display: inline-block; font-size: 11px; letter-spacing: .2px; color: var(--text); font-weight: 600; margin-bottom: 8px; background: rgba(255,255,255,.13); padding: 5px 11px; border-radius: 999px; }
+  .card .reason { display: inline-block; font-size: 11px; letter-spacing: .2px; color: var(--text); font-weight: 600; margin-bottom: 8px; background: rgba(255,255,255,.13); padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+  .card .reason .reason-go { opacity: .55; margin-left: 3px; }   /* the pill answers when tapped — hint at it */
   .card .title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 3px; }
   .card .artist { font-size: 16px; color: var(--muted); font-weight: 500; margin: 0; }
   .card .progress { position: absolute; left: 0; top: 0; height: 4px; width: 0%; z-index: 3; background: var(--accent); }
@@ -429,6 +430,15 @@
   .gsheet-sub { color: var(--muted); font-size: 12.5px; margin: 6px 0 14px; line-height: 1.4; }
   .gsheet-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .gsheet-chips .gchip[disabled] { opacity: .5; }
+
+  /* Why this song? — the trail, the sound, the cut, the dials */
+  .why-row { display: flex; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .why-row:last-child { border-bottom: 0; }
+  .why-k { flex: 0 0 86px; color: var(--muted); font-size: 12px; font-weight: 600; padding-top: 2px; }
+  .why-v { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
+  .why-tag { display: inline-block; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 10px; margin: 0 6px 6px 0; font-size: 12px; }
+  .why-tag.hit { background: var(--accent); color: #0b0b0d; font-weight: 600; }
+  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
   .daily-big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1.1; margin-top: 8px; }
@@ -738,6 +748,15 @@
     </div>
   </div>
 
+  <!-- Why this song? — tap the reason pill on any card for the honest answer -->
+  <div class="gsheet-ov" id="whySheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Why this song?</span><button class="gsheet-x" id="whySheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub" id="whySub"></p>
+      <div id="whyBody"></div>
+    </div>
+  </div>
+
   <!-- First-card coach — shown once, over the very first song -->
   <div class="coach-ov" id="coachOv" style="display:none;">
     <div class="coach">
@@ -975,7 +994,7 @@ function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
 // Genre kinship via MusicBrainz tags — the antidote to co-listening drift (everyone
 // co-listens with global pop stars, so the raw similar-artists list skews mainstream
 // and cross-genre; genuine genre tags pull each neighborhood back on-genre).
-const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres
+const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|european|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres. Country adjectives (greek, german) stay: for regional scenes, nationality IS the genre marker.
 const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative"]);  // umbrella genres half the catalog wears
 const normTag = t => t.toLowerCase().replace(/-/g, " ").trim();
 async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
@@ -1998,7 +2017,7 @@ function renderCard(track) {
     '<div class="stamp love"></div><div class="stamp nope"></div><div class="stamp heard"></div>' +
     '<div class="art" style="background-image:url(\'' + (track.cover || "") + '\')"></div>' +
     '<div class="meta">' + (track.nbFan != null && track.nbFan < (PROVIDER.freshFanCap || 40000) ? '<span class="freshtag">✦ Fresh Find</span>' : '') +
-    '<span class="reason">' + esc(track.reason || "Discovery") + '</span>' +
+    '<span class="reason">' + esc(track.reason || "Discovery") + '<span class="reason-go">›</span></span>' +
     '<span class="besttag">🔥 best part</span>' +
     '<h2 class="title">' + esc(track.title) + '</h2>' +
     '<p class="artist">' + esc(track.artist) + '<span class="artist-go">›</span></p></div>';
@@ -2007,6 +2026,8 @@ function renderCard(track) {
   card.querySelector(".art").addEventListener("click", () => safePlay());
   const aEl = card.querySelector(".artist");
   if (aEl) aEl.addEventListener("click", e => { e.stopPropagation(); openArtist(track.artistId, track.artist); });
+  const rEl = card.querySelector(".reason");
+  if (rEl) rEl.addEventListener("click", e => { e.stopPropagation(); openWhySheet(); });
   setBackdrop(track.cover); // blur backdrop + color-tint the UI to this cover
 }
 
@@ -2254,10 +2275,31 @@ function showBurst(kind) {
   burst.style.color = color;
   burst.classList.remove("show"); void burst.offsetWidth; burst.classList.add("show"); // restart animation
 }
+/* ---------- Haptics — decisions only, never touches ----------
+   A pulse either carries information or it doesn't fire. What buzzes: the tick
+   when a drag crosses the commit line ("let go now and it counts"), the thump
+   when a verdict lands, the daily-20 finish. What stays silent: buttons, tabs,
+   scrolling, sheets — an app this swipe-heavy would wear the feeling out in a
+   day if every touch answered back. Native only: the Haptics pod ships with
+   build 8; on the web (and on build 7) every call is a safe no-op. */
+const Haptic = (() => {
+  const C = window.Capacitor;
+  const native = C && C.isNativePlatform && C.isNativePlatform();
+  const H = native ? (C.registerPlugin ? C.registerPlugin("Haptics") : (C.Plugins && C.Plugins.Haptics)) : null;
+  const run = f => { try { const p = f(); if (p && p.catch) p.catch(() => {}); } catch (_) {} };
+  return {
+    tick() { if (H) run(() => H.impact({ style: "LIGHT" })); },          // crossed the commit line
+    love() { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // a love landed
+    drop() { if (H) run(() => H.impact({ style: "MEDIUM" })); },         // nope / heard landed
+    win()  { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // today's 20 done
+  };
+})();
+
 let lastAction = null;
 function decide(kind, kin) {
   const track = state.current;
   if (!track) return;
+  if (kind === "love") Haptic.love(); else Haptic.drop();
   showBurst(kind);
   const a = state.artists[track.artistId];
   // snapshot exact before-values so Undo can reverse this precisely
@@ -2389,6 +2431,7 @@ function bumpDaily(kind) {
     const y = new Date(); y.setDate(y.getDate() - 1);
     state.streak = (state.lastDailyDone === dateStr(y)) ? (state.streak || 0) + 1 : 1;
     state.lastDailyDone = d.date;
+    Haptic.win();
     setTimeout(showDailySheet, 750); // let the swipe fly out first
   }
   updateDailyUI();
@@ -2524,10 +2567,54 @@ function openGenreSheet() { renderGenreSheet(); applyAdventureUI(); applyFreshUI
 function closeGenreSheet() { document.getElementById("genreSheet").style.display = "none"; }
 document.getElementById("genreSheetX").onclick = closeGenreSheet;
 document.getElementById("genreSheet").onclick = (e) => { if (e.target.id === "genreSheet") closeGenreSheet(); };
-// Drag the sheet down by its header to dismiss it — the ✕ still works, thumbs prefer this.
-(function () {
-  const sheet = document.querySelector("#genreSheet .gsheet");
-  const head = document.querySelector("#genreSheet .gsheet-head");
+/* ---------- Why this song? — the honest answer, from the data Sift actually used ---------- */
+function openWhySheet() {
+  const t = state.current;
+  if (!t) return;
+  document.getElementById("whySub").textContent = "“" + t.title + "” — " + t.artist;
+  document.getElementById("whyBody").innerHTML = whyHtml(t);
+  document.getElementById("whySheet").style.display = "flex";
+}
+function closeWhySheet() { document.getElementById("whySheet").style.display = "none"; }
+document.getElementById("whySheetX").onclick = closeWhySheet;
+document.getElementById("whySheet").onclick = e => { if (e.target.id === "whySheet") closeWhySheet(); };
+function whyHtml(t) {
+  const a = state.artists[t.artistId] || {};
+  const row = (k, v) => '<div class="why-row"><div class="why-k">' + k + '</div><div class="why-v">' + v + "</div></div>";
+  const rows = [];
+  // 1 — the trail: how the graph got from what you asked for to this card
+  let path;
+  if (a.origin === "loved") path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
+  else if (a.origin === "seed" && a.genreName) path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
+  else if (a.origin === "seed") path = "You asked for " + esc(a.name || t.artist) + " by name.";
+  else if (a.via && a.genreName) path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
+  else if (a.via) path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
+  else path = esc(t.reason || "Surfaced by your mix.");
+  rows.push(row("The trail", path));
+  // 2 — their sound, against what this deck is about
+  const tags = tagsOf(t.artistId).slice(0, 6);
+  if (tags.length) {
+    const p = state.tagProfile || {};
+    const hit = tags.some(x => (p[x] || 0) > 0);
+    rows.push(row("Their sound",
+      tags.map(x => '<span class="why-tag' + ((p[x] || 0) > 0 ? " hit" : "") + '">' + esc(x) + "</span>").join("") +
+      (hit ? '<div class="why-note">bright = the sound of your current mix</div>' : "")));
+  }
+  // 3 — how deep the cut is
+  const pop = (t.rank || 0) / 1000000;
+  const fans = t.nbFan != null ? t.nbFan : a.nbFan;
+  let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
+  if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
+  rows.push(row("The cut", cut + "."));
+  // 4 — the dials you set
+  rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
+  return rows.join("");
+}
+
+// Drag a sheet down by its header to dismiss it — the ✕ still works, thumbs prefer this.
+function attachSheetDrag(ovId, closeFn) {
+  const sheet = document.querySelector("#" + ovId + " .gsheet");
+  const head = document.querySelector("#" + ovId + " .gsheet-head");
   if (!sheet || !head) return;
   let g = null;
   head.addEventListener("pointerdown", e => {
@@ -2546,12 +2633,14 @@ document.getElementById("genreSheet").onclick = (e) => { if (e.target.id === "ge
   const end = e => {
     if (!g || e.pointerId !== g.id) return;
     const dy = Math.max(0, e.clientY - g.y), was = g; g = null;
-    if (dy > 110 || was.vy > 0.5) { sheet.style.transform = ""; sheet.style.transition = ""; closeGenreSheet(); }
+    if (dy > 110 || was.vy > 0.5) { sheet.style.transform = ""; sheet.style.transition = ""; closeFn(); }
     else { sheet.style.transition = "transform .18s ease"; sheet.style.transform = ""; setTimeout(() => { sheet.style.transition = ""; }, 200); }
   };
   head.addEventListener("pointerup", end);
   head.addEventListener("pointercancel", end);
-})();
+}
+attachSheetDrag("genreSheet", closeGenreSheet);
+attachSheetDrag("whySheet", closeWhySheet);
 
 /* ---------- Drag / swipe ---------- */
 // Playful, artist-safe remarks. Likes get hyped, passes stay light (never bash an artist).
@@ -2573,6 +2662,7 @@ function attachDrag(card) {
 
   let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0;
   let lastMoveX = 0, lastMoveY = 0, lastMoveT = 0, vx = 0, vy = 0; // for velocity fling
+  let armed = false; // fingers-on state: are we past the commit line right now?
   const TH = 120; // swipe-commit threshold
 
   function clearFx() {
@@ -2586,7 +2676,7 @@ function attachDrag(card) {
   }
 
   card.addEventListener("pointerdown", e => {
-    dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0;
+    dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; armed = false;
     lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = performance.now(); vx = vy = 0;
     try { card.setPointerCapture(e.pointerId); } catch (_) {}
     card.style.transition = "none";
@@ -2597,6 +2687,10 @@ function attachDrag(card) {
     const now = performance.now(), dt = now - lastMoveT;
     if (dt > 0) { vx = (e.clientX - lastMoveX) / dt; vy = (e.clientY - lastMoveY) / dt; lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = now; }
     const horiz = Math.abs(dx) >= Math.abs(dy);
+    // One tick the moment the drag crosses the commit line — "let go now and it
+    // counts". Re-arms if you retreat, so wavering still reads true.
+    const past = horiz ? Math.abs(dx) > TH : dy < -140;
+    if (past !== armed) { armed = past; if (past) Haptic.tick(); }
     card.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (dx / 20) + "deg)";
     clearFx();
     if (horiz && dx > 0) {
@@ -3639,6 +3733,7 @@ async function playDm(track) {
 }
 function dmDecide(kind, kin) {
   if (!dmCurrent) return;
+  if (kind === "love") Haptic.love(); else Haptic.drop();
   showDmBurst(kind);
   // friend mode keeps the whole track (it's headed for your Finds); deck results stay slim
   if (kind === "love") dmLoved.push(dmFriendMode ? dmCurrent : { id: dmCurrent.id, title: dmCurrent.title, artist: dmCurrent.artist, cover: dmCurrent.cover });
@@ -3658,15 +3753,17 @@ function dmDecide(kind, kin) {
 }
 function attachDeckDrag(card) {
   const love = card.querySelector(".stamp.love"), nope = card.querySelector(".stamp.nope"), tint = card.querySelector(".tint");
-  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, lastX = 0, lastY = 0, lastT = 0, vx = 0, vy = 0; const TH = 120;
+  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, lastX = 0, lastY = 0, lastT = 0, vx = 0, vy = 0, armed = false; const TH = 120;
   function clearFx() { love.style.opacity = nope.style.opacity = 0; tint.style.opacity = 0; }
   function spring() { card.style.transition = "transform .38s cubic-bezier(.2,1.35,.4,1)"; card.style.transform = "translate(0,0) rotate(0deg)"; clearFx(); }
-  card.addEventListener("pointerdown", e => { dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vx = vy = 0; try { card.setPointerCapture(e.pointerId); } catch (_) {} card.style.transition = "none"; });
+  card.addEventListener("pointerdown", e => { dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; armed = false; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vx = vy = 0; try { card.setPointerCapture(e.pointerId); } catch (_) {} card.style.transition = "none"; });
   card.addEventListener("pointermove", e => {
     if (!dragging) return;
     dx = e.clientX - startX; dy = e.clientY - startY;
     const now = performance.now(), dt = now - lastT;
     if (dt > 0) { vx = (e.clientX - lastX) / dt; vy = (e.clientY - lastY) / dt; lastX = e.clientX; lastY = e.clientY; lastT = now; }
+    const past = Math.abs(dx) > TH;
+    if (past !== armed) { armed = past; if (past) Haptic.tick(); }   // same commit-line tick as the main deck
     card.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (dx / 20) + "deg)";
     clearFx();
     if (dx > 0) { const prog = Math.min(dx / TH, 1); love.style.opacity = Math.min(dx / 80, 1); love.style.transform = "rotate(12deg) scale(" + (0.75 + prog * 0.55) + ")"; tint.style.background = "radial-gradient(circle at 82% 50%, rgba(255,255,255," + (0.15 + prog * 0.45) + "), transparent 68%)"; tint.style.opacity = 1; }
