@@ -300,6 +300,17 @@
   }
   .cs-pot { animation: csSimmer 1.8s ease-in-out infinite; transform-origin: 50% 80%; }
   @keyframes csSimmer { 0%, 100% { transform: rotate(-.7deg); } 50% { transform: rotate(.7deg); } }
+  /* Scene three: a pinch of salt. The hand taps as it sprinkles; grains fall into
+     the pot and vanish behind the rim. */
+  .cs-arm { stroke: rgba(255,255,255,.9); stroke-width: 8; stroke-linecap: round; }
+  .cs-palm { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
+  .cs-fing { stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linecap: round; }
+  .cs-hand { animation: csSprinkle 1s ease-in-out infinite; transform-origin: 90% 10%; }
+  @keyframes csSprinkle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg) translateY(1px); } 55% { transform: rotate(2deg); } 78% { transform: rotate(-5deg); } }
+  .cs-grain { fill: rgba(255,255,255,.9); opacity: 0; animation: csGrain 1.05s linear infinite; }
+  .cs-grain.g2 { animation-delay: .35s; }
+  .cs-grain.g3 { animation-delay: .7s; }
+  @keyframes csGrain { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 85% { transform: translateY(10px); opacity: .6; } 100% { transform: translateY(13px); opacity: 0; } }
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
@@ -658,6 +669,24 @@
                 <path class="cs-spoon-h" d="M80 66 L102 24"/>
                 <circle class="cs-spoon-k" cx="103" cy="21" r="3.5"/>
               </g>
+              <g class="cs-pot">
+                <path class="cs-pot-body" d="M46 66 L118 66 L118 80 Q118 96 102 96 L62 96 Q46 96 46 80 Z"/>
+                <path class="cs-pot-rim" d="M41 66 L123 66"/>
+                <path class="cs-pot-hdl" d="M41 73 q-8 3.5 0 7"/>
+                <path class="cs-pot-hdl" d="M123 73 q8 3.5 0 7"/>
+              </g>
+            </svg>
+            <svg class="cookscene cs-scene" id="sceneCookSalt" viewBox="0 0 170 132">
+              <path class="cs-steam" d="M60 46 q5 -8 0 -16 q-5 -8 0 -16"/>
+              <!-- the seasoning hand: arm in from the corner, mitt pinched, tapping -->
+              <g class="cs-hand">
+                <path class="cs-arm" d="M144 14 L122 27"/>
+                <path class="cs-palm" d="M104 26 q16 -6 24 4 q6 9 -4 15 q-12 7 -22 -1 q-8 -7 2 -18 Z"/>
+                <path class="cs-fing" d="M101 44 l-6 7 M108 47 l-5 7"/>
+              </g>
+              <circle class="cs-grain" cx="96" cy="55" r="1.7"/>
+              <circle class="cs-grain g2" cx="91" cy="57" r="1.5"/>
+              <circle class="cs-grain g3" cx="100" cy="58" r="1.5"/>
               <g class="cs-pot">
                 <path class="cs-pot-body" d="M46 66 L118 66 L118 80 Q118 96 102 96 L62 96 Q46 96 46 80 Z"/>
                 <path class="cs-pot-rim" d="M41 66 L123 66"/>
@@ -2309,7 +2338,8 @@ function updateStart() {
 // to stirring. Scenes advance every second patter beat (~4.6s).
 const COOK_SCENES = [
   { id: "sceneCookPan", lines: ["Let me cook…", "Taste-testing a few…", "Flipping through the crates…", "Chef's kiss loading…"] },
-  { id: "sceneCookPot", lines: ["Stirring the pot… 🥘", "Simmering something good…", "Adding a pinch of bass…", "Letting the flavors mingle…"] },
+  { id: "sceneCookPot", lines: ["Stirring the pot… 🥘", "Simmering something good…", "Letting the flavors mingle…", "Low heat, big flavor…"] },
+  { id: "sceneCookSalt", lines: ["A pinch of something special…", "Seasoning to taste…", "Adding a pinch of bass…", "Secret ingredient time…"] },
 ];
 let _statusT = null, _cookT = null, _cookI = 0, _holdUntil = 0, _cookScene = 0;
 function showCookScene(i) {
