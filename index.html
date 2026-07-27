@@ -101,7 +101,9 @@
      strip of families filters the grid below, so the grid is never more than a
      dozen-odd chips no matter how big the catalogue gets. Search spans everything
      and overrides the filter. */
-  .famrow { display: flex; gap: 7px; overflow-x: auto; padding: 1px 0 11px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  /* flex-shrink 0: a scroll container may shrink to nothing inside a flex column, and
+     on short screens the strip's buttons were getting vertically clipped. */
+  .famrow { display: flex; gap: 7px; overflow-x: auto; padding: 1px 0 11px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex-shrink: 0; }
   .famrow::-webkit-scrollbar { display: none; }
   .fam { flex: 0 0 auto; background: rgba(255,255,255,.05); border: 1px solid var(--glass-brd); color: var(--muted); border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .fam.on { background: var(--accent); color: #0b0b0d; border-color: transparent; }
@@ -124,7 +126,11 @@
   .artist-row input { flex: 1; padding: 12px 15px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); color: var(--text); font-size: 15px; outline: none; }
   .artist-row input:focus { border-color: var(--line-2); }
   .artist-row button { padding: 0 18px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); color: var(--text); font-weight: 600; cursor: pointer; font-size: 20px; }
-  .start-bar { position: sticky; bottom: 0; padding-top: 14px; }
+  /* The gradient ground makes chips scrolling beneath the sticky bar read as intended
+     rather than as a glitch. The bar hides entirely while artist suggestions are open —
+     it was covering the dropdown, and mid-typing it has no job anyway. */
+  .start-bar { position: sticky; bottom: 0; padding-top: 14px; z-index: 30; background: linear-gradient(to top, var(--bg) 62%, transparent); }
+  .start-bar.dodge { visibility: hidden; }
   .btn-primary { width: 100%; padding: 16px; border: 0; border-radius: var(--r-md); cursor: pointer; background: var(--accent); color: #0a0a0a; font-size: 16px; font-weight: 600; letter-spacing: .3px; box-shadow: var(--shadow-1); }
   .btn-primary:disabled { opacity: .4; box-shadow: none; cursor: not-allowed; }
 
@@ -230,16 +236,23 @@
   @keyframes radarPulse { 0% { transform: scale(.32); opacity: .5; } 65% { opacity: .13; } 100% { transform: scale(1); opacity: 0; } }
   .rmark { width: 46px; height: 46px; object-fit: contain; opacity: .92; animation: radarBreathe 2.7s ease-in-out infinite; }
   @keyframes radarBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
-  .radar-status { font-size: 13.5px; transition: opacity .3s ease; min-height: 19px; }
+  /* The wait is a kitchen: a pan rocking over the heat and a line of patter that
+     rotates, interleaved with the honest stage updates ("Tuning in to Greek…"). */
+  .cookline { display: flex; align-items: center; gap: 9px; max-width: 86%; }
+  .cookpan { font-size: 26px; line-height: 1; animation: cookRock 1.5s ease-in-out infinite; transform-origin: 65% 80%; }
+  @keyframes cookRock { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+  .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: left; }
   .radar-status.fading { opacity: 0; }
-  /* Reduce Motion: nothing sweeps or breathes. The rings become a static sonar
-     diagram — still branded, still clearly "working", zero movement. */
+  /* Reduce Motion: nothing sweeps, breathes, rocks or fades. The rings become a
+     static sonar diagram and the patter swaps instantly — still playful, zero movement. */
   @media (prefers-reduced-motion: reduce) {
     .rring { animation: none; opacity: .22; }
     .rring:nth-child(1) { transform: scale(.45); }
     .rring:nth-child(2) { transform: scale(.72); opacity: .15; }
     .rring:nth-child(3) { transform: scale(1); opacity: .09; }
     .rmark { animation: none; }
+    .cookpan { animation: none; }
+    .radar-status { transition: none; }
   }
 
   /* Finds */
@@ -562,7 +575,10 @@
             <span class="rring"></span><span class="rring"></span><span class="rring"></span>
             <img class="rmark" src="logo-mark.png?v=3" alt="" />
           </div>
-          <div class="radar-status" id="deckStatus">Mapping your taste…</div>
+          <div class="cookline">
+            <span class="cookpan" aria-hidden="true">🍳</span>
+            <div class="radar-status" id="deckStatus">Let me cook…</div>
+          </div>
         </div>
       </div>
       <div class="burst" id="burst"></div>
@@ -2109,7 +2125,10 @@ document.getElementById("artistInput").addEventListener("keydown", e => { if (e.
 // Live suggestions while typing — pictures make "is this the right artist?" instant.
 const artistSug = document.getElementById("artistSug");
 let sugTimer = null, sugSeq = 0;
-function hideSug() { artistSug.style.display = "none"; artistSug.innerHTML = ""; }
+function hideSug() {
+  artistSug.style.display = "none"; artistSug.innerHTML = "";
+  const sb = document.querySelector(".start-bar"); if (sb) sb.classList.remove("dodge");
+}
 document.getElementById("artistInput").addEventListener("input", () => {
   const q = document.getElementById("artistInput").value.trim();
   clearTimeout(sugTimer);
@@ -2131,6 +2150,7 @@ document.getElementById("artistInput").addEventListener("input", () => {
       artistSug.appendChild(r);
     });
     artistSug.style.display = "block";
+    const sb = document.querySelector(".start-bar"); if (sb) sb.classList.add("dodge");   // it was covering the dropdown
   }, 320);
 });
 document.getElementById("artistInput").addEventListener("blur", () => setTimeout(hideSug, 150));
@@ -2172,15 +2192,45 @@ function updateStart() {
 }
 
 // Building a first deck genuinely takes a while — MusicBrainz allows one request a
-// second, so a multi-genre start is 10–20s of real work. Saying what it's doing (and
-// naming the genre it's on) turns dead waiting into visible progress.
-let _statusT = null;
-function setDeckStatus(msg) {
-  const el = document.getElementById("deckStatus");
-  if (!el || el.textContent === msg) return;
+// second, so a multi-genre start is 10–20s of real work. The wait is played as a
+// kitchen: rotating patter ("Let me cook…"), interleaved with the honest stage
+// updates ("Tuning in to Greek…"), which hold on screen for a beat before the
+// patter resumes.
+const COOK_LINES = [
+  "Let me cook…",
+  "Digging the crates…",
+  "Stirring the pot… 🥘",
+  "Taste-testing a few…",
+  "Adding a pinch of bass…",
+  "Chef's kiss loading…",
+  "Plating up your first find… 🍽️",
+];
+let _statusT = null, _cookT = null, _cookI = 0, _holdUntil = 0;
+// The old fade swapped the text at 200ms into a 300ms fade — you watched it change
+// mid-transition. Timings now match, and Reduce Motion swaps instantly (the CSS
+// disables the transition; the class dance is then inert).
+function swapStatus(el, msg) {
+  if (el.textContent === msg) return;
   clearTimeout(_statusT);
   el.classList.add("fading");
-  _statusT = setTimeout(() => { el.textContent = msg; el.classList.remove("fading"); }, 200);
+  _statusT = setTimeout(() => { el.textContent = msg; el.classList.remove("fading"); }, 180);
+}
+function setDeckStatus(msg) {   // real stage info: show now, hold a beat over the patter
+  const el = document.getElementById("deckStatus");
+  if (!el) return;
+  _holdUntil = Date.now() + 2600;
+  swapStatus(el, msg);
+  startCooking();               // make sure the patter resumes after the hold
+}
+function startCooking() {
+  if (_cookT) return;
+  _cookT = setInterval(() => {
+    const el = document.getElementById("deckStatus");
+    // The loading node dies with the first rendered card — the kitchen closes itself.
+    if (!el) { clearInterval(_cookT); _cookT = null; return; }
+    if (Date.now() < _holdUntil) return;
+    swapStatus(el, COOK_LINES[_cookI++ % COOK_LINES.length]);
+  }, 2300);
 }
 
 startBtn.onclick = async () => {
