@@ -306,7 +306,10 @@ need them.
 
 ## Reminder before submitting for App Store review (not TestFlight)
 
-- **Submit build 6 or later.** Two separate reasons, both hard blockers:
+- **Submit build 7 or later.** Build 6 is *not* acceptable: it still declares iPad
+  support, so App Store Connect blocks the submission until you upload 13-inch iPad
+  screenshots — and Sift has no iPad layout worth screenshotting. Build 7 is iPhone
+  only. Beyond that, three more reasons a lower build won't do:
   - Build 4 and earlier predate the Sign in with Apple entitlement and would be
     rejected under Guideline 4.8. Build 5 is verified working from a release
     (TestFlight) build, not just a debug run — the entitlement rides on the

@@ -74,7 +74,18 @@
 
   main { flex: 1; position: relative; overflow: hidden; }
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
-  .screen.active { display: flex; }
+  .screen.active { display: flex; animation: screenIn .16s ease-out; }
+  @keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
+  /* Sub-pages (artist, a friend's deck) enter like a pushed card; the left-edge
+     swipe below slides them back out the way they came. */
+  #artist.active, #deckmode.active { animation: pushIn .22s cubic-bezier(.2,.8,.3,1); }
+  @keyframes pushIn { from { transform: translateX(24%); opacity: .35; } to { transform: none; opacity: 1; } }
+  /* While a page is being dragged off, it needs its own opaque ground + a shadow edge,
+     and the page it's returning to is revealed underneath. */
+  .screen.edgeback { background: var(--bg); z-index: 30; box-shadow: -16px 0 36px rgba(0,0,0,.5); will-change: transform; }
+  .screen.under { display: flex; }
+  #artist, #deckmode { touch-action: pan-y; }   /* vertical scroll stays native; horizontal belongs to the edge gesture */
+  @media (prefers-reduced-motion: reduce) { .screen.active, #artist.active, #deckmode.active { animation: none; } }
   /* scrollable screens are flex columns — keep their children at natural height so the screen scrolls instead of squashing the taste card */
   #finds > *, #friends > *, #profile > *, #artist > * { flex-shrink: 0; }
 
@@ -132,7 +143,8 @@
   /* Top scrim keeps the floating brand/Tune/Undo legible over bright artwork */
   .card .art::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 130px; background: linear-gradient(to bottom, rgba(12,11,18,.58), rgba(12,11,18,0)); }
   .card .meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 22px; z-index: 2; }
-  .card .reason { display: inline-block; font-size: 11px; letter-spacing: .2px; color: var(--text); font-weight: 600; margin-bottom: 8px; background: rgba(255,255,255,.13); padding: 5px 11px; border-radius: 999px; }
+  .card .reason { display: inline-block; font-size: 11px; letter-spacing: .2px; color: var(--text); font-weight: 600; margin-bottom: 8px; background: rgba(255,255,255,.13); padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+  .card .reason .reason-go { opacity: .55; margin-left: 3px; }   /* the pill answers when tapped — hint at it */
   .card .title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 3px; }
   .card .artist { font-size: 16px; color: var(--muted); font-weight: 500; margin: 0; }
   .card .progress { position: absolute; left: 0; top: 0; height: 4px; width: 0%; z-index: 3; background: var(--accent); }
@@ -412,11 +424,21 @@
   .gsheet-ov { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; }
   .gsheet { width: 100%; max-height: 74%; background: var(--bg2); border-radius: var(--r-lg) var(--r-lg) 0 0; border-top: 1px solid var(--glass-brd); padding: 16px 18px calc(20px + env(safe-area-inset-bottom)); box-shadow: var(--shadow-2); overflow-y: auto; animation: gsheetUp .22s cubic-bezier(.2,.7,.3,1); }
   @keyframes gsheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .gsheet-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 17px; color: #fff; }
+  .gsheet::before { content: ""; display: block; width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); margin: -6px auto 10px; }   /* grab handle — the sheet drags down to close */
+  .gsheet-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 17px; color: #fff; touch-action: none; }
   .gsheet-x { background: rgba(255,255,255,.08); border: 0; color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 13px; cursor: pointer; line-height: 1; }
   .gsheet-sub { color: var(--muted); font-size: 12.5px; margin: 6px 0 14px; line-height: 1.4; }
   .gsheet-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .gsheet-chips .gchip[disabled] { opacity: .5; }
+
+  /* Why this song? — the trail, the sound, the cut, the dials */
+  .why-row { display: flex; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .why-row:last-child { border-bottom: 0; }
+  .why-k { flex: 0 0 86px; color: var(--muted); font-size: 12px; font-weight: 600; padding-top: 2px; }
+  .why-v { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
+  .why-tag { display: inline-block; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 10px; margin: 0 6px 6px 0; font-size: 12px; }
+  .why-tag.hit { background: var(--accent); color: #0b0b0d; font-weight: 600; }
+  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
   .daily-big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1.1; margin-top: 8px; }
@@ -726,6 +748,15 @@
     </div>
   </div>
 
+  <!-- Why this song? — tap the reason pill on any card for the honest answer -->
+  <div class="gsheet-ov" id="whySheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Why this song?</span><button class="gsheet-x" id="whySheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub" id="whySub"></p>
+      <div id="whyBody"></div>
+    </div>
+  </div>
+
   <!-- First-card coach — shown once, over the very first song -->
   <div class="coach-ov" id="coachOv" style="display:none;">
     <div class="coach">
@@ -788,6 +819,7 @@ const state = {
   streak: 0,            // consecutive days the daily 20 was finished
   lastDailyDone: "",    // date the daily 20 was last finished ("YYYY-MM-DD")
   seedLabels: [],       // for display
+  tagProfile: null,     // tag -> weight: what this deck is ABOUT (see "Deck coherence profile")
 };
 
 // Each genre seeds from iconic "anchor" artists, then the related-artist graph
@@ -962,7 +994,7 @@ function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
 // Genre kinship via MusicBrainz tags — the antidote to co-listening drift (everyone
 // co-listens with global pop stars, so the raw similar-artists list skews mainstream
 // and cross-genre; genuine genre tags pull each neighborhood back on-genre).
-const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres
+const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|european|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres. Country adjectives (greek, german) stay: for regional scenes, nationality IS the genre marker.
 const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative"]);  // umbrella genres half the catalog wears
 const normTag = t => t.toLowerCase().replace(/-/g, " ").trim();
 async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
@@ -1000,6 +1032,56 @@ function tagsCompatible(src, cand) {
   if (!src.length || !cand.length) return true;   // untagged (usually small) artists get the benefit of the doubt
   const shared = cand.filter(t => src.includes(t));
   return shared.some(t => !TAG_GENERIC.has(t)) || shared.length >= 2;  // a specific shared genre, or 2+ umbrella ones
+}
+/* ---------- Deck coherence profile ----------
+   The deck's tag-level memory of what it's ABOUT. Pairwise kinship (above) only
+   compares each hop with its immediate parent, so drift compounds hop by hop:
+   pop → dance pop → EDM → hard techno, every pair "compatible", the endpoint
+   nothing like the seeds. The profile is the fixed reference point that stops
+   the accumulation: specific tags from the artists the user actually asked for
+   (genre anchors, typed seeds), reinforced by loves, dented by two-skip bans.
+   Every graph decision multiplies by affinity to THIS, so hop N is judged
+   against the deck — not against hop N-1. */
+function tagsOf(id) { return (lbArtist[id] && lbArtist[id].tags) || []; }
+function bumpProfile(tags, delta) {
+  if (!tags || !tags.length) return;
+  const p = state.tagProfile = state.tagProfile || {};
+  for (const t of tags) {
+    if (TAG_GENERIC.has(t)) continue;   // umbrella tags describe half the catalog — they'd say yes to everything
+    const w = Math.max(-3, Math.min(10, (p[t] || 0) + delta));
+    if (w === 0) delete p[t]; else p[t] = w;
+  }
+}
+// Bounded multiplier, never a veto: 0.4 (carries a tag you've been skipping) up to
+// 1.35 (squarely what this deck is about). Untagged stays mild — absence of data
+// is not evidence of drift.
+function profileMult(tags) {
+  const p = state.tagProfile;
+  if (!p) return 1;
+  let any = false;
+  for (const k in p) { if (p[k] > 0) { any = true; break; } }
+  if (!any) return 1;                    // no positive profile yet — stay neutral
+  if (!tags || !tags.length) return 0.75;
+  let best = 0, worst = 0;
+  for (const t of tags) {
+    const w = p[t] || 0;
+    if (w > best) best = w;
+    if (w < worst) worst = w;
+  }
+  if (worst <= -2) return 0.4;
+  if (best >= 3) return 1.35;
+  if (best >= 1) return 1.2;
+  return 0.7;                            // tagged, and none of it is what you picked
+}
+// One batched MusicBrainz call turns the seeds' tags into the deck's profile.
+// Idempotent (each seed folds in once) and cache-friendly, so it's also the lazy
+// migration for installs saved before the profile existed.
+async function warmProfile() {
+  const seeds = Object.values(state.artists).filter(a => a.origin === "seed" && !a._profiled && MBID_RE.test(a.id));
+  if (!seeds.length) return;
+  try { await mbMetaFor(seeds.map(a => a.id)); } catch (_) {}
+  seeds.forEach(a => { a._profiled = 1; bumpProfile(tagsOf(a.id), 2); });
+  save();
 }
 async function lbListeners(mbid) {  // artist listener count — this provider's nb_fan
   if (!MBID_RE.test(mbid || "")) return 0;
@@ -1210,11 +1292,16 @@ const AppleLBProvider = {
     // become a reserve for thin neighbourhoods instead of peers in rich ones.
     const tagged = compat.filter(r => (tags[r.artist_mbid] || []).length);
     let pool = ((tags[id] || []).length && tagged.length >= 6 ? tagged : compat).slice(0, 40);
-    if (pool.length < 3) pool = cand.slice(0, 10);  // thin or untagged graph: better off-genre than starved
+    if (pool.length < 3) {
+      // Thin or untagged graph: better off-genre than starved — but when the deck has
+      // a profile, at least take the closest strangers rather than the first ten.
+      pool = cand.slice().sort((x, y) => profileMult(tags[y.artist_mbid]) - profileMult(tags[x.artist_mbid])).slice(0, 10);
+    }
     const picked = [];
     // In the thin case untagged artists are still in the pool; keep them reachable but
-    // not dominant.
-    const wt = r => (r.score || 1) * ((tags[r.artist_mbid] || []).length ? 1 : 0.35);
+    // not dominant. Deck-profile affinity biases the sample toward what the user asked
+    // for WITHOUT vetoing anyone — kinship-to-parent alone let drift accumulate.
+    const wt = r => (r.score || 1) * ((tags[r.artist_mbid] || []).length ? 1 : 0.35) * profileMult(tags[r.artist_mbid]);
     while (picked.length < 8 && pool.length) {
       let x = Math.random() * pool.reduce((s, r) => s + wt(r), 0);
       let idx = pool.length - 1;
@@ -1422,14 +1509,38 @@ function queueTracks(list, reason, srcFan) {
 // How many skipped songs it takes to write an artist off completely.
 const NOPE_BAN_AT = 2;
 
+let genreCursor = 0;   // rotates pickSource across genre buckets (session-local)
+function weightedPick(list) {
+  const w = list.map(a => Math.max(a.score, 0.2) * profileMult(tagsOf(a.id)));
+  let r = Math.random() * w.reduce((s, x) => s + x, 0);
+  for (let i = 0; i < list.length; i++) { r -= w[i]; if (r <= 0) return list[i]; }
+  return list[list.length - 1];
+}
 function pickSource(explore) {
   const pool = Object.values(state.artists).filter(a => !state.disliked.has(a.name) && !a.exhausted);
   if (!pool.length) return null;
-  if (explore) { pool.sort((a, b) => a.score - b.score); return pool[Math.floor(Math.random() * Math.min(4, pool.length))]; }
-  const total = pool.reduce((s, a) => s + Math.max(a.score, 0.2), 0);
-  let r = Math.random() * total;
-  for (const a of pool) { r -= Math.max(a.score, 0.2); if (r <= 0) return a; }
-  return pool[0];
+  if (explore) {
+    // Explore = the frontier: artists we've never pulled songs from, weighted by how
+    // well they fit the deck. The old rule — "one of the 4 lowest scores in the whole
+    // graph" — reliably chose the most marginal stragglers, which is exactly where
+    // explore used to slide off-genre.
+    const frontier = pool.filter(a => !a.topPulled);
+    return weightedPick(frontier.length ? frontier : pool);
+  }
+  // Round-robin across the genres you picked, so one rich neighborhood (Pop's graph is
+  // bottomless) can't crowd the others out of a multi-genre deck. Typed seeds and loved
+  // artists form the "you" bucket and get their turn in the same rotation. Artists with
+  // neither lineage nor a personal signal (side-door strays, pre-lineage saves) don't
+  // seed refills directly — they stay reachable as related-targets and via explore's
+  // frontier, which is reach enough for artists nobody asked for.
+  const buckets = {};
+  for (const a of pool) {
+    const k = a.genreName || ((a.origin === "seed" || a.origin === "loved") ? "you" : null);
+    if (k) (buckets[k] = buckets[k] || []).push(a);
+  }
+  const keys = Object.keys(buckets);
+  if (!keys.length) return weightedPick(pool);
+  return weightedPick(buckets[keys[genreCursor++ % keys.length]]);
 }
 
 async function fetchRelatedInto(a) {
@@ -1437,7 +1548,13 @@ async function fetchRelatedInto(a) {
   const rel = await relatedArtists(a.id);
   a.relatedFetched = true;
   a.related = rel.map(r => r.id);
-  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan }));
+  // Children inherit the seed genre they descend from. Lineage used to die after one
+  // hop — nothing downstream knew it was supposed to be "Greek" — and it's what lets
+  // pickSource keep a multi-genre deck balanced.
+  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName }));
+  // A seed's own tags are the deck's ground truth — fold them into the profile the
+  // moment they arrive (relatedArtists just fetched them, so this costs nothing).
+  if (a.origin === "seed" && !a._profiled) { a._profiled = 1; bumpProfile(tagsOf(a.id), 2); }
 }
 
 // From an artist's ranked track list (biggest hits first), reach PAST the hits into
@@ -1482,8 +1599,11 @@ async function refill() {
         // kinship filter unverified, and expanding from THAT one lands somewhere
         // unrelated entirely (a rebetiko seed reaching U2 and the Rolling Stones via an
         // untagged club producer). Cross on an artist whose genre we can actually check.
-        const verified = S.related.filter(id => ((lbArtist[id] && lbArtist[id].tags) || []).length);
-        const bridge = verified.length ? verified : S.related;
+        const verified = S.related.filter(id => tagsOf(id).length);
+        // Prefer a bridge that fits the DECK too, not just its parent — the 2-hop is
+        // where pairwise-only checks slide furthest from the seeds.
+        const affine = verified.filter(id => profileMult(tagsOf(id)) > 1);
+        const bridge = affine.length ? affine : (verified.length ? verified : S.related);
         const rid = bridge[Math.floor(Math.random() * bridge.length)];
         const RA = state.artists[rid];
         if (RA) { await fetchRelatedInto(RA);
@@ -1535,6 +1655,10 @@ function orderQueue() {
     // mode (cozy least, adventurous most). "Heard it" history digs deeper still.
     let bias = (adv === 0 ? -0.35 : adv === 2 ? -1.1 : -0.7) * pop;
     bias -= fam * pop * 0.25;
+    // Deck coherence: tracks whose artist fits the tag profile float, off-profile ones
+    // sink. Bounded (profileMult is 0.4..1.35) and the shuffle noise below still runs,
+    // so off-genre never vanishes — it just stops surfacing as readily as on-genre.
+    bias += (profileMult(tagsOf(t.artistId)) - 1) * 0.45;
     if (fresh) {
       // Fresh Finds: champion smaller artists — favour low fan-count + low track rank.
       const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / (PROVIDER.fanNorm || 800000));
@@ -1608,6 +1732,7 @@ function save() {
       knownIds: [...state.knownIds].slice(-1200),
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
+      tagProfile: state.tagProfile,
       adventure: state.adventure,
       familiarity: state.familiarity,
       freshFinds: state.freshFinds,
@@ -1646,6 +1771,7 @@ function load() {
     state.knownIds = new Set(d.knownIds || []);
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
+    state.tagProfile = d.tagProfile || null;
     if (typeof d.adventure === "number") state.adventure = d.adventure;
     if (typeof d.familiarity === "number") state.familiarity = d.familiarity;
     if (typeof d.freshFinds === "boolean") state.freshFinds = d.freshFinds;
@@ -1799,6 +1925,9 @@ startBtn.onclick = async () => {
       if (a) ensureArtist(a.id, a.name, 1.5 * w, { origin: "seed", genreName: g, nbFan: a.nb_fan }); // weight scales seeding
     }
   }
+  // One batched MusicBrainz call turns the seeds' tags into the deck's coherence
+  // profile — worth the ~1s so even the FIRST refill filters against it.
+  await warmProfile();
   // build out the queue from the graph
   await refill();
   if (state.queue.length < 6) await refill();
@@ -1888,7 +2017,7 @@ function renderCard(track) {
     '<div class="stamp love"></div><div class="stamp nope"></div><div class="stamp heard"></div>' +
     '<div class="art" style="background-image:url(\'' + (track.cover || "") + '\')"></div>' +
     '<div class="meta">' + (track.nbFan != null && track.nbFan < (PROVIDER.freshFanCap || 40000) ? '<span class="freshtag">✦ Fresh Find</span>' : '') +
-    '<span class="reason">' + esc(track.reason || "Discovery") + '</span>' +
+    '<span class="reason">' + esc(track.reason || "Discovery") + '<span class="reason-go">›</span></span>' +
     '<span class="besttag">🔥 best part</span>' +
     '<h2 class="title">' + esc(track.title) + '</h2>' +
     '<p class="artist">' + esc(track.artist) + '<span class="artist-go">›</span></p></div>';
@@ -1897,6 +2026,8 @@ function renderCard(track) {
   card.querySelector(".art").addEventListener("click", () => safePlay());
   const aEl = card.querySelector(".artist");
   if (aEl) aEl.addEventListener("click", e => { e.stopPropagation(); openArtist(track.artistId, track.artist); });
+  const rEl = card.querySelector(".reason");
+  if (rEl) rEl.addEventListener("click", e => { e.stopPropagation(); openWhySheet(); });
   setBackdrop(track.cover); // blur backdrop + color-tint the UI to this cover
 }
 
@@ -2144,10 +2275,31 @@ function showBurst(kind) {
   burst.style.color = color;
   burst.classList.remove("show"); void burst.offsetWidth; burst.classList.add("show"); // restart animation
 }
+/* ---------- Haptics — decisions only, never touches ----------
+   A pulse either carries information or it doesn't fire. What buzzes: the tick
+   when a drag crosses the commit line ("let go now and it counts"), the thump
+   when a verdict lands, the daily-20 finish. What stays silent: buttons, tabs,
+   scrolling, sheets — an app this swipe-heavy would wear the feeling out in a
+   day if every touch answered back. Native only: the Haptics pod ships with
+   build 8; on the web (and on build 7) every call is a safe no-op. */
+const Haptic = (() => {
+  const C = window.Capacitor;
+  const native = C && C.isNativePlatform && C.isNativePlatform();
+  const H = native ? (C.registerPlugin ? C.registerPlugin("Haptics") : (C.Plugins && C.Plugins.Haptics)) : null;
+  const run = f => { try { const p = f(); if (p && p.catch) p.catch(() => {}); } catch (_) {} };
+  return {
+    tick() { if (H) run(() => H.impact({ style: "LIGHT" })); },          // crossed the commit line
+    love() { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // a love landed
+    drop() { if (H) run(() => H.impact({ style: "MEDIUM" })); },         // nope / heard landed
+    win()  { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // today's 20 done
+  };
+})();
+
 let lastAction = null;
 function decide(kind, kin) {
   const track = state.current;
   if (!track) return;
+  if (kind === "love") Haptic.love(); else Haptic.drop();
   showBurst(kind);
   const a = state.artists[track.artistId];
   // snapshot exact before-values so Undo can reverse this precisely
@@ -2165,6 +2317,7 @@ function decide(kind, kin) {
   bumpDaily(kind);                                       // Today's 20 progress (celebrates at the goal)
   if (kind === "love") {
     ensureArtist(track.artistId, track.artist, 3, { origin: "loved" });
+    bumpProfile(tagsOf(track.artistId), 1);   // a love teaches the deck what it's about
     state.liked.push(track); updateFinds();
     state.familiarity = Math.max(0, (state.familiarity || 0) - 0.1); // found you a keeper at this depth — ease off
     toast("♥ Added to your Finds");
@@ -2179,6 +2332,9 @@ function decide(kind, kin) {
     if (a) a.score -= n >= NOPE_BAN_AT ? 2 : 0.8;
     if (n >= NOPE_BAN_AT) {
       state.disliked.add(nm);
+      bumpProfile(tagsOf(track.artistId), -1);   // two skips: this flavor isn't landing
+      // (Undo restores the artist but not this nudge — it's gentle, clamped, and a
+      // deliberate two-skip signal is usually meant even when one swipe gets undone.)
       lastAction.purged = state.queue.filter(t => t.artist === nm); // Undo restores these
       if (lastAction.purged.length) state.queue = state.queue.filter(t => t.artist !== nm);
     }
@@ -2275,6 +2431,7 @@ function bumpDaily(kind) {
     const y = new Date(); y.setDate(y.getDate() - 1);
     state.streak = (state.lastDailyDone === dateStr(y)) ? (state.streak || 0) + 1 : 1;
     state.lastDailyDone = d.date;
+    Haptic.win();
     setTimeout(showDailySheet, 750); // let the swipe fly out first
   }
   updateDailyUI();
@@ -2391,6 +2548,7 @@ async function toggleGenreLive(g, chip) {
     const a = await searchArtist(name);
     if (a) seeds.push(ensureArtist(a.id, a.name, 3, { origin: "seed", genreName: g, nbFan: a.nb_fan }));
   }
+  warmProfile();   // background — the front-loaded songs below don't wait on it
   // pull tracks from the new genre and move them to the FRONT so the change is immediate
   const before = state.queue.length;
   let added = 0;
@@ -2409,6 +2567,80 @@ function openGenreSheet() { renderGenreSheet(); applyAdventureUI(); applyFreshUI
 function closeGenreSheet() { document.getElementById("genreSheet").style.display = "none"; }
 document.getElementById("genreSheetX").onclick = closeGenreSheet;
 document.getElementById("genreSheet").onclick = (e) => { if (e.target.id === "genreSheet") closeGenreSheet(); };
+/* ---------- Why this song? — the honest answer, from the data Sift actually used ---------- */
+function openWhySheet() {
+  const t = state.current;
+  if (!t) return;
+  document.getElementById("whySub").textContent = "“" + t.title + "” — " + t.artist;
+  document.getElementById("whyBody").innerHTML = whyHtml(t);
+  document.getElementById("whySheet").style.display = "flex";
+}
+function closeWhySheet() { document.getElementById("whySheet").style.display = "none"; }
+document.getElementById("whySheetX").onclick = closeWhySheet;
+document.getElementById("whySheet").onclick = e => { if (e.target.id === "whySheet") closeWhySheet(); };
+function whyHtml(t) {
+  const a = state.artists[t.artistId] || {};
+  const row = (k, v) => '<div class="why-row"><div class="why-k">' + k + '</div><div class="why-v">' + v + "</div></div>";
+  const rows = [];
+  // 1 — the trail: how the graph got from what you asked for to this card
+  let path;
+  if (a.origin === "loved") path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
+  else if (a.origin === "seed" && a.genreName) path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
+  else if (a.origin === "seed") path = "You asked for " + esc(a.name || t.artist) + " by name.";
+  else if (a.via && a.genreName) path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
+  else if (a.via) path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
+  else path = esc(t.reason || "Surfaced by your mix.");
+  rows.push(row("The trail", path));
+  // 2 — their sound, against what this deck is about
+  const tags = tagsOf(t.artistId).slice(0, 6);
+  if (tags.length) {
+    const p = state.tagProfile || {};
+    const hit = tags.some(x => (p[x] || 0) > 0);
+    rows.push(row("Their sound",
+      tags.map(x => '<span class="why-tag' + ((p[x] || 0) > 0 ? " hit" : "") + '">' + esc(x) + "</span>").join("") +
+      (hit ? '<div class="why-note">bright = the sound of your current mix</div>' : "")));
+  }
+  // 3 — how deep the cut is
+  const pop = (t.rank || 0) / 1000000;
+  const fans = t.nbFan != null ? t.nbFan : a.nbFan;
+  let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
+  if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
+  rows.push(row("The cut", cut + "."));
+  // 4 — the dials you set
+  rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
+  return rows.join("");
+}
+
+// Drag a sheet down by its header to dismiss it — the ✕ still works, thumbs prefer this.
+function attachSheetDrag(ovId, closeFn) {
+  const sheet = document.querySelector("#" + ovId + " .gsheet");
+  const head = document.querySelector("#" + ovId + " .gsheet-head");
+  if (!sheet || !head) return;
+  let g = null;
+  head.addEventListener("pointerdown", e => {
+    if (e.target.closest(".gsheet-x")) return;
+    g = { id: e.pointerId, y: e.clientY, lastY: e.clientY, lastT: performance.now(), vy: 0 };
+    sheet.style.transition = "none";
+    try { head.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  head.addEventListener("pointermove", e => {
+    if (!g || e.pointerId !== g.id) return;
+    const now = performance.now(), dt = now - g.lastT;
+    if (dt > 0) { g.vy = (e.clientY - g.lastY) / dt; g.lastY = e.clientY; g.lastT = now; }
+    sheet.style.transform = "translateY(" + Math.max(0, e.clientY - g.y) + "px)";   // down only — no stretching upward
+    if (e.cancelable) e.preventDefault();
+  });
+  const end = e => {
+    if (!g || e.pointerId !== g.id) return;
+    const dy = Math.max(0, e.clientY - g.y), was = g; g = null;
+    if (dy > 110 || was.vy > 0.5) { sheet.style.transform = ""; sheet.style.transition = ""; closeFn(); }
+    else { sheet.style.transition = "transform .18s ease"; sheet.style.transform = ""; setTimeout(() => { sheet.style.transition = ""; }, 200); }
+  };
+  head.addEventListener("pointerup", end);
+  head.addEventListener("pointercancel", end);
+}
+attachSheetDrag("genreSheet", closeGenreSheet);
+attachSheetDrag("whySheet", closeWhySheet);
 
 /* ---------- Drag / swipe ---------- */
 // Playful, artist-safe remarks. Likes get hyped, passes stay light (never bash an artist).
@@ -2430,6 +2662,7 @@ function attachDrag(card) {
 
   let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0;
   let lastMoveX = 0, lastMoveY = 0, lastMoveT = 0, vx = 0, vy = 0; // for velocity fling
+  let armed = false; // fingers-on state: are we past the commit line right now?
   const TH = 120; // swipe-commit threshold
 
   function clearFx() {
@@ -2443,7 +2676,7 @@ function attachDrag(card) {
   }
 
   card.addEventListener("pointerdown", e => {
-    dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0;
+    dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; armed = false;
     lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = performance.now(); vx = vy = 0;
     try { card.setPointerCapture(e.pointerId); } catch (_) {}
     card.style.transition = "none";
@@ -2454,6 +2687,10 @@ function attachDrag(card) {
     const now = performance.now(), dt = now - lastMoveT;
     if (dt > 0) { vx = (e.clientX - lastMoveX) / dt; vy = (e.clientY - lastMoveY) / dt; lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = now; }
     const horiz = Math.abs(dx) >= Math.abs(dy);
+    // One tick the moment the drag crosses the commit line — "let go now and it
+    // counts". Re-arms if you retreat, so wavering still reads true.
+    const past = horiz ? Math.abs(dx) > TH : dy < -140;
+    if (past !== armed) { armed = past; if (past) Haptic.tick(); }
     card.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (dx / 20) + "deg)";
     clearFx();
     if (horiz && dx > 0) {
@@ -3496,6 +3733,7 @@ async function playDm(track) {
 }
 function dmDecide(kind, kin) {
   if (!dmCurrent) return;
+  if (kind === "love") Haptic.love(); else Haptic.drop();
   showDmBurst(kind);
   // friend mode keeps the whole track (it's headed for your Finds); deck results stay slim
   if (kind === "love") dmLoved.push(dmFriendMode ? dmCurrent : { id: dmCurrent.id, title: dmCurrent.title, artist: dmCurrent.artist, cover: dmCurrent.cover });
@@ -3515,15 +3753,17 @@ function dmDecide(kind, kin) {
 }
 function attachDeckDrag(card) {
   const love = card.querySelector(".stamp.love"), nope = card.querySelector(".stamp.nope"), tint = card.querySelector(".tint");
-  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, lastX = 0, lastY = 0, lastT = 0, vx = 0, vy = 0; const TH = 120;
+  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, lastX = 0, lastY = 0, lastT = 0, vx = 0, vy = 0, armed = false; const TH = 120;
   function clearFx() { love.style.opacity = nope.style.opacity = 0; tint.style.opacity = 0; }
   function spring() { card.style.transition = "transform .38s cubic-bezier(.2,1.35,.4,1)"; card.style.transform = "translate(0,0) rotate(0deg)"; clearFx(); }
-  card.addEventListener("pointerdown", e => { dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vx = vy = 0; try { card.setPointerCapture(e.pointerId); } catch (_) {} card.style.transition = "none"; });
+  card.addEventListener("pointerdown", e => { dragging = true; startX = e.clientX; startY = e.clientY; dx = dy = 0; armed = false; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vx = vy = 0; try { card.setPointerCapture(e.pointerId); } catch (_) {} card.style.transition = "none"; });
   card.addEventListener("pointermove", e => {
     if (!dragging) return;
     dx = e.clientX - startX; dy = e.clientY - startY;
     const now = performance.now(), dt = now - lastT;
     if (dt > 0) { vx = (e.clientX - lastX) / dt; vy = (e.clientY - lastY) / dt; lastX = e.clientX; lastY = e.clientY; lastT = now; }
+    const past = Math.abs(dx) > TH;
+    if (past !== armed) { armed = past; if (past) Haptic.tick(); }   // same commit-line tick as the main deck
     card.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (dx / 20) + "deg)";
     clearFx();
     if (dx > 0) { const prog = Math.min(dx / TH, 1); love.style.opacity = Math.min(dx / 80, 1); love.style.transform = "rotate(12deg) scale(" + (0.75 + prog * 0.55) + ")"; tint.style.background = "radial-gradient(circle at 82% 50%, rgba(255,255,255," + (0.15 + prog * 0.45) + "), transparent 68%)"; tint.style.opacity = 1; }
@@ -3715,6 +3955,77 @@ document.getElementById("artistBack").onclick = () => {
   if (artistBackTo === "discover" && state.current) playTrack(state.current);
 };
 
+/* ---------- Edge-swipe back (like sliding out of a DM) ----------
+   Drag from the left edge and the page follows your finger back to where you came
+   from. Direct manipulation — the page is glued to the finger — so it behaves the
+   same with Reduce Motion on; only the release glide is an animation, and that one
+   IS skipped under reduced motion. Listeners run in the capture phase so the edge
+   strip belongs to Back before any card's own drag handler can claim the pointer. */
+function attachEdgeBack(el, opts) {
+  let g = null;
+  const reduced = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const underEl = () => { const id = opts.underId(); return id ? document.getElementById(id) : null; };
+  el.addEventListener("pointerdown", e => {
+    if (e.clientX > 28 || !opts.enabled()) return;
+    g = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false, lastX: e.clientX, lastT: performance.now(), vx: 0 };
+    e.stopPropagation();
+  }, true);
+  el.addEventListener("pointermove", e => {
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (!g.on) {
+      if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }   // it's a scroll — let it be one
+      if (dx < 6) return;   // ignore jitter until the drag is real
+      g.on = true;
+      el.classList.add("edgeback");
+      const u = underEl(); if (u) u.classList.add("under");
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    const now = performance.now(), dt = now - g.lastT;
+    if (dt > 0) { g.vx = (e.clientX - g.lastX) / dt; g.lastX = e.clientX; g.lastT = now; }
+    el.style.transform = "translateX(" + Math.max(0, dx) + "px)";
+    if (e.cancelable) e.preventDefault();
+  }, true);
+  const end = e => {
+    if (!g || e.pointerId !== g.id) return;
+    const was = g; g = null;
+    if (!was.on) return;
+    const dx = e.clientX - was.x, w = el.clientWidth || 320;
+    const commit = dx > w * 0.34 || was.vx > 0.55;   // a third of the way, or a flick
+    const cleanup = () => {
+      el.classList.remove("edgeback"); el.style.transform = ""; el.style.transition = "";
+      const u = underEl(); if (u) u.classList.remove("under");
+    };
+    if (commit) {
+      const go = () => { cleanup(); opts.back(); };   // same synchronous frame — no flash between
+      if (reduced()) go();
+      else {
+        el.style.transition = "transform .16s ease-out";
+        el.style.transform = "translateX(" + w + "px)";
+        setTimeout(go, 170);
+      }
+    } else {
+      el.style.transition = "transform .18s ease";
+      el.style.transform = "translateX(0)";
+      setTimeout(cleanup, 190);
+    }
+  };
+  el.addEventListener("pointerup", end, true);
+  el.addEventListener("pointercancel", end, true);
+}
+attachEdgeBack(document.getElementById("artist"), {
+  enabled: () => true,
+  underId: () => artistBackTo || "discover",
+  back: () => document.getElementById("artistBack").click(),
+});
+attachEdgeBack(document.getElementById("deckmode"), {
+  // Only when the deck was opened from inside the app (the ✕ is showing) — a deck
+  // opened from a shared link has nowhere to go "back" to.
+  enabled: () => document.getElementById("dmClose").style.display !== "none",
+  underId: () => "friends",
+  back: () => document.getElementById("dmClose").click(),
+});
+
 /* ---------- Toast ---------- */
 let toastTimer = null;
 function toast(msg) {
@@ -3728,6 +4039,9 @@ function toast(msg) {
   const returning = load();
   applyAdventureUI();
   applyFreshUI();
+  // Installs saved before the coherence profile existed: build it quietly from the
+  // cached seeds once the boot-time network rush is over.
+  if (returning && !state.tagProfile) setTimeout(warmProfile, 4000);
   function showHome() {
     if (returning) {
       document.getElementById("welcomeStat").textContent = state.liked.length;

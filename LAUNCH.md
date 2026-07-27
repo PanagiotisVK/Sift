@@ -7,7 +7,7 @@ be copied, not retyped.
 **Where the code stands** *(updated 2026-07-26)*: **every technical blocker is
 cleared.** Parts 1–5 are done and verified. Sign in with Apple works from a real
 TestFlight build, the demo account logs in, the screenshots are final, and
-**build 6 is uploaded** — the build you submit.
+**build 7 is uploaded** — the build you submit.
 
 The one late bug is fixed and shipped. Demoing the beta to a friend who's into
 old Greek folk turned up a real engine fault: any artist whose name isn't in the
@@ -15,12 +15,24 @@ Latin alphabet — Greek, Japanese, Korean, Arabic, Cyrillic — resolved correc
 and then contributed **zero songs**, so those decks came back empty or drifted
 wildly off-genre. Fixed in commit `fb84fba`, followed by an audit of all 140
 genre anchors (`e9d3148`), and **confirmed working on a physical iPhone from
-build 6** — not just in headless testing.
+build 6** — not just in headless testing. Build 7 carries the identical web code;
+the only difference is that it drops iPad (see below).
 
 Worth remembering for next time: Capacitor bundles the web assets into the
 binary, so **a JS fix only reaches the app through a new archive.** Pushing to
 GitHub Pages updates the website and nothing else. That's why the fix wasn't in
 build 5 and why build 6 exists.
+
+**Why build 7 exists: iPhone only.** Capacitor defaults the Xcode project to
+`TARGETED_DEVICE_FAMILY = "1,2"` — iPhone *and* iPad — and neither of us had reason
+to look at it until App Store Connect refused to accept the submission without
+13-inch iPad screenshots. Rendered at 1024×1366, Sift is a phone-width column
+floating in a large black void with a tab bar that doesn't reach the screen edges:
+about two-thirds of the display is empty. That's the "scaled-up iPhone app" that
+Guideline 4.0 exists to catch. Rather than manufacture iPad screenshots for a layout
+that doesn't deserve them, build 7 drops iPad, Mac (Designed for iPad) and Apple
+Vision, leaving **iPhone only** — which also removed the screenshot requirement
+entirely. Real iPad support is a deliberate feature for later, not a checkbox.
 
 **Everything left is browser work — Parts 6 to 9.** Pre-submission checks were
 re-run on 2026-07-26 and all pass: demo account logs in (email confirmed), the
@@ -108,19 +120,22 @@ Don't archive blind — a broken sign-in button is an instant rejection.
 **If the sheet opens and then errors:** Part 1 wasn't saved, or the bundle ID in
 Supabase has a typo. **If the button does nothing:** `npm install` was skipped.
 
-## Part 5 — Archive and upload the build *(Mac, 15 min mostly waiting)* — ☑ done, build 6
+## Part 5 — Archive and upload the build *(Mac, 15 min mostly waiting)* — ☑ done, build 7
 
-Kept for the next time you ship. **Build 6 is already uploaded**; skip to Part 6.
+Kept for the next time you ship. **Build 7 is already uploaded**; skip to Part 6.
 
 1. Run `./mac.sh` first so the archive contains the latest web code — this is the
    step that's easy to forget, and forgetting it ships stale JS.
 2. Xcode → **App** target → **General** → **Identity** → bump **Build** by one
-   (6 → 7 next time). Leave **Version** at `1.0` until the app is live.
-3. Device dropdown → **Any iOS Device (arm64)**. *(Archive is greyed out on a
+   (7 → 8 next time). Leave **Version** at `1.0` until the app is live. Apple
+   rejects any upload reusing a build number, including ones that were rejected.
+3. Check **Supported Destinations** still shows **iPhone only**. `npx cap sync` can
+   regenerate iOS project settings, so this is worth a glance before every archive.
+4. Device dropdown → **Any iOS Device (arm64)**. *(Archive is greyed out on a
    simulator — the usual gotcha.)*
-4. **Product → Archive**, wait, then **Distribute App** → **App Store Connect**
+5. **Product → Archive**, wait, then **Distribute App** → **App Store Connect**
    → **Upload** → accept the defaults.
-5. Wait for the processing email (~10–30 min).
+6. Wait for the processing email (~10–30 min).
 
 ## Part 6 — Fill in the store listing *(browser, ~45 min)*
 
@@ -168,8 +183,9 @@ work down the list rather than hunting for the Submit button.
    STORE-LISTING.md verbatim. The notes matter more than they look: they tell the
    reviewer where the Sign in with Apple button is (Guideline 4.8 is checked by
    hand) and where account deletion lives (5.1.1(v)). Both save a round trip.
-10. Select **build 6** — *not* build 5, which predates the non-Latin fix — and
-    **Submit for Review**.
+10. Select **build 7** — *not* build 6, which still claims iPad support and will
+    demand 13-inch iPad screenshots, and *not* build 5, which predates the
+    non-Latin fix — and **Submit for Review**.
 
 ## Part 7 — The name *(browser, 20 min — do it before you print anything)*
 
@@ -210,7 +226,7 @@ ever charge. Doesn't block submission; just don't forget it.
 | 2 | Supabase: email confirmation on | browser | ☑ |
 | 3 | Xcode: Sign in with Apple capability | Mac | ☑ |
 | 4 | Test sign-in on device | Mac | ☑ (build 5, TestFlight) |
-| 5 | Archive + upload **build 6** (has the non-Latin fix) | Mac | ☑ |
+| 5 | Archive + upload **build 7** (non-Latin fix + iPhone only) | Mac | ☑ |
 | 6 | Agreements, Tax and Banking shows **Active** | browser | ☑ |
 | 7 | Store listing + Age Rating + App Privacy + submit | browser | ☐ ← **you are here** |
 | 8 | Trademark check | browser | ☐ |
