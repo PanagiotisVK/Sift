@@ -1209,6 +1209,16 @@ const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on
 // all of them. Those would outlive the fix, so the old bucket is abandoned rather than
 // migrated — the cost is one slower first deck.
 try { const c = JSON.parse(localStorage.getItem("sift_lb_cache3") || "{}"); Object.assign(lbArtist, c.a || {}); Object.assign(lbNames, c.n || {}); } catch (_) {}
+// Installs that hit an iTunes rate-limit burst have appleId:null cached for perfectly
+// findable artists (a failed search used to look identical to "no match on Apple"),
+// which starved their decks for good. Those verdicts can't be trusted — drop them
+// once; from here on null is only ever cached after a search that actually completed.
+try {
+  if (!localStorage.getItem("sift_apfix1")) {
+    Object.values(lbArtist).forEach(m => { if (m && m.appleId === null) delete m.appleId; });
+    localStorage.setItem("sift_apfix1", "1");
+  }
+} catch (_) {}
 let lbSaveT = null;
 function lbCacheSave() {
   clearTimeout(lbSaveT);
@@ -1224,16 +1234,23 @@ function mbApi(path, params) {
   return p;
 }
 function lbApi(url) { return fetch(url).then(r => r.ok ? r.json() : null).catch(() => null); }
+// One failed iTunes call (rate limit, offline) almost always means the NEXT twenty
+// fail too — and a burst of failures used to cascade into "no Apple id" verdicts all
+// over the graph. Pause all iTunes traffic briefly instead; callers see null (the
+// same signal as a single failure) and already know not to treat it as an answer.
+let itunesBackoffUntil = 0;
 function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
   return new Promise((resolve) => {
+    if (Date.now() < itunesBackoffUntil) return resolve(null);
     const cb = "sonar_ap_" + (jsonpId++);
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 9000);
+    const timeout = setTimeout(fail, 9000);
     function cleanup() { clearTimeout(timeout); delete window[cb]; if (script.parentNode) script.parentNode.removeChild(script); }
-    window[cb] = (data) => { cleanup(); resolve(data); };
+    function fail() { itunesBackoffUntil = Date.now() + 12000; cleanup(); resolve(null); }
+    window[cb] = (data) => { itunesBackoffUntil = 0; cleanup(); resolve(data); };
     const qs = Object.entries(params || {}).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
     const script = document.createElement("script");
     script.src = "https://itunes.apple.com/" + path + "?" + qs + "&callback=" + cb;
-    script.onerror = () => { cleanup(); resolve(null); };
+    script.onerror = fail;
     document.body.appendChild(script);
   });
 }
@@ -1371,7 +1388,8 @@ async function appleCandidates(name) {
   const want = nameKey(name);
   if (!want) return [];
   const s = await itunesApi("search", { term: name, entity: "musicArtist", limit: 5 });
-  return ((s && s.results) || []).filter(r => r.artistId != null && nameKey(r.artistName) === want)
+  if (!s) return null;   // the call failed — that's "couldn't look", NOT "no match"
+  return (s.results || []).filter(r => r.artistId != null && nameKey(r.artistName) === want)
     .map(r => ({ id: r.artistId, name: r.artistName }));
 }
 // How much previewable catalogue an Apple artist entry actually has behind it.
@@ -1401,8 +1419,11 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
   }
 
   const cands = [], seen = new Set();
+  let blind = false;   // a lookup that never completed leaves "no match" unproven
   for (const n of names) {
-    for (const c of await appleCandidates(n)) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
+    const cs = await appleCandidates(n);
+    if (cs === null) { blind = true; continue; }
+    for (const c of cs) if (!seen.has(c.id)) { seen.add(c.id); cands.push(c); }
   }
 
   let appleId = cands.length ? cands[0].id : null;
@@ -1418,10 +1439,15 @@ async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified
   if (!appleId) {   // niche acts missing from the artist index are reachable via their songs
     for (const n of names) {
       const s = await itunesApi("search", { term: n, entity: "song", limit: 25 });
-      const hit = ((s && s.results) || []).find(r => sameArtist(r.artistName, nameKey(n)));
+      if (!s) { blind = true; continue; }
+      const hit = (s.results || []).find(r => sameArtist(r.artistName, nameKey(n)));
       if (hit) { appleId = hit.artistId; break; }
     }
   }
+  // Cache null ONLY when every search actually ran and came back empty. Caching a
+  // rate-limited failure as "this artist isn't on Apple Music" is what starved whole
+  // decks: one bad minute of network wrote off good artists forever (localStorage).
+  if (!appleId && blind) return null;
   m.appleId = appleId || null;
   lbCacheSave();
   return m.appleId;
@@ -1614,10 +1640,13 @@ const AppleLBProvider = {
   },
   async artistTop(id, limit, nameHint) {
     const { mbid, appleId } = await this._artistIds(id, nameHint);
-    if (!appleId) return [];
+    // null = "couldn't reach the catalogue right now" (rate limit, offline); [] = a
+    // real answer. Callers must not write an artist off over a null.
+    if (!appleId) return (mbid && lbArtist[mbid] && lbArtist[mbid].appleId === undefined) ? null : [];
     const users = mbid ? await lbListeners(mbid) : 0;
     const d = await itunesApi("lookup", { id: appleId, entity: "song", limit: Math.min(200, limit || 6) });
-    const songs = ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
+    if (!d) return null;   // a failed lookup is not an empty catalogue
+    const songs = (d.results || []).filter(r => r.wrapperType === "track" && r.trackId && r.previewUrl);
     const base = Math.max(0.02, Math.min(1, users / this.fanNorm)) * 1000000;
     // Tag tracks with the MBID when we have one, so anything saved from here on
     // carries a first-class id instead of the legacy one that sent us down this path.
@@ -1934,6 +1963,7 @@ async function refill() {
 
       for (const T of targets) {
         const pool = await artistTop(T.id, 25);   // pull deep, then reach past the hits
+        if (!pool) continue;   // catalogue unreachable right now — leave T for a later pass
         const tracks = pickArtistTracks(pool);
         T.topPulled = true;
         let reason = reasonOverride;
@@ -2013,7 +2043,9 @@ async function respondToLove(track) {
       .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
     if (!cand.length) return;
     const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
-    const picks = pickArtistTracks(await artistTop(T.id, 25, T.name));
+    const pool = await artistTop(T.id, 25, T.name);
+    if (!pool) return;   // catalogue unreachable — don't write T off as pulled
+    const picks = pickArtistTracks(pool);
     T.topPulled = true;
     // Identify the new tracks by diffing, not by index — a background refill() may have
     // appended to the queue while we were on the network.
@@ -2066,6 +2098,9 @@ function load() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     state.artists = d.artists || {};
+    // "exhausted" means "found no new targets last time I looked" — a session judgment,
+    // and one a rate-limited session records falsely. Never let it outlive the session.
+    Object.values(state.artists).forEach(a => { if (a && a.exhausted) a.exhausted = false; });
     state.disliked = new Set(d.disliked || []);
     state.nopes = d.nopes || {};
     if (!d.nopes && state.disliked.size) {
@@ -2342,7 +2377,9 @@ startBtn.onclick = async () => {
     if (!arts.length) continue;
     const a = arts[Math.floor(Math.random() * arts.length)];
     try {
-      queueTracks(pickArtistTracks(await artistTop(a.id, 25, a.name)), "Exploring " + g, a.nbFan);
+      const pool = await artistTop(a.id, 25, a.name);
+      if (!pool) continue;   // unreachable ≠ pulled — refill will get their catalogue later
+      queueTracks(pickArtistTracks(pool), "Exploring " + g, a.nbFan);
       a.topPulled = true;   // or the first refill re-pulls the exact catalogue we just took
     } catch (_) {}
   }
@@ -2476,9 +2513,23 @@ function rgbToHsl(r, g, b) {
 }
 function hsl(h, s, l) { return "hsl(" + Math.round(h * 360) + "," + Math.round(s * 100) + "%," + Math.round(l * 100) + "%)"; }
 function tintFromCover(url) { /* Ink theme keeps fixed monochrome accents — no per-cover tinting */ }
+// An empty deck is almost never a finished graph — it's a jammed pipe (iTunes rate
+// limit, a network blip). The old dead-end message stranded users permanently over a
+// bad minute of network. Now: retry, and each failed round reopens more of the graph
+// ("exhausted" and even "topPulled" are session judgments, not facts — knownIds still
+// dedupes, so re-pulling a catalogue can only surface songs the user hasn't seen).
+let emptyRetries = 0;
 function renderEmpty() {
   deck.innerHTML = '<div class="empty"><div style="font-size:40px">🎧</div><div>Digging deeper for you…</div></div>';
-  refill().then(() => { if (state.queue.length) next(); else deck.innerHTML = '<div class="empty"><div style="font-size:40px">🌌</div><div>Wow, you\'ve explored a lot! Try loving a few more to open new paths.</div></div>'; });
+  refill().then(() => {
+    if (state.queue.length) { emptyRetries = 0; next(); return; }
+    emptyRetries++;
+    if (emptyRetries >= 2) Object.values(state.artists).forEach(a => { a.exhausted = false; });
+    if (emptyRetries >= 3) Object.values(state.artists).forEach(a => { a.topPulled = false; });
+    deck.innerHTML = '<div class="empty" id="deckRetry"><div style="font-size:40px">🎧</div><div>Restocking the crates…</div><div style="opacity:.65;font-size:13px;margin-top:8px">Retrying in a moment — or tap to dig now.</div></div>';
+    document.getElementById("deckRetry").onclick = () => renderEmpty();
+    setTimeout(() => { if (document.getElementById("deckRetry") && !state.queue.length) renderEmpty(); }, 9000);
+  });
 }
 function esc(s) { return (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
