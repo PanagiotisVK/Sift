@@ -232,10 +232,6 @@
      small contained loop in one corner of a static screen, not full-screen motion
      — and it's the whole point of the loading screen. Text swaps stay instant
      under Reduce Motion. */
-  /* The stage holds every scene stacked; one wears .on at a time and they crossfade. */
-  .cookstage { position: relative; width: 164px; height: 126px; }
-  .cs-scene { position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; }
-  .cs-scene.on { opacity: 1; }
   .cookscene { width: 164px; height: 126px; overflow: visible; }
   .cookscene * { transform-box: fill-box; }
   .cs-pan-body { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
@@ -285,32 +281,6 @@
   .cs-poof path { stroke: rgba(255,255,255,.85); stroke-width: 2.5; stroke-linecap: round; }
   .cs-poof { opacity: 0; animation: csPoof 2.6s linear infinite; transform-origin: center; }
   @keyframes csPoof { 0%, 30% { opacity: 0; transform: scale(.6); } 34% { opacity: .9; transform: scale(1); } 44%, 100% { opacity: 0; transform: scale(1.2); } }
-  /* Scene two: the pot. The spoon handle draws lazy circles (bowl hidden behind
-     the rim), the pot rocks a touch in sympathy, steam keeps rising. */
-  .cs-pot-body { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
-  .cs-pot-rim { stroke: rgba(255,255,255,.92); stroke-width: 4.5; stroke-linecap: round; fill: none; }
-  .cs-pot-hdl { stroke: rgba(255,255,255,.92); stroke-width: 4; stroke-linecap: round; fill: none; }
-  .cs-spoon-h { stroke: rgba(255,255,255,.9); stroke-width: 5; stroke-linecap: round; }
-  .cs-spoon-k { fill: rgba(255,255,255,.9); }
-  .cs-spoon { animation: csStir 1.8s ease-in-out infinite; transform-origin: 15% 96%; }
-  @keyframes csStir {
-    0% { transform: rotate(-16deg); }
-    50% { transform: rotate(14deg) translateY(2px); }   /* the far side of the circle */
-    100% { transform: rotate(-16deg); }
-  }
-  .cs-pot { animation: csSimmer 1.8s ease-in-out infinite; transform-origin: 50% 80%; }
-  @keyframes csSimmer { 0%, 100% { transform: rotate(-.7deg); } 50% { transform: rotate(.7deg); } }
-  /* Scene three: a pinch of salt. The hand taps as it sprinkles; grains fall into
-     the pot and vanish behind the rim. */
-  .cs-arm { stroke: rgba(255,255,255,.9); stroke-width: 8; stroke-linecap: round; }
-  .cs-palm { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
-  .cs-fing { stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linecap: round; }
-  .cs-hand { animation: csSprinkle 1s ease-in-out infinite; transform-origin: 90% 10%; }
-  @keyframes csSprinkle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg) translateY(1px); } 55% { transform: rotate(2deg); } 78% { transform: rotate(-5deg); } }
-  .cs-grain { fill: rgba(255,255,255,.9); opacity: 0; animation: csGrain 1.05s linear infinite; }
-  .cs-grain.g2 { animation-delay: .35s; }
-  .cs-grain.g3 { animation-delay: .7s; }
-  @keyframes csGrain { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 85% { transform: translateY(10px); opacity: .6; } 100% { transform: translateY(13px); opacity: 0; } }
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
@@ -631,70 +601,33 @@
       <button id="btnUndo" class="undo-btn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H14a5.5 5.5 0 0 1 0 11h-1.5"/></svg><span>Undo</span></button>
       <div class="deck" id="deck">
         <div class="loading" id="deckLoading">
-          <!-- The kitchen: a little cooking show, one scene at a time. The pan flips its
-               sausage for a few seconds, then crossfades to the pot being stirred — and
-               the patter underneath matches whichever scene is on. Inline SVG + CSS. -->
-          <div class="cookstage" aria-hidden="true">
-            <svg class="cookscene cs-scene on" id="sceneCookPan" viewBox="0 0 170 132">
-              <path class="cs-steam" d="M60 44 q5 -8 0 -16 q-5 -8 0 -16"/>
-              <path class="cs-steam s2" d="M88 42 q5 -8 0 -16 q-5 -8 0 -16"/>
-              <!-- sausage is drawn BEFORE the pan so the pan's front wall occludes its
-                   lower half — that's what makes it lie IN the pan instead of on it -->
-              <g class="cs-sausage">
-                <path class="cs-sg-o" d="M58 71 q18 -5 36 0"/>
-                <path class="cs-sg-i" d="M58 71 q18 -5 36 0"/>
-                <path class="cs-sg-t" d="M67 63.5 l2.5 3 M80 62.5 l2.5 3"/>
-              </g>
-              <!-- sizzle: sparks pop IN the pan, beside the sausage -->
-              <path class="cs-spark" d="M52 64 l3 -5"/>
-              <path class="cs-spark k2" d="M101 63 l3 -5"/>
-              <path class="cs-spark k3" d="M77 59 l-2 -5"/>
-              <!-- landing poof — flares exactly when the sausage hits the pan -->
-              <g class="cs-poof">
-                <path d="M46 66 l-4 -4 M49 59 l-2 -5"/>
-                <path d="M106 65 l4 -4 M103 58 l2 -5"/>
-              </g>
-              <g class="cs-pan">
-                <path class="cs-pan-body" d="M34 74 L118 74 C116 92 36 92 34 74 Z"/>
-                <path class="cs-pan-rim" d="M30 74 L122 74"/>
-                <path class="cs-pan-handle" d="M121 73 q20 -3 33 -8"/>
-              </g>
-            </svg>
-            <svg class="cookscene cs-scene" id="sceneCookPot" viewBox="0 0 170 132">
-              <path class="cs-steam" d="M66 44 q5 -8 0 -16 q-5 -8 0 -16"/>
-              <path class="cs-steam s2" d="M94 42 q5 -8 0 -16 q-5 -8 0 -16"/>
-              <!-- spoon bowl lives inside the pot (hidden behind the rim); only the
-                   handle shows, drawing lazy circles -->
-              <g class="cs-spoon">
-                <path class="cs-spoon-h" d="M80 66 L102 24"/>
-                <circle class="cs-spoon-k" cx="103" cy="21" r="3.5"/>
-              </g>
-              <g class="cs-pot">
-                <path class="cs-pot-body" d="M46 66 L118 66 L118 80 Q118 96 102 96 L62 96 Q46 96 46 80 Z"/>
-                <path class="cs-pot-rim" d="M41 66 L123 66"/>
-                <path class="cs-pot-hdl" d="M41 73 q-8 3.5 0 7"/>
-                <path class="cs-pot-hdl" d="M123 73 q8 3.5 0 7"/>
-              </g>
-            </svg>
-            <svg class="cookscene cs-scene" id="sceneCookSalt" viewBox="0 0 170 132">
-              <path class="cs-steam" d="M60 46 q5 -8 0 -16 q-5 -8 0 -16"/>
-              <!-- the seasoning hand: arm in from the corner, mitt pinched, tapping -->
-              <g class="cs-hand">
-                <path class="cs-arm" d="M144 14 L122 27"/>
-                <path class="cs-palm" d="M104 26 q16 -6 24 4 q6 9 -4 15 q-12 7 -22 -1 q-8 -7 2 -18 Z"/>
-                <path class="cs-fing" d="M101 44 l-6 7 M108 47 l-5 7"/>
-              </g>
-              <circle class="cs-grain" cx="96" cy="55" r="1.7"/>
-              <circle class="cs-grain g2" cx="91" cy="57" r="1.5"/>
-              <circle class="cs-grain g3" cx="100" cy="58" r="1.5"/>
-              <g class="cs-pot">
-                <path class="cs-pot-body" d="M46 66 L118 66 L118 80 Q118 96 102 96 L62 96 Q46 96 46 80 Z"/>
-                <path class="cs-pot-rim" d="M41 66 L123 66"/>
-                <path class="cs-pot-hdl" d="M41 73 q-8 3.5 0 7"/>
-                <path class="cs-pot-hdl" d="M123 73 q8 3.5 0 7"/>
-              </g>
-            </svg>
-          </div>
+          <!-- The kitchen: cartoon pan flipping a sausage while it sizzles. One scene,
+               done properly. Inline SVG + CSS keyframes — no image assets. -->
+          <svg class="cookscene" viewBox="0 0 170 132" aria-hidden="true">
+            <path class="cs-steam" d="M60 44 q5 -8 0 -16 q-5 -8 0 -16"/>
+            <path class="cs-steam s2" d="M88 42 q5 -8 0 -16 q-5 -8 0 -16"/>
+            <!-- sausage is drawn BEFORE the pan so the pan's front wall occludes its
+                 lower half — that's what makes it lie IN the pan instead of on it -->
+            <g class="cs-sausage">
+              <path class="cs-sg-o" d="M58 71 q18 -5 36 0"/>
+              <path class="cs-sg-i" d="M58 71 q18 -5 36 0"/>
+              <path class="cs-sg-t" d="M67 63.5 l2.5 3 M80 62.5 l2.5 3"/>
+            </g>
+            <!-- sizzle: sparks pop IN the pan, beside the sausage -->
+            <path class="cs-spark" d="M52 64 l3 -5"/>
+            <path class="cs-spark k2" d="M101 63 l3 -5"/>
+            <path class="cs-spark k3" d="M77 59 l-2 -5"/>
+            <!-- landing poof — flares exactly when the sausage hits the pan -->
+            <g class="cs-poof">
+              <path d="M46 66 l-4 -4 M49 59 l-2 -5"/>
+              <path d="M106 65 l4 -4 M103 58 l2 -5"/>
+            </g>
+            <g class="cs-pan">
+              <path class="cs-pan-body" d="M34 74 L118 74 C116 92 36 92 34 74 Z"/>
+              <path class="cs-pan-rim" d="M30 74 L122 74"/>
+              <path class="cs-pan-handle" d="M121 73 q20 -3 33 -8"/>
+            </g>
+          </svg>
           <div class="radar-status" id="deckStatus">Let me cook…</div>
         </div>
       </div>
@@ -2333,18 +2266,17 @@ function updateStart() {
 // kitchen: rotating patter ("Let me cook…"), interleaved with the honest stage
 // updates ("Tuning in to Greek…"), which hold on screen for a beat before the
 // patter resumes.
-// Each scene brings its own lines, so the words always match the picture: the pan
-// flips while it "cooks", then the stage crossfades to the pot and the patter turns
-// to stirring. Scenes advance every second patter beat (~4.6s).
-const COOK_SCENES = [
-  { id: "sceneCookPan", lines: ["Let me cook…", "Taste-testing a few…", "Flipping through the crates…", "Chef's kiss loading…"] },
-  { id: "sceneCookPot", lines: ["Stirring the pot… 🥘", "Simmering something good…", "Letting the flavors mingle…", "Low heat, big flavor…"] },
-  { id: "sceneCookSalt", lines: ["A pinch of something special…", "Seasoning to taste…", "Adding a pinch of bass…", "Secret ingredient time…"] },
+// Lines are written for the picture above them — a frying pan — so no stirring, no
+// simmering. Loads are short now, so a random start line keeps repeat visits fresh.
+const COOK_LINES = [
+  "Let me cook…",
+  "Taste-testing a few…",
+  "Flipping through the crates…",
+  "Adding a pinch of bass…",
+  "Chef's kiss loading…",
+  "Plating up your first find… 🍽️",
 ];
-let _statusT = null, _cookT = null, _cookI = 0, _holdUntil = 0, _cookScene = 0;
-function showCookScene(i) {
-  COOK_SCENES.forEach((s, k) => { const el = document.getElementById(s.id); if (el) el.classList.toggle("on", k === i); });
-}
+let _statusT = null, _cookT = null, _cookI = 0, _holdUntil = 0;
 // The old fade swapped the text at 200ms into a 300ms fade — you watched it change
 // mid-transition. Timings now match, and Reduce Motion swaps instantly (the CSS
 // disables the transition; the class dance is then inert).
@@ -2363,21 +2295,13 @@ function setDeckStatus(msg) {   // real stage info: show now, hold a beat over t
 }
 function startCooking() {
   if (_cookT) return;
-  // Decks build fast now, so most loads only ever show one scene — start on a random
-  // one and even short waits meet the whole cast across a few sessions.
-  _cookScene = Math.floor(Math.random() * COOK_SCENES.length);
-  showCookScene(_cookScene);
-  const el0 = document.getElementById("deckStatus");
-  if (el0 && el0.textContent === "Let me cook…" && _cookScene !== 0) el0.textContent = COOK_SCENES[_cookScene].lines[0];
+  _cookI = Math.floor(Math.random() * COOK_LINES.length);   // vary the patter across visits
   _cookT = setInterval(() => {
     const el = document.getElementById("deckStatus");
     // The loading node dies with the first rendered card — the kitchen closes itself.
     if (!el) { clearInterval(_cookT); _cookT = null; return; }
     if (Date.now() < _holdUntil) return;
-    _cookI++;
-    if (_cookI % 2 === 0) { _cookScene = (_cookScene + 1) % COOK_SCENES.length; showCookScene(_cookScene); }
-    const s = COOK_SCENES[_cookScene];
-    swapStatus(el, s.lines[s._i = ((s._i == null ? -1 : s._i) + 1) % s.lines.length]);
+    swapStatus(el, COOK_LINES[_cookI++ % COOK_LINES.length]);
   }, 2300);
 }
 
