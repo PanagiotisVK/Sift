@@ -226,32 +226,42 @@
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Building the deck: the mark sits still and sonar rings sweep outward from it —
-     the app's own "radar" language, and a picture of what it's doing (reaching out
-     through the artist graph). Rings are pure CSS on the existing logo asset. */
-  .radar { position: relative; width: 132px; height: 132px; display: grid; place-items: center; }
-  .rring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; animation: radarPulse 2.7s cubic-bezier(.15,.6,.3,1) infinite; }
-  .rring:nth-child(2) { animation-delay: .9s; }
-  .rring:nth-child(3) { animation-delay: 1.8s; }
-  @keyframes radarPulse { 0% { transform: scale(.32); opacity: .5; } 65% { opacity: .13; } 100% { transform: scale(1); opacity: 0; } }
-  .rmark { width: 46px; height: 46px; object-fit: contain; opacity: .92; animation: radarBreathe 2.7s ease-in-out infinite; }
-  @keyframes radarBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
-  /* The wait is a kitchen: a pan rocking over the heat and a line of patter that
-     rotates, interleaved with the honest stage updates ("Tuning in to Greek…"). */
-  .cookline { display: flex; align-items: center; gap: 9px; max-width: 86%; }
-  .cookpan { font-size: 26px; line-height: 1; animation: cookRock 1.5s ease-in-out infinite; transform-origin: 65% 80%; }
-  @keyframes cookRock { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
-  .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: left; }
+  /* The wait is a kitchen: a line-art pan tosses a sausage over the flame while
+     steam rises, with rotating patter beneath. Outlines only — it matches the Ink
+     theme and reads at a glance. All motion is CSS on inline SVG. */
+  .cookscene { width: 152px; height: 116px; overflow: visible; }
+  .cookscene * { transform-box: fill-box; }
+  .cs-pan { animation: csToss 2.6s ease-in-out infinite; transform-origin: 85% 40%; }
+  @keyframes csToss {
+    0%, 3% { transform: rotate(0); }
+    8% { transform: rotate(-6deg) translateY(-3px); }   /* the toss */
+    14% { transform: rotate(1.5deg); }
+    19%, 30% { transform: rotate(0); }
+    32% { transform: translateY(1.5px); }               /* the catch */
+    36%, 100% { transform: rotate(0); }
+  }
+  .cs-sausage { animation: csFlip 2.6s cubic-bezier(.33,.12,.3,1) infinite; transform-origin: center; }
+  @keyframes csFlip {
+    0%, 6% { transform: translateY(0) rotate(0); }
+    18% { transform: translateY(-42px) rotate(200deg); }
+    30% { transform: translateY(-1px) rotate(358deg); }
+    33% { transform: translateY(0) rotate(360deg); }
+    100% { transform: translateY(0) rotate(360deg); }
+  }
+  .cs-steam { stroke: rgba(255,255,255,.32); opacity: 0; animation: csSteam 2.6s ease-in-out infinite; }
+  .cs-steam.s2 { animation-delay: 1.3s; }
+  @keyframes csSteam { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: .55; } 75%, 100% { transform: translateY(-9px); opacity: 0; } }
+  .cs-flame { stroke: rgba(255,255,255,.42); animation: csFlick 1.15s ease-in-out infinite; }
+  .cs-flame.f2 { animation-delay: .4s; }
+  .cs-flame.f3 { animation-delay: .75s; }
+  @keyframes csFlick { 0%, 100% { opacity: .25; } 50% { opacity: .65; } }
+  .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
-  /* Reduce Motion: nothing sweeps, breathes, rocks or fades. The rings become a
-     static sonar diagram and the patter swaps instantly — still playful, zero movement. */
+  /* Reduce Motion: the kitchen holds still — sausage resting in the pan, faint
+     steam, no flicker — and the patter swaps instantly instead of fading. */
   @media (prefers-reduced-motion: reduce) {
-    .rring { animation: none; opacity: .22; }
-    .rring:nth-child(1) { transform: scale(.45); }
-    .rring:nth-child(2) { transform: scale(.72); opacity: .15; }
-    .rring:nth-child(3) { transform: scale(1); opacity: .09; }
-    .rmark { animation: none; }
-    .cookpan { animation: none; }
+    .cs-pan, .cs-sausage, .cs-flame { animation: none; }
+    .cs-steam { animation: none; opacity: .3; }
     .radar-status { transition: none; }
   }
 
@@ -571,14 +581,25 @@
       <button id="btnUndo" class="undo-btn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H14a5.5 5.5 0 0 1 0 11h-1.5"/></svg><span>Undo</span></button>
       <div class="deck" id="deck">
         <div class="loading" id="deckLoading">
-          <div class="radar" aria-hidden="true">
-            <span class="rring"></span><span class="rring"></span><span class="rring"></span>
-            <img class="rmark" src="logo-mark.png?v=3" alt="" />
-          </div>
-          <div class="cookline">
-            <span class="cookpan" aria-hidden="true">🍳</span>
-            <div class="radar-status" id="deckStatus">Let me cook…</div>
-          </div>
+          <!-- The kitchen: line-art pan tossing a sausage over the flame. Inline SVG +
+               CSS keyframes — no image assets, and Reduce Motion stills the whole scene. -->
+          <svg class="cookscene" viewBox="0 0 160 120" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path class="cs-steam" d="M56 36 q4 -7 0 -14 q-4 -7 0 -14"/>
+            <path class="cs-steam s2" d="M76 34 q4 -7 0 -14 q-4 -7 0 -14"/>
+            <g class="cs-sausage">
+              <rect x="49" y="63" width="34" height="12" rx="6"/>
+              <path d="M59 64 l3 3 M71 64 l3 3" stroke-width="2"/>
+            </g>
+            <g class="cs-pan">
+              <path d="M30 78 L102 78"/>
+              <path d="M30 78 C32 93, 100 93, 102 78"/>
+              <path d="M102 78 L136 69"/>
+            </g>
+            <path class="cs-flame" d="M52 104 q4 -6 0 -13" stroke-width="2.5"/>
+            <path class="cs-flame f2" d="M66 107 q4 -6 0 -13" stroke-width="2.5"/>
+            <path class="cs-flame f3" d="M80 104 q4 -6 0 -13" stroke-width="2.5"/>
+          </svg>
+          <div class="radar-status" id="deckStatus">Let me cook…</div>
         </div>
       </div>
       <div class="burst" id="burst"></div>
@@ -1687,6 +1708,26 @@ async function appleTrackUrl(t) {
     if (r.trackViewUrl && sameArtist(r.artistName, want)) return r.trackViewUrl;   // handles collabs: "Fred again.. & Delilah Montagu"
   }
   return "";
+}
+
+/* ---------- Baked anchor identities ----------
+   Generated by scratchpad/bake-anchors.js against the live APIs (2026-07-27).
+   Every genre anchor's MusicBrainz ID, canonical name, listener count, Apple
+   artist id and top tags — the exact answers a cold start used to spend 10–20
+   rate-limited seconds discovering. Format:
+     "anchor name": [mbid, canonicalName, listeners, appleIdOrNull, [tags]]
+   Folded into the caches below WITHOUT clobbering anything a live session has
+   already learned, so a fresher live answer always wins. Regenerate by re-running
+   the bake script whenever anchors change. */
+const ANCHOR_IDS = {};
+for (const nm in ANCHOR_IDS) {
+  const [mbid, canon, users, appleId, tags] = ANCHOR_IDS[nm];
+  if (!lbNames[nameKey(nm)]) lbNames[nameKey(nm)] = mbid;
+  const m = lbArtist[mbid] = lbArtist[mbid] || {};
+  if (!m.name) m.name = canon;
+  if (m.users == null) m.users = users;
+  if (m.appleId === undefined && appleId != null) m.appleId = appleId;
+  if (!m.tags && tags.length) m.tags = tags;   // [] stays unset — a failed lookup must stay retryable
 }
 
 /* ---------- Artist graph helpers ---------- */
