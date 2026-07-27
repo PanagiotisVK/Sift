@@ -932,6 +932,7 @@ const state = {
   lastDailyDone: "",    // date the daily 20 was last finished ("YYYY-MM-DD")
   seedLabels: [],       // for display
   tagProfile: null,     // tag -> weight: what this deck is ABOUT (see "Deck coherence profile")
+  eraProfile: null,     // decade -> weight: which eras your loves cluster in
   haptics: 2,           // 2 = Full, 1 = Light (verdicts only), 0 = Off
 };
 
@@ -1201,6 +1202,10 @@ let jsonpId = 0;
    artwork, store links and genre all come from Apple's keyless iTunes API in one
    lookup per artist. This is the engine. */
 const LB_ALG = "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
+// Song-level co-listening — same session data, but between RECORDINGS. Loving one
+// moody album cut and loving the radio hit are different signals; this is the dataset
+// that can tell them apart.
+const LB_REC_ALG = "session_based_days_7500_session_300_contribution_5_threshold_15_limit_50_skip_30";
 const MBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const lbArtist = {};   // mbid -> { name, users, appleId }
 const lbNames = {};    // nameKey(name) -> mbid   (skips MusicBrainz entirely on repeat lookups)
@@ -1310,6 +1315,27 @@ function tagsCompatible(src, cand) {
    Every graph decision multiplies by affinity to THIS, so hop N is judged
    against the deck — not against hop N-1. */
 function tagsOf(id) { return (lbArtist[id] && lbArtist[id].tags) || []; }
+// Era affinity — the decade a song came out is a taste signal genre tags can't carry
+// (loving 80s synth-pop ≠ loving its 2020s revivalists). iTunes sends every track's
+// release date anyway; loves teach the deck WHICH decades feel like home.
+function bumpEra(year, delta) {
+  if (!year || year < 1900) return;
+  const p = state.eraProfile = state.eraProfile || {};
+  const d = Math.floor(year / 10) * 10;
+  const w = Math.max(-3, Math.min(10, (p[d] || 0) + delta));
+  if (w === 0) delete p[d]; else p[d] = w;
+}
+function eraMult(year) {
+  const p = state.eraProfile;
+  if (!p || !year || year < 1900) return 1;
+  let total = 0;
+  for (const k in p) if (p[k] > 0) total += p[k];
+  if (total < 3) return 1;   // a decade needs a few loves before it means anything
+  const d = Math.floor(year / 10) * 10;
+  // Neighbouring decades get half credit — a love for 1989 says something about 1991.
+  const eff = (p[d] || 0) + 0.5 * ((p[d - 10] || 0) + (p[d + 10] || 0));
+  return Math.max(0.8, Math.min(1.25, 1 + eff * 0.05));
+}
 function bumpProfile(tags, delta) {
   if (!tags || !tags.length) return;
   const p = state.tagProfile = state.tagProfile || {};
@@ -1469,6 +1495,7 @@ const AppleLBProvider = {
     return {
       id: r.trackId, title: r.trackName, preview: r.previewUrl, link: r.trackViewUrl,
       rank: Math.max(1, Math.round(base * Math.max(0.25, 1 - i * 0.05))),
+      year: r.releaseDate ? +String(r.releaseDate).slice(0, 4) || 0 : 0,
       artist: { id: artistId != null ? artistId : "ap-" + r.artistId, name: r.artistName },
       album: { id: r.collectionId, cover_big: art.replace("100x100bb", "600x600bb"), cover_medium: art },
     };
@@ -1804,7 +1831,7 @@ function ensureArtist(id, name, score, meta) {
 /* ---------- Track normalization ---------- */
 function normalize(t, reason) {
   const cover = t.album && (t.album.cover_big || t.album.cover_medium || t.album.cover);
-  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, rank: t.rank || 0, albumId: t.album && t.album.id, reason };
+  return { id: t.id, title: t.title, artist: t.artist.name, artistId: t.artist.id, cover, preview: t.preview, link: t.link, rank: t.rank || 0, year: t.year || 0, albumId: t.album && t.album.id, reason };
 }
 function queueTracks(list, reason, srcFan) {
   let n = 0;
@@ -1997,6 +2024,9 @@ function orderQueue() {
     // The dial sets HOW MUCH this matters: Cozy reads as "stay in my lane", which
     // used to only mean "reach fewer hops" — it now also means "stay on-genre".
     bias += (profileMult(tagsOf(t.artistId)) - 1) * [0.95, 0.45, 0.2][adv];
+    // Decades you love float too — a gentler pull than genre (eraMult is 0.8..1.25
+    // and silent until a few loves agree on a decade).
+    bias += (eraMult(t.year) - 1) * 0.5;
     if (fresh) {
       // Fresh Finds: champion smaller artists — favour low fan-count + low track rank.
       const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / (PROVIDER.fanNorm || 800000));
@@ -2033,24 +2063,88 @@ function spreadByArtist(list) {
 // re-ranks immediately AND pulls a song from a neighbour of the artist they just loved,
 // slotted right behind the visible peek card — so the deck answers "more like that"
 // within a swipe or two instead of eventually.
+// ---- Song-level similarity (ListenBrainz similar-recordings) ----
+// The artist graph answers "who else is like this musician". This answers the sharper
+// question: "what songs do people play in the same session as THIS song". Loving one
+// moody album cut and loving the radio hit are different signals — the recording
+// dataset is the only one that can tell them apart.
+async function similarSongsFor(track) {
+  const title = (track.title || "").replace(/"/g, "");
+  if (!title) return [];
+  // A song lives under several recording MBIDs (album, single, remaster) and only the
+  // canonical one carries similarity data — so gather candidates and probe them ALL in
+  // one labs call; the results tell us which reference hit.
+  const who = MBID_RE.test(track.artistId || "") ? "arid:" + track.artistId
+            : 'artist:"' + (track.artist || "").replace(/"/g, "") + '"';
+  const d = await mbApi("recording/", { query: 'recording:"' + title + '" AND ' + who, fmt: "json", limit: 8 });
+  const ids = ((d && d.recordings) || []).map(r => r.id).filter(id => MBID_RE.test(id));
+  if (!ids.length) return [];
+  const sim = await lbApi("https://labs.api.listenbrainz.org/similar-recordings/json?" +
+    ids.map(id => "recording_mbids=" + id).join("&") + "&algorithm=" + LB_REC_ALG);
+  return Array.isArray(sim) ? sim : [];
+}
+// Turn similar-recording rows into playable cards: LB's own metadata→Apple mapper
+// finds the track ids (no iTunes SEARCH, so no rate-limit exposure), then ONE batched
+// iTunes lookup fetches previews and artwork for all of them together.
+async function resolveSimilarToTracks(rows, lovedArtist, wantN) {
+  const seenArtist = new Set([nameKey(lovedArtist)]);   // variety: new artists only
+  const apIds = [], byId = {};
+  let scanned = 0;
+  for (const c of rows) {
+    if (apIds.length >= wantN + 2 || ++scanned > 10) break;
+    const nm = c.artist_credit_name || "", ak = nameKey(nm);
+    if (!nm || seenArtist.has(ak) || state.disliked.has(nm)) continue;
+    if (state.knownKeys.has(((c.recording_name || "") + "|" + nm).toLowerCase())) continue;
+    const m = await lbApi("https://labs.api.listenbrainz.org/apple-music-id-from-metadata/json?artist_name=" +
+      encodeURIComponent(nm) + "&track_name=" + encodeURIComponent(c.recording_name || "") + "&release_name=");
+    const id = m && m[0] && (m[0].apple_music_track_ids || [])[0];
+    if (!id) continue;
+    seenArtist.add(ak);
+    apIds.push(id);
+    byId[String(id)] = c;
+  }
+  if (!apIds.length) return [];
+  const d = await itunesApi("lookup", { id: apIds.join(",") });
+  if (!d) return [];
+  const out = [];
+  for (const r of (d.results || [])) {
+    if (out.length >= wantN) break;
+    if (r.wrapperType !== "track" || !r.previewUrl) continue;
+    const c = byId[String(r.trackId)] || {};
+    out.push(AppleLBProvider._track(r, (c.artist_credit_mbids || [])[0] || null, 400000, 0));
+  }
+  return out;
+}
 async function respondToLove(track) {
   const a = state.artists[track.artistId];
   orderQueue();                       // their score just jumped to 3 — let that bite now
-  if (!a) return;
   try {
-    await fetchRelatedInto(a);        // no-op when we already hold their neighbours
-    const cand = (a.related || []).map(id => state.artists[id])
-      .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
-    if (!cand.length) return;
-    const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
-    const pool = await artistTop(T.id, 25, T.name);
-    if (!pool) return;   // catalogue unreachable — don't write T off as pulled
-    const picks = pickArtistTracks(pool);
-    T.topPulled = true;
+    let picks = [], reason = null, srcFan = null;
+    // First choice: neighbours of the SONG itself.
+    const sim = await similarSongsFor(track);
+    if (sim.length) {
+      picks = await resolveSimilarToTracks(sim, track.artist, 2);
+      reason = "Because you loved “" + track.title + "”";
+    }
+    if (!picks.length) {
+      // Fallback: the artist graph — thin recording coverage, niche scenes, offline.
+      if (!a) return;
+      await fetchRelatedInto(a);        // no-op when we already hold their neighbours
+      const cand = (a.related || []).map(id => state.artists[id])
+        .filter(x => x && !x.topPulled && !state.disliked.has(x.name));
+      if (!cand.length) return;
+      const T = cand[Math.floor(Math.random() * Math.min(4, cand.length))];
+      const pool = await artistTop(T.id, 25, T.name);
+      if (!pool) return;   // catalogue unreachable — don't write T off as pulled
+      picks = pickArtistTracks(pool);
+      T.topPulled = true;
+      reason = "Because you love " + a.name;
+      srcFan = T.nbFan;
+    }
     // Identify the new tracks by diffing, not by index — a background refill() may have
     // appended to the queue while we were on the network.
     const seen = new Set(state.queue.map(t => t.id));
-    if (!queueTracks(picks, "Because you love " + a.name, T.nbFan)) return;
+    if (!queueTracks(picks, reason, srcFan)) return;
     const fresh = state.queue.filter(t => !seen.has(t.id));
     const rest = state.queue.filter(t => seen.has(t.id));
     // queue[0] is already drawn as the blurred peek behind the current card — leave it
@@ -2073,6 +2167,7 @@ function save() {
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
       tagProfile: state.tagProfile,
+      eraProfile: state.eraProfile,
       haptics: state.haptics,
       adventure: state.adventure,
       familiarity: state.familiarity,
@@ -2116,6 +2211,7 @@ function load() {
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
     state.tagProfile = d.tagProfile || null;
+    state.eraProfile = d.eraProfile || null;
     if (typeof d.haptics === "number") state.haptics = d.haptics;
     if (typeof d.adventure === "number") state.adventure = d.adventure;
     if (typeof d.familiarity === "number") state.familiarity = d.familiarity;
@@ -2797,6 +2893,7 @@ function decide(kind, kin) {
   if (kind === "love") {
     ensureArtist(track.artistId, track.artist, 3, { origin: "loved" });
     bumpProfile(tagsOf(track.artistId), 1);   // a love teaches the deck what it's about
+    bumpEra(track.year, 1);                   // …including which decade feels like home
     state.liked.push(track); updateFinds();
     state.familiarity = Math.max(0, (state.familiarity || 0) - 0.1); // found you a keeper at this depth — ease off
     toast("♥ Added to your Finds");
@@ -2812,6 +2909,7 @@ function decide(kind, kin) {
     if (n >= NOPE_BAN_AT) {
       state.disliked.add(nm);
       bumpProfile(tagsOf(track.artistId), -1);   // two skips: this flavor isn't landing
+      bumpEra(track.year, -1);
       // (Undo restores the artist but not this nudge — it's gentle, clamped, and a
       // deliberate two-skip signal is usually meant even when one swipe gets undone.)
       lastAction.purged = state.queue.filter(t => t.artist === nm); // Undo restores these
@@ -3127,6 +3225,8 @@ function whyHtml(t) {
   let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
   if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
   rows.push(row("The cut", cut + "."));
+  // 3½ — era, only when it actually influenced the pick
+  if (t.year && eraMult(t.year) > 1.05) rows.push(row("The era", "From the " + (Math.floor(t.year / 10) * 10) + "s — a decade your loves keep landing in."));
   // 4 — the dials you set
   rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
   return rows.join("");
