@@ -322,6 +322,21 @@
   .find .svc a.yt { background: #ff0000; }
   .find .svc button.sh { background: #333a48; }   /* share — neutral ink, not a brand */
   .find .svc a:active, .find .svc button:active { filter: brightness(.85); }
+  /* Deck picker — Finds rows shrunk to selection size; the tick carries the state */
+  .deck-title-in { width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--card); color: var(--text); font-size: 14px; outline: none; }
+  .deck-title-in::placeholder { color: var(--faint); }
+  .deck-picks { overflow-y: auto; max-height: 42vh; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+  .dp-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--card); margin-bottom: 8px; cursor: pointer; }
+  .dp-row img { width: 44px; height: 44px; border-radius: var(--r-sm); object-fit: cover; flex-shrink: 0; }
+  .dp-meta { flex: 1; min-width: 0; }
+  .dp-n { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dp-a { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dp-tick { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--glass-brd); display: grid; place-items: center; color: transparent; font-size: 14px; font-weight: 700; flex-shrink: 0; transition: background .12s, color .12s, border-color .12s; }
+  .dp-row.on { border-color: rgba(255,255,255,.35); }
+  .dp-row.on .dp-tick { background: var(--love); border-color: var(--love); color: #111; }
+  .deck-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 12px; }
+  .deck-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .deck-foot .btn-mini[disabled] { opacity: .45; pointer-events: none; }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .find button.mini.rm { background: transparent; color: var(--faint); }
@@ -696,8 +711,8 @@
         <div id="friendsList"></div>
 
         <div class="acct-title" style="margin-top:18px;">Send a deck</div>
-        <div class="acct-sub">Bundle your latest Finds into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
-        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Create a deck from my Finds</button>
+        <div class="acct-sub">Pick Finds to bundle into a deck and send it to a friend to swipe through — you'll see which ones they loved.</div>
+        <button class="btn-mini" id="btnCreateDeck" style="margin-top:10px;">Pick songs for a deck</button>
         <div class="acct-msg" id="deckMsg"></div>
         <div id="myDecks"></div>
       </div>
@@ -866,6 +881,20 @@
       <div class="gsheet-head"><span>Why this song?</span><button class="gsheet-x" id="whySheetX" aria-label="Close">✕</button></div>
       <p class="gsheet-sub" id="whySub"></p>
       <div id="whyBody"></div>
+    </div>
+  </div>
+
+  <!-- Deck picker — choose exactly which Finds ride in a shared deck -->
+  <div class="gsheet-ov" id="deckSheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
+      <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
+      <div class="deck-picks" id="deckPicks"></div>
+      <div class="deck-foot">
+        <span class="deck-count" id="deckCount">0/12</span>
+        <button class="btn-mini" id="btnDeckSend">Create &amp; share</button>
+      </div>
     </div>
   </div>
 
@@ -4204,21 +4233,61 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
    ============================================================ */
 let dmQueue = [], dmLoved = [], dmDeckMeta = null, dmCurrent = null, dmIndex = 0, dmTotal = 0, dmSender = "A friend";
 
-// --- Sender: create + share + see results ---
-async function createDeckFromFinds() {
-  if (!SB || !me_profile) return;
-  const picks = [...state.liked].reverse().slice(0, 12); // latest up to 12
-  if (picks.length < 3) { acctMsg("deckMsg", "Love at least 3 songs first — then you can send them! 🎧", "err"); return; }
+// --- Sender: pick songs, create + share + see results ---
+// The deck used to auto-grab the latest 12 Finds; now a picker sheet lets you choose.
+// The latest 12 come pre-ticked, so the old one-tap behavior is still two taps away.
+let deckSel = null;   // Set of track ids currently ticked in the picker
+function openDeckSheet() {
+  if (!SB || !me_profile) { acctMsg("deckMsg", "Log in above first — decks need somewhere to live.", "err"); return; }
+  if (!state.liked.length) { acctMsg("deckMsg", "Love at least 3 songs first — then you can send them! 🎧", "err"); return; }
+  deckSel = new Set([...state.liked].reverse().slice(0, 12).map(t => t.id));
+  document.getElementById("deckTitle").value = "";
+  renderDeckPicks();
+  document.getElementById("deckSheet").style.display = "flex";
+}
+function closeDeckSheet() { document.getElementById("deckSheet").style.display = "none"; }
+function renderDeckPicks() {
+  const wrap = document.getElementById("deckPicks");
+  wrap.innerHTML = "";
+  [...state.liked].reverse().forEach(t => {   // newest first, same order as Finds
+    const row = document.createElement("div");
+    row.className = "dp-row" + (deckSel.has(t.id) ? " on" : "");
+    row.innerHTML = '<img src="' + esc(t.cover || "") + '" alt="" loading="lazy" /><div class="dp-meta"><div class="dp-n">' + esc(t.title) + '</div><div class="dp-a">' + esc(t.artist) + '</div></div><div class="dp-tick">✓</div>';
+    row.onclick = () => {
+      if (deckSel.has(t.id)) deckSel.delete(t.id);
+      else if (deckSel.size >= 12) { toast("A deck holds 12 songs, tops — untick one first."); return; }
+      else deckSel.add(t.id);
+      row.classList.toggle("on", deckSel.has(t.id));
+      updateDeckCount();
+    };
+    wrap.appendChild(row);
+  });
+  updateDeckCount();
+}
+function updateDeckCount() {
+  document.getElementById("deckCount").textContent = deckSel.size + "/12 picked" + (deckSel.size < 3 ? " · need 3+" : "");
+  document.getElementById("btnDeckSend").disabled = deckSel.size < 3;
+}
+async function createDeckFromPicks() {
+  if (!SB || !me_profile || !deckSel) return;
+  const picks = [...state.liked].reverse().filter(t => deckSel.has(t.id)).slice(0, 12);
+  if (picks.length < 3) return;
+  const title = (document.getElementById("deckTitle").value || "").trim() || (me_profile.username + "'s picks");
   const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
+  closeDeckSheet();
   acctMsg("deckMsg", "Creating your deck…");
   try {
-    const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title: me_profile.username + "'s picks", tracks }).select().single();
+    const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title, tracks }).select().single();
     if (error) { acctMsg("deckMsg", error.message, "err"); return; }
     acctMsg("deckMsg", "Deck ready! Sharing link… 🚀", "ok");
     shareDeck(WEB_URL + "?deck=" + data.id, tracks.length);
     renderMyDecks();
   } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); }
 }
+document.getElementById("deckSheetX").onclick = closeDeckSheet;
+document.getElementById("deckSheet").onclick = e => { if (e.target.id === "deckSheet") closeDeckSheet(); };
+document.getElementById("btnDeckSend").onclick = createDeckFromPicks;
+attachSheetDrag("deckSheet", closeDeckSheet);
 async function shareDeck(link, n) {
   const text = "I made you a deck of " + n + " songs on Sift 🎧 — swipe through and tell me which you love:";
   try {
@@ -4469,7 +4538,7 @@ audio.addEventListener("timeupdate", () => { const p = document.getElementById("
 audio.addEventListener("playing", () => { const h = document.getElementById("dmHint"); if (h) h.style.display = "none"; });
 audio.addEventListener("pause", () => { const h = document.getElementById("dmHint"); if (h) h.style.display = ""; });
 (function initDeckUI() {
-  const b = document.getElementById("btnCreateDeck"); if (b) b.onclick = createDeckFromFinds;
+  const b = document.getElementById("btnCreateDeck"); if (b) b.onclick = openDeckSheet;
   const st = document.getElementById("dmStart"); if (st) st.onclick = dmStartSwiping;
   const l = document.getElementById("dmLove"); if (l) l.onclick = () => dmDecide("love");
   const nn = document.getElementById("dmNope"); if (nn) nn.onclick = () => dmDecide("nope");
