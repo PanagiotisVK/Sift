@@ -226,44 +226,53 @@
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* The wait is a kitchen: a line-art pan tosses a sausage over the flame while
-     steam rises, with rotating patter beneath. Outlines only — it matches the Ink
-     theme and reads at a glance. All motion is CSS on inline SVG. */
-  .cookscene { width: 152px; height: 116px; overflow: visible; }
+  /* The wait is a kitchen: a cartoon pan flips a sausage while sizzle sparks pop
+     at the rim, flames flicker below and steam rises — rotating patter beneath.
+     Deliberately still animated under Reduce Motion (the owner's call): it's a
+     small contained loop in one corner of a static screen, not full-screen motion
+     — and it's the whole point of the loading screen. Text swaps stay instant
+     under Reduce Motion. */
+  .cookscene { width: 164px; height: 126px; overflow: visible; }
   .cookscene * { transform-box: fill-box; }
-  .cs-pan { animation: csToss 2.6s ease-in-out infinite; transform-origin: 85% 40%; }
+  .cs-pan-body { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
+  .cs-pan-rim { stroke: rgba(255,255,255,.92); stroke-width: 4.5; stroke-linecap: round; fill: none; }
+  .cs-pan-handle { stroke: rgba(255,255,255,.92); stroke-width: 5.5; stroke-linecap: round; fill: none; }
+  /* the sausage is two strokes — a fat white one with a dark one on top = cartoon outline */
+  .cs-sg-o { stroke: rgba(255,255,255,.95); stroke-width: 14; stroke-linecap: round; fill: none; }
+  .cs-sg-i { stroke: #26262c; stroke-width: 8.5; stroke-linecap: round; fill: none; }
+  .cs-sg-t { stroke: rgba(255,255,255,.85); stroke-width: 2; stroke-linecap: round; }
+  .cs-pan { animation: csToss 2.4s ease-in-out infinite; transform-origin: 85% 30%; }
   @keyframes csToss {
     0%, 3% { transform: rotate(0); }
-    8% { transform: rotate(-6deg) translateY(-3px); }   /* the toss */
-    14% { transform: rotate(1.5deg); }
-    19%, 30% { transform: rotate(0); }
-    32% { transform: translateY(1.5px); }               /* the catch */
+    8% { transform: rotate(-7deg) translateY(-4px); }   /* the toss */
+    14% { transform: rotate(2deg); }
+    19%, 28% { transform: rotate(0); }
+    31% { transform: translateY(2px) rotate(1deg); }    /* the catch */
     36%, 100% { transform: rotate(0); }
   }
-  .cs-sausage { animation: csFlip 2.6s cubic-bezier(.33,.12,.3,1) infinite; transform-origin: center; }
+  .cs-sausage { animation: csFlip 2.4s cubic-bezier(.33,.12,.3,1) infinite; transform-origin: center; }
   @keyframes csFlip {
     0%, 6% { transform: translateY(0) rotate(0); }
-    18% { transform: translateY(-42px) rotate(200deg); }
-    30% { transform: translateY(-1px) rotate(358deg); }
-    33% { transform: translateY(0) rotate(360deg); }
+    17% { transform: translateY(-44px) rotate(200deg); }
+    28% { transform: translateY(-1px) rotate(358deg); }
+    31% { transform: translateY(0) rotate(360deg); }
     100% { transform: translateY(0) rotate(360deg); }
   }
-  .cs-steam { stroke: rgba(255,255,255,.32); opacity: 0; animation: csSteam 2.6s ease-in-out infinite; }
-  .cs-steam.s2 { animation-delay: 1.3s; }
-  @keyframes csSteam { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: .55; } 75%, 100% { transform: translateY(-9px); opacity: 0; } }
-  .cs-flame { stroke: rgba(255,255,255,.42); animation: csFlick 1.15s ease-in-out infinite; }
-  .cs-flame.f2 { animation-delay: .4s; }
-  .cs-flame.f3 { animation-delay: .75s; }
-  @keyframes csFlick { 0%, 100% { opacity: .25; } 50% { opacity: .65; } }
+  .cs-steam { stroke: rgba(255,255,255,.32); stroke-width: 3; stroke-linecap: round; fill: none; opacity: 0; animation: csSteam 2.4s ease-in-out infinite; }
+  .cs-steam.s2 { animation-delay: 1.2s; }
+  @keyframes csSteam { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: .55; } 75%, 100% { transform: translateY(-10px); opacity: 0; } }
+  /* sizzle: little sparks popping just above the rim, fast and staggered */
+  .cs-spark { stroke: rgba(255,255,255,.8); stroke-width: 2.5; stroke-linecap: round; opacity: 0; animation: csSizzle .9s ease-out infinite; }
+  .cs-spark.k2 { animation-delay: .3s; }
+  .cs-spark.k3 { animation-delay: .6s; }
+  @keyframes csSizzle { 0% { opacity: 0; transform: translateY(2px) scale(.6); } 25% { opacity: .85; } 60%, 100% { opacity: 0; transform: translateY(-5px) scale(1.1); } }
+  .cs-flame { stroke: rgba(255,255,255,.45); stroke-width: 3; stroke-linecap: round; fill: none; animation: csFlick 1.05s ease-in-out infinite; }
+  .cs-flame.f2 { animation-delay: .35s; }
+  .cs-flame.f3 { animation-delay: .7s; }
+  @keyframes csFlick { 0%, 100% { opacity: .25; transform: scaleY(.92); } 50% { opacity: .7; transform: scaleY(1.05); } }
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
-  /* Reduce Motion: the kitchen holds still — sausage resting in the pan, faint
-     steam, no flicker — and the patter swaps instantly instead of fading. */
-  @media (prefers-reduced-motion: reduce) {
-    .cs-pan, .cs-sausage, .cs-flame { animation: none; }
-    .cs-steam { animation: none; opacity: .3; }
-    .radar-status { transition: none; }
-  }
+  @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
 
   /* Finds */
   #finds { padding: 4px 16px 20px; overflow-y: auto; }
@@ -581,23 +590,27 @@
       <button id="btnUndo" class="undo-btn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H14a5.5 5.5 0 0 1 0 11h-1.5"/></svg><span>Undo</span></button>
       <div class="deck" id="deck">
         <div class="loading" id="deckLoading">
-          <!-- The kitchen: line-art pan tossing a sausage over the flame. Inline SVG +
-               CSS keyframes — no image assets, and Reduce Motion stills the whole scene. -->
-          <svg class="cookscene" viewBox="0 0 160 120" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path class="cs-steam" d="M56 36 q4 -7 0 -14 q-4 -7 0 -14"/>
-            <path class="cs-steam s2" d="M76 34 q4 -7 0 -14 q-4 -7 0 -14"/>
+          <!-- The kitchen: cartoon pan flipping a sausage while it sizzles. Inline SVG +
+               CSS keyframes — no image assets. -->
+          <svg class="cookscene" viewBox="0 0 170 130" aria-hidden="true">
+            <path class="cs-steam" d="M62 42 q5 -8 0 -16 q-5 -8 0 -16"/>
+            <path class="cs-steam s2" d="M86 40 q5 -8 0 -16 q-5 -8 0 -16"/>
             <g class="cs-sausage">
-              <rect x="49" y="63" width="34" height="12" rx="6"/>
-              <path d="M59 64 l3 3 M71 64 l3 3" stroke-width="2"/>
+              <path class="cs-sg-o" d="M60 67 q16 -12 32 0"/>
+              <path class="cs-sg-i" d="M60 67 q16 -12 32 0"/>
+              <path class="cs-sg-t" d="M68 59.5 l2.5 3 M80 58.5 l2.5 3"/>
             </g>
             <g class="cs-pan">
-              <path d="M30 78 L102 78"/>
-              <path d="M30 78 C32 93, 100 93, 102 78"/>
-              <path d="M102 78 L136 69"/>
+              <path class="cs-spark" d="M50 70 l4 -6"/>
+              <path class="cs-spark k2" d="M100 69 l4 -6"/>
+              <path class="cs-spark k3" d="M74 67 l-3 -6"/>
+              <path class="cs-pan-body" d="M36 76 L116 76 C114 95 38 95 36 76 Z"/>
+              <path class="cs-pan-rim" d="M31 76 L121 76"/>
+              <path class="cs-pan-handle" d="M120 75 q22 -5 34 -11"/>
             </g>
-            <path class="cs-flame" d="M52 104 q4 -6 0 -13" stroke-width="2.5"/>
-            <path class="cs-flame f2" d="M66 107 q4 -6 0 -13" stroke-width="2.5"/>
-            <path class="cs-flame f3" d="M80 104 q4 -6 0 -13" stroke-width="2.5"/>
+            <path class="cs-flame" d="M58 114 q5 -7 0 -14"/>
+            <path class="cs-flame f2" d="M76 117 q5 -7 0 -14"/>
+            <path class="cs-flame f3" d="M94 114 q5 -7 0 -14"/>
           </svg>
           <div class="radar-status" id="deckStatus">Let me cook…</div>
         </div>
