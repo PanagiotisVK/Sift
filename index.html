@@ -2363,6 +2363,12 @@ function setDeckStatus(msg) {   // real stage info: show now, hold a beat over t
 }
 function startCooking() {
   if (_cookT) return;
+  // Decks build fast now, so most loads only ever show one scene — start on a random
+  // one and even short waits meet the whole cast across a few sessions.
+  _cookScene = Math.floor(Math.random() * COOK_SCENES.length);
+  showCookScene(_cookScene);
+  const el0 = document.getElementById("deckStatus");
+  if (el0 && el0.textContent === "Let me cook…" && _cookScene !== 0) el0.textContent = COOK_SCENES[_cookScene].lines[0];
   _cookT = setInterval(() => {
     const el = document.getElementById("deckStatus");
     // The loading node dies with the first rendered card — the kitchen closes itself.
