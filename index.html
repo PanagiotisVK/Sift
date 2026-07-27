@@ -1548,6 +1548,14 @@ const AppleLBProvider = {
   },
   async searchArtist(name) {
     let mbid = lbNames[nameKey(name)], aName = null;
+    // The cache keys on the LOOSE name, so "KNG-Z" and "KNGZ" share one slot. Bypass it
+    // only for true stylization twins — same loose key, different punctuation — and
+    // search fresh. Transliteration slots (typed "George Dalaras" → cached "Γιώργος
+    // Νταλάρας") have DIFFERENT loose keys for their names, so the bake stays fast.
+    if (mbid && lbArtist[mbid] && lbArtist[mbid].name) {
+      const cn = lbArtist[mbid].name;
+      if (nameKey(cn) === nameKey(name) && nameKeyStrict(cn) !== nameKeyStrict(name)) mbid = null;
+    }
     if (!mbid) {
       const want = nameKey(name);
       // Aliases count as an exact match: someone typing "Haris Alexiou" means Χάρις
