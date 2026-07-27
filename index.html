@@ -97,7 +97,17 @@
   .chips { display: flex; flex-wrap: wrap; gap: 9px; }
   .genre-search { width: 100%; padding: 11px 14px; border-radius: var(--r-md); border: 1px solid var(--glass-brd); background: var(--glass); color: var(--text); font-size: 14px; outline: none; margin-bottom: 12px; }
   .genre-search:focus { border-color: var(--line-2); }
-  .show-all-btn { background: transparent; border: 0; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; padding: 8px 2px; margin-top: 4px; }
+  /* Family bar — the answer to "130 genres won't fit in a list". One horizontal
+     strip of families filters the grid below, so the grid is never more than a
+     dozen-odd chips no matter how big the catalogue gets. Search spans everything
+     and overrides the filter. */
+  .famrow { display: flex; gap: 7px; overflow-x: auto; padding: 1px 0 11px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .famrow::-webkit-scrollbar { display: none; }
+  .fam { flex: 0 0 auto; background: rgba(255,255,255,.05); border: 1px solid var(--glass-brd); color: var(--muted); border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .fam.on { background: var(--accent); color: #0b0b0d; border-color: transparent; }
+  .fam .cnt { opacity: .5; margin-left: 5px; font-weight: 500; }
+  .fam.on .cnt { opacity: .6; }
+  .chips-empty { color: var(--muted); font-size: 13px; padding: 6px 2px; }
   .chip { padding: 10px 15px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); cursor: pointer; font-size: 14px; font-weight: 600; line-height: 1; transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .15s, background .15s, padding .15s, font-size .15s, box-shadow .15s; }
   .chip:active { transform: scale(.96); }
   .chip.on { border-color: var(--line-2); background: rgba(255,255,255,.14); }
@@ -528,9 +538,10 @@
       <h1>What do you love?</h1>
       <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
       <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
-      <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. afro, euro summer, jazz)…" autocomplete="off" />
+      <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. deep house, bachata, djent)…" autocomplete="off" />
+      <div class="famrow" id="famRow"></div>
       <div class="chips" id="genreChips"></div>
-      <button type="button" id="toggleGenres" class="show-all-btn">Show all genres ▾</button>
+      <div class="chips-empty" id="genreEmpty" style="display:none;">No genre matches that — try a broader word, or add the artist by name below.</div>
       <div class="section-label">Artists you love — tap to turn them up</div>
       <div class="artist-row">
         <input id="artistInput" placeholder="Type an artist and hit +" autocomplete="off" />
@@ -777,6 +788,8 @@
       </div>
       <p class="gsheet-sub" style="margin:6px 0 14px;" id="hapticNote"></p>
       <p class="gsheet-sub">Tap a genre to steer what Sift plays next. Your picks glow — tap again to ease off.</p>
+      <input id="gsGenreSearch" class="genre-search" placeholder="Search genres…" autocomplete="off" style="margin-bottom:10px;" />
+      <div class="famrow" id="gsFamRow"></div>
       <div class="gsheet-chips" id="genreSheetChips"></div>
     </div>
   </div>
@@ -919,9 +932,119 @@ const GENRE_ANCHORS = {
   // him first, which is luck rather than a check.
   "Rebetiko/Laiko": ["Stelios Kazantzidis","Vassilis Tsitsanis","Giorgos Dalaras"],
   "Turkish": ["Tarkan","Sezen Aksu"],
-  "Arabic": ["Amr Diab","Fairuz"], "Bollywood/Desi": ["Arijit Singh","A.R. Rahman"]
+  "Arabic": ["Amr Diab","Fairuz"], "Bollywood/Desi": ["Arijit Singh","A.R. Rahman"],
+
+  /* ---- Specific scenes (added 2026-07-27) ----
+     Every anchor below was audited against all three things that can silently break a
+     genre chip: does the name resolve to the artist we MEANT, does ListenBrainz have
+     neighbours to expand from, and does Apple have previewable tracks. Two candidates
+     were caught resolving to the wrong artist entirely — "Dave" landed on Dave Matthews
+     Band and "DEAN" on Dean Martin — hence "Santan Dave" and "Zion.T" here. Chopin is
+     absent from Romantic for a duller reason: MusicBrainz files him as "Fryderyk" and
+     Apple returns nothing for that spelling. */
+
+  // House — the family that most needed splitting up
+  "Deep House": ["Kerri Chandler","Larry Heard","Lane 8"],
+  "Tech House": ["Chris Lake","Hot Since 82"],
+  "Melodic House": ["Ben Böhmer","Yotto"],
+  "Progressive House": ["Eric Prydz","Sasha","deadmau5"],
+  "Organic House": ["Bedouin","Rodriguez Jr.","Acid Pauli"],
+  "French House": ["Daft Punk","Justice","Cassius"],
+  "Disco House": ["Purple Disco Machine","Folamour","Dimitri From Paris"],
+  "Soulful House": ["Dennis Ferrer","Osunlade","Jimpster"],
+  "Bass House": ["Habstrakt","AC Slater","Joyryde"],
+  "UK Garage": ["MJ Cole","Artful Dodger","Conducta"],
+  // The Anatolian/oriental deep-house scene — Zigan Aldi has no graph but a full
+  // catalogue, so he adds breadth through the dead-end fallback rather than expansion.
+  "Oriental House": ["Oceanvs Orientalis","Be Svendsen","Zigan Aldi"],
+
+  "Minimal Techno": ["Richie Hawtin","Ricardo Villalobos"],
+  "Melodic Techno": ["Tale Of Us","ARTBAT","Massano"],
+  "Hard Techno": ["I Hate Models","Sara Landry","999999999"],
+  "Detroit Techno": ["Jeff Mills","Carl Craig","Juan Atkins"],
+  "Industrial Techno": ["Perc","Blawan","Ansome"],
+
+  "Downtempo": ["Bonobo","Thievery Corporation"], "Trip-Hop": ["Massive Attack","Portishead"],
+  "IDM": ["Aphex Twin","Boards of Canada"], "Breakbeat": ["The Prodigy","The Chemical Brothers"],
+  "Jungle": ["Goldie","Roni Size"], "Psytrance": ["Infected Mushroom","Astrix"],
+  "Hardstyle": ["Headhunterz","Da Tweekaz"], "Future Bass": ["San Holo","Illenium"],
+  "Synthpop": ["Depeche Mode","CHVRCHES"], "Electro Swing": ["Parov Stelar","Caravan Palace"],
+
+  "Cloud Rap": ["Yung Lean","Bladee"], "Jazz Rap": ["A Tribe Called Quest","Digable Planets"],
+  "West Coast": ["Dr. Dre","Snoop Dogg"],
+  "UK Rap": ["Santan Dave","AJ Tracey","Little Simz"],
+  "Afroswing": ["J Hus","NSG"], "Memphis Rap": ["Three 6 Mafia","Project Pat"],
+
+  "Classic Rock": ["Led Zeppelin","The Rolling Stones"], "Hard Rock": ["AC/DC","Guns N' Roses"],
+  "Indie Rock": ["Arcade Fire","Vampire Weekend"], "Pop Punk": ["blink-182","Sum 41"],
+  "Prog Rock": ["Rush","Yes"], "Garage Rock": ["The White Stripes","The Black Keys"],
+  "Britpop": ["Oasis","Blur"], "Surf Rock": ["Dick Dale","The Ventures"],
+
+  "Metalcore": ["Bring Me the Horizon","Architects"], "Death Metal": ["Cannibal Corpse","Death"],
+  "Black Metal": ["Mayhem","Emperor"], "Doom Metal": ["Electric Wizard","Sleep"],
+  "Thrash Metal": ["Slayer","Megadeth"], "Nu Metal": ["Korn","Deftones"],
+  "Djent": ["Periphery","TesseracT"], "Power Metal": ["Blind Guardian","Sabaton"],
+
+  "Alt R&B": ["FKA twigs","Sampha"], "Classic Soul": ["Otis Redding","Aretha Franklin"],
+
+  "Bachata": ["Romeo Santos","Aventura"], "Cumbia": ["Los Ángeles Azules","Celso Piña"],
+  "Latin Trap": ["Anuel AA","Bryant Myers"], "Samba": ["Cartola","Beth Carvalho"],
+  "MPB": ["Caetano Veloso","Gilberto Gil"], "Tango": ["Astor Piazzolla","Carlos Gardel"],
+  "Merengue": ["Juan Luis Guerra","Wilfrido Vargas"], "Mariachi": ["Vicente Fernández","Pedro Infante"],
+
+  "Highlife": ["Osibisa","E.T. Mensah"],
+  // Gqom is thinly mapped in ListenBrainz — only Babes Wodumo carries a real
+  // neighbourhood — so it leans on anchor breadth the way Amapiano does.
+  "Gqom": ["Babes Wodumo","DJ Lag","Distruction Boyz","TxC"],
+  "Soca": ["Machel Montano","Bunji Garlin"], "Dub": ["King Tubby","Lee Perry"],
+  "Ethio-Jazz": ["Mulatu Astatke","Hailu Mergia"],
+
+  "Mandopop": ["Jay Chou","JJ Lin"], "Cantopop": ["Eason Chan","Leslie Cheung"],
+  "Punjabi": ["Diljit Dosanjh","AP Dhillon"], "K-R&B": ["Zion.T","Crush","Heize"],
+  "K-Hip-Hop": ["Epik High","Zico"],
+
+  "Persian": ["Googoosh","Ebi"], "Raï": ["Cheb Mami","Rachid Taha"],
+  "Balkan": ["Goran Bregović","Boban Marković"], "Turkish Rock": ["Duman","Şebnem Ferah"],
+  // Same story as Gqom: no co-listening data for the scene, full catalogues each.
+  "Mizrahi": ["Sarit Hadad","Omer Adam","Eyal Golan","Moshe Peretz"],
+
+  "Bebop": ["Charlie Parker","Dizzy Gillespie"], "Smooth Jazz": ["George Benson","Kenny G"],
+  "Jazz Fusion": ["Weather Report","Herbie Hancock"], "Swing": ["Duke Ellington","Count Basie"],
+  "Soul Jazz": ["Jimmy Smith","Cannonball Adderley"], "Nu Jazz": ["GoGo Penguin","Kamaal Williams"],
+
+  "Indie Folk": ["Sufjan Stevens","Iron & Wine"], "Outlaw Country": ["Willie Nelson","Waylon Jennings"],
+  "Celtic": ["The Chieftains","Clannad"], "Singer-Songwriter": ["Joni Mitchell","Nick Drake"],
+
+  "Neoclassical": ["Ólafur Arnalds","Nils Frahm"], "Solo Piano": ["Yiruma","Joep Beving"],
+  "Baroque": ["Johann Sebastian Bach","Antonio Vivaldi"],
+  "Romantic": ["Pyotr Ilyich Tchaikovsky","Franz Liszt","Robert Schumann"],
+  "Minimalism": ["Philip Glass","Steve Reich"], "Video Game": ["Nobuo Uematsu","Koji Kondo"]
 };
 const GENRES = Object.keys(GENRE_ANCHORS).sort(); // alphabetized for easy scanning
+// Families — how the catalogue is BROWSED. A flat list stopped being usable well
+// before 100 genres; one horizontal family strip filters the grid so it never shows
+// more than a dozen-odd chips, and search still spans everything. Order here is the
+// order of the strip. Anything not listed lands in "More", so adding a genre to
+// GENRE_ANCHORS without touching this is a cosmetic mistake, never a broken chip.
+const GENRE_FAMILIES = {
+  "★ Popular": [],   // filled from POPULAR_GENRES below — the default view
+  "Pop": ["Pop", "Dream Pop", "Bedroom Pop", "Hyperpop", "Synthwave", "Synthpop", "City Pop"],
+  "Hip-Hop": ["Hip-Hop/Rap", "Trap", "Drill", "Grime", "Phonk", "Lo-Fi", "Boom Bap", "Cloud Rap", "Jazz Rap", "West Coast", "UK Rap", "Afroswing", "Memphis Rap"],
+  "R&B & Soul": ["R&B/Soul", "Neo-Soul", "Alt R&B", "Classic Soul", "Motown", "Funk", "Disco", "Gospel"],
+  "Rock": ["Rock", "Indie", "Alternative", "Indie Rock", "Classic Rock", "Hard Rock", "Punk", "Pop Punk", "Grunge", "Emo", "Post-Punk", "Post-Rock", "Shoegaze", "Psychedelic", "Prog Rock", "Math Rock", "Garage Rock", "Britpop", "Surf Rock"],
+  "Metal": ["Metal", "Metalcore", "Thrash Metal", "Death Metal", "Black Metal", "Doom Metal", "Nu Metal", "Djent", "Power Metal"],
+  "House": ["House", "Deep House", "Tech House", "Melodic House", "Progressive House", "Afro House", "Organic House", "French House", "Disco House", "Soulful House", "Bass House", "Oriental House", "UK Garage"],
+  "Techno": ["Techno", "Melodic Techno", "Minimal Techno", "Hard Techno", "Detroit Techno", "Industrial Techno"],
+  "Electronic": ["Electronic", "EDM", "Trance", "Psytrance", "Dubstep", "Drum & Bass", "Jungle", "Breakbeat", "Hardstyle", "Future Bass", "IDM", "Ambient", "Downtempo", "Trip-Hop", "Electro Swing"],
+  "Afro & Caribbean": ["Afrobeats", "Amapiano", "Gqom", "Highlife", "Ethio-Jazz", "Reggae", "Dancehall", "Dub", "Soca"],
+  "Latin": ["Latin", "Reggaeton", "Latin Trap", "Corridos Tumbados", "Mariachi", "Salsa", "Bachata", "Merengue", "Cumbia", "Tango", "Samba", "MPB", "Bossa Nova", "Flamenco"],
+  "Asia": ["K-Pop", "K-R&B", "K-Hip-Hop", "J-Pop", "J-Rock", "Mandopop", "Cantopop", "Bollywood/Desi", "Punjabi"],
+  "Mediterranean": ["Greek", "Rebetiko/Laiko", "Turkish", "Turkish Rock", "Balkan", "Arabic", "Raï", "Persian", "Mizrahi"],
+  "Jazz & Blues": ["Jazz", "Nu Jazz", "Jazz Fusion", "Bebop", "Swing", "Soul Jazz", "Smooth Jazz", "Blues"],
+  "Country & Folk": ["Country", "Outlaw Country", "Americana", "Bluegrass", "Folk", "Indie Folk", "Singer-Songwriter", "Celtic"],
+  "Classical": ["Classical", "Neoclassical", "Solo Piano", "Baroque", "Romantic", "Minimalism", "Opera", "Soundtrack", "Video Game"],
+  "Vibes": ["Euro Summer", "Jersey Club"],
+};
 // Broad genres shown by default so the initial list isn't overwhelming; the rest
 // (incl. specific/vibe ones like Euro Summer) appear via search or "Show all".
 // Default onboarding chips = broad/generic genres only. Regional genres (Greek, Turkish,
@@ -938,7 +1061,26 @@ const GENRE_EMOJI = {
   "Afrobeats":"🌍","Amapiano":"🎹","K-Pop":"💖","J-Pop":"🌸","J-Rock":"⛩️","Latin":"💃","Reggaeton":"🔥","Dancehall":"🇯🇲","Reggae":"🌴","Salsa":"🌶️","Bossa Nova":"🏖️","Flamenco":"🇪🇸",
   "Jazz":"🎷","Blues":"💙","Country":"🤠","Folk":"🪕","Bluegrass":"🌾","Americana":"🇺🇸","Classical":"🎻","Opera":"🎭","Soundtrack":"🎬",
   "Euro Summer":"☀️","Corridos Tumbados":"🇲🇽","Jersey Club":"🔀",
-  "Greek":"🇬🇷","Rebetiko/Laiko":"🏛️","Turkish":"🇹🇷","Arabic":"🕌","Bollywood/Desi":"🇮🇳"
+  "Greek":"🇬🇷","Rebetiko/Laiko":"🏛️","Turkish":"🇹🇷","Arabic":"🕌","Bollywood/Desi":"🇮🇳",
+  "Deep House":"🌊","Tech House":"⚙️","Melodic House":"🌅","Progressive House":"🛤️","Organic House":"🌿",
+  "French House":"🇫🇷","Disco House":"✨","Soulful House":"💫","Bass House":"📢","UK Garage":"🚗","Oriental House":"🪔",
+  "Minimal Techno":"⬛","Melodic Techno":"🌌","Hard Techno":"🔨","Detroit Techno":"🏭","Industrial Techno":"⛓️",
+  "Downtempo":"🌙","Trip-Hop":"🎧","IDM":"🧩","Breakbeat":"💿","Jungle":"🌴","Psytrance":"🍄",
+  "Hardstyle":"⚡","Future Bass":"🌠","Synthpop":"📼","Electro Swing":"🎩",
+  "Cloud Rap":"☁️","Jazz Rap":"🎺","West Coast":"🌴","UK Rap":"🇬🇧","Afroswing":"🌊","Memphis Rap":"🕯️",
+  "Classic Rock":"📀","Hard Rock":"⚡","Indie Rock":"🎸","Pop Punk":"🛹","Prog Rock":"🎹",
+  "Garage Rock":"🚙","Britpop":"☂️","Surf Rock":"🏄",
+  "Metalcore":"⚔️","Death Metal":"☠️","Black Metal":"🌑","Doom Metal":"🕯️","Thrash Metal":"🪓",
+  "Nu Metal":"🔩","Djent":"🎛️","Power Metal":"🐉",
+  "Alt R&B":"🌌","Classic Soul":"🎙️",
+  "Bachata":"💃","Cumbia":"🪘","Latin Trap":"🔥","Samba":"🥁","MPB":"🇧🇷","Tango":"🌹",
+  "Merengue":"🎉","Mariachi":"🎺",
+  "Highlife":"🎺","Gqom":"🔊","Soca":"🎊","Dub":"🌿","Ethio-Jazz":"🇪🇹",
+  "Mandopop":"🏮","Cantopop":"🎐","Punjabi":"🪯","K-R&B":"💜","K-Hip-Hop":"🎤",
+  "Persian":"🪷","Raï":"🇩🇿","Balkan":"🎻","Turkish Rock":"🎸","Mizrahi":"🇮🇱",
+  "Bebop":"🎷","Smooth Jazz":"🍸","Jazz Fusion":"🌀","Swing":"🕺","Soul Jazz":"🎹","Nu Jazz":"🌃",
+  "Indie Folk":"🍂","Outlaw Country":"🐎","Celtic":"🍀","Singer-Songwriter":"✍️",
+  "Neoclassical":"❄️","Solo Piano":"🎹","Baroque":"🕯️","Romantic":"🌹","Minimalism":"◽","Video Game":"🎮"
 };
 
 const audio = new Audio();
@@ -1028,7 +1170,11 @@ function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
 // Genre kinship via MusicBrainz tags — the antidote to co-listening drift (everyone
 // co-listens with global pop stars, so the raw similar-artists list skews mainstream
 // and cross-genre; genuine genre tags pull each neighborhood back on-genre).
-const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|european|seen live|[a-z ]*vocalists|\d{2,4}s)$/;   // languages/nationalities/meta — not genres. Country adjectives (greek, german) stay: for regional scenes, nationality IS the genre marker.
+// Languages/nationalities/meta — not genres. Country adjectives (greek, german) stay:
+// for regional scenes, nationality IS the genre marker. The last group is listener
+// book-keeping that MusicBrainz users leave on artists ("bookmark", "favorites") — it
+// polluted the coherence profile with words no artist is ever tagged with musically.
+const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|european|seen live|[a-z ]*vocalists|\d{2,4}s|bookmark|bookmarks|favou?rites?|my music|radio|playlist|check ?out|todo|wishlist)$/;
 const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative"]);  // umbrella genres half the catalog wears
 const normTag = t => t.toLowerCase().replace(/-/g, " ").trim();
 async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
@@ -1106,6 +1252,22 @@ function profileMult(tags) {
   if (best >= 3) return 1.35;
   if (best >= 1) return 1.2;
   return 0.7;                            // tagged, and none of it is what you picked
+}
+// The genre's own NAME as profile tags. Niche scenes are exactly where MusicBrainz
+// artist tags run out — Oceanvs Orientalis and Zigan Aldi carry none — and an untagged
+// source switches the kinship filter off for its whole neighbourhood (empty source tags
+// mean "give everyone the benefit of the doubt"). That's how an Oriental House deck
+// reached Foals. The chip you tapped is itself evidence of what you want, so it seeds
+// the profile directly and doesn't depend on anyone having tagged the anchors.
+//   "Oriental House" -> ["oriental house", "house"]   "Melodic Techno" -> [..., "techno"]
+// The head noun matters as much as the full name: it's what genuine scene artists carry.
+function genreTags(g) {
+  const full = normTag(String(g).replace(/[\/&]+/g, " ")).replace(/\s+/g, " ").trim();
+  if (!full) return [];
+  const parts = full.split(" ").filter(w => w.length > 2);
+  const out = [full];
+  if (parts.length > 1) out.push(parts[parts.length - 1]);
+  return [...new Set(out)].filter(t => !TAG_SKIP.test(t));
 }
 // One batched MusicBrainz call turns the seeds' tags into the deck's profile.
 // Idempotent (each seed folds in once) and cache-friendly, so it's also the lazy
@@ -1866,23 +2028,63 @@ GENRES.forEach(g => {
   };
   genreChips.appendChild(el);
 });
-// Show broad genres by default; reveal the rest via search or "Show all".
-let showAllGenres = false;
+/* ---------- Genre families: browse by family, search across everything ----------
+   Derived once at boot. A genre added to GENRE_ANCHORS but forgotten in
+   GENRE_FAMILIES still shows up (under "More") rather than silently vanishing,
+   and a family naming a genre that doesn't exist is dropped so the counts on the
+   strip never lie. */
+GENRE_FAMILIES["★ Popular"] = GENRES.filter(g => POPULAR_GENRES.has(g));
+const FAMILY_OF = {};
+Object.keys(GENRE_FAMILIES).forEach(f => {
+  GENRE_FAMILIES[f] = GENRE_FAMILIES[f].filter(g => GENRE_ANCHORS[g]);
+  if (f !== "★ Popular") GENRE_FAMILIES[f].forEach(g => { FAMILY_OF[g] = f; });
+});
+const _orphans = GENRES.filter(g => !FAMILY_OF[g]);
+if (_orphans.length) { GENRE_FAMILIES["More"] = _orphans; _orphans.forEach(g => { FAMILY_OF[g] = "More"; }); }
+const FAMILY_NAMES = Object.keys(GENRE_FAMILIES).filter(f => GENRE_FAMILIES[f].length);
+
+function buildFamRow(rowEl, active, onPick) {
+  if (!rowEl) return;
+  rowEl.innerHTML = "";
+  let activeEl = null;
+  FAMILY_NAMES.forEach(f => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "fam" + (f === active ? " on" : "");
+    b.innerHTML = esc(f) + '<span class="cnt">' + GENRE_FAMILIES[f].length + "</span>";
+    b.onclick = () => onPick(f);
+    rowEl.appendChild(b);
+    if (f === active) activeEl = b;
+  });
+  // Centre the selected family in the strip. Set scrollLeft directly rather than
+  // scrollIntoView, which would also scroll the whole page vertically to reach it.
+  if (activeEl) rowEl.scrollLeft = Math.max(0, activeEl.offsetLeft - rowEl.clientWidth / 2 + activeEl.offsetWidth / 2);
+}
+
+let activeFamily = FAMILY_NAMES[0];
 function refreshGenreVisibility() {
   const q = document.getElementById("genreSearch").value.trim().toLowerCase();
+  const fam = GENRE_FAMILIES[activeFamily] || [];
+  let shown = 0;
   genreChips.querySelectorAll(".chip").forEach(el => {
     const g = el.dataset.g;
-    const base = q ? g.toLowerCase().includes(q) : (showAllGenres || POPULAR_GENRES.has(g));
-    el.style.display = (base || seedGenres.has(g)) ? "" : "none"; // always show a picked genre
+    // Searching spans the whole catalogue; otherwise the strip decides. A picked
+    // genre is always visible so it can never be silently un-tappable.
+    const on = (q ? g.toLowerCase().includes(q) : fam.indexOf(g) >= 0) || seedGenres.has(g);
+    el.style.display = on ? "" : "none";
+    if (on) shown++;
   });
+  document.getElementById("genreEmpty").style.display = shown ? "none" : "";
+  document.getElementById("famRow").style.opacity = q ? ".4" : "1";   // search overrides the strip — show that
+}
+function setFamily(f) {
+  activeFamily = f;
+  document.getElementById("genreSearch").value = "";
+  buildFamRow(document.getElementById("famRow"), activeFamily, setFamily);
+  refreshGenreVisibility();
 }
 document.getElementById("genreSearch").addEventListener("input", refreshGenreVisibility);
-document.getElementById("toggleGenres").onclick = () => {
-  showAllGenres = !showAllGenres;
-  document.getElementById("toggleGenres").textContent = showAllGenres ? "Show fewer genres ▴" : "Show all genres ▾";
-  refreshGenreVisibility();
-};
-refreshGenreVisibility(); // start with just the popular set
+setFamily(activeFamily);   // start on ★ Popular
 document.getElementById("addArtist").onclick = () => addArtistChip();
 document.getElementById("artistInput").addEventListener("keydown", e => { if (e.key === "Enter") addArtistChip(); });
 
@@ -1976,22 +2178,35 @@ startBtn.onclick = async () => {
     if (a) ensureArtist(a.id, a.name, 2.5 * w, { origin: "seed", nbFan: a.nb_fan }); // weight scales seeding
   }
   // register genre seeds via anchor artists (weighted), then expand through the graph
+  const seedsByGenre = new Map();
   for (const [g, w] of seedGenres) {
     setDeckStatus("Tuning in to " + g + "…");
+    bumpProfile(genreTags(g), 3);   // the chip you tapped IS evidence — never depends on anchor tags
     const anchors = GENRE_ANCHORS[g] || [g];
+    const got = [];
     for (const name of anchors) {
       const a = await searchArtist(name);
-      if (a) ensureArtist(a.id, a.name, 1.5 * w, { origin: "seed", genreName: g, nbFan: a.nb_fan }); // weight scales seeding
+      if (a) got.push(ensureArtist(a.id, a.name, 1.5 * w, { origin: "seed", genreName: g, nbFan: a.nb_fan })); // weight scales seeding
     }
+    seedsByGenre.set(g, got);
   }
   // One batched MusicBrainz call turns the seeds' tags into the deck's coherence
   // profile — worth the ~1s so even the FIRST refill filters against it.
   setDeckStatus("Learning what that sounds like…");
   await warmProfile();
-  // build out the queue from the graph
+  // Guarantee every genre you picked is actually IN the first deck. refill() stops as
+  // soon as it has six tracks, so one rich neighbourhood could fill the quota on its
+  // first turn and a two-genre deck would open with only one of them showing.
   setDeckStatus("Finding songs you haven't heard…");
+  for (const [g, arts] of seedsByGenre) {
+    if (!arts.length) continue;
+    const a = arts[Math.floor(Math.random() * arts.length)];
+    try { queueTracks(pickArtistTracks(await artistTop(a.id, 25, a.name)), "Exploring " + g, a.nbFan); } catch (_) {}
+  }
+  // build out the queue from the graph
   await refill();
   if (state.queue.length < 6) await refill();
+  orderQueue();
   save();
   next();
 };
@@ -2610,22 +2825,38 @@ document.querySelectorAll("#hapticSeg button").forEach(b => b.onclick = () => se
 // A picked genre isn't a filter — it seeds that genre's anchor artists into your graph
 // (so all future picks lean toward it) AND front-loads a couple songs so the shift is felt now.
 function genreActive(g) { return (state.seedLabels || []).includes(g); }
+let gsFamily = null;
 function renderGenreSheet() {
   const wrap = document.getElementById("genreSheetChips");
   if (!wrap) return;
+  if (!gsFamily) gsFamily = FAMILY_NAMES[0];
+  buildFamRow(document.getElementById("gsFamRow"), gsFamily, f => {
+    gsFamily = f;
+    document.getElementById("gsGenreSearch").value = "";
+    renderGenreSheet();
+  });
+  const q = document.getElementById("gsGenreSearch").value.trim().toLowerCase();
+  const fam = GENRE_FAMILIES[gsFamily] || [];
+  document.getElementById("gsFamRow").style.opacity = q ? ".4" : "1";
+  // Anything you're already steering with stays visible whatever family you're browsing —
+  // otherwise easing a genre off means hunting for the family it lives in first.
+  const list = GENRES.filter(g => (q ? g.toLowerCase().includes(q) : fam.indexOf(g) >= 0) || genreActive(g));
   wrap.innerHTML = "";
-  GENRES.forEach(g => {
+  if (!list.length) { wrap.innerHTML = '<div class="chips-empty">No genre matches that.</div>'; return; }
+  list.forEach(g => {
     const c = document.createElement("button");
     c.className = "gchip" + (genreActive(g) ? " on" : "");
-    c.textContent = g;
+    c.textContent = (GENRE_EMOJI[g] ? GENRE_EMOJI[g] + " " : "") + g;
     c.onclick = () => toggleGenreLive(g, c);
     wrap.appendChild(c);
   });
 }
+document.getElementById("gsGenreSearch").addEventListener("input", renderGenreSheet);
 async function toggleGenreLive(g, chip) {
   if (genreActive(g)) {                                   // ease off — stop reinforcing it
     state.seedLabels = (state.seedLabels || []).filter(x => x !== g);
     if (typeof seedGenres !== "undefined") seedGenres.delete(g);
+    bumpProfile(genreTags(g), -3);                        // and stop steering toward its sound
     chip.classList.remove("on");
     save();
     toast("Eased off " + g);
@@ -2635,6 +2866,7 @@ async function toggleGenreLive(g, chip) {
   state.seedLabels = state.seedLabels || [];
   state.seedLabels.push(g);
   if (typeof seedGenres !== "undefined") seedGenres.set(g, 2);
+  bumpProfile(genreTags(g), 3);   // steer the coherence profile too, not just the graph
   chip.classList.add("on"); chip.disabled = true;
   toast("Mixing in " + g + "…");
   const anchors = GENRE_ANCHORS[g] || [g];
