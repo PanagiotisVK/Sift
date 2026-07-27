@@ -210,6 +210,28 @@
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Building the deck: the mark sits still and sonar rings sweep outward from it —
+     the app's own "radar" language, and a picture of what it's doing (reaching out
+     through the artist graph). Rings are pure CSS on the existing logo asset. */
+  .radar { position: relative; width: 132px; height: 132px; display: grid; place-items: center; }
+  .rring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; animation: radarPulse 2.7s cubic-bezier(.15,.6,.3,1) infinite; }
+  .rring:nth-child(2) { animation-delay: .9s; }
+  .rring:nth-child(3) { animation-delay: 1.8s; }
+  @keyframes radarPulse { 0% { transform: scale(.32); opacity: .5; } 65% { opacity: .13; } 100% { transform: scale(1); opacity: 0; } }
+  .rmark { width: 46px; height: 46px; object-fit: contain; opacity: .92; animation: radarBreathe 2.7s ease-in-out infinite; }
+  @keyframes radarBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+  .radar-status { font-size: 13.5px; transition: opacity .3s ease; min-height: 19px; }
+  .radar-status.fading { opacity: 0; }
+  /* Reduce Motion: nothing sweeps or breathes. The rings become a static sonar
+     diagram — still branded, still clearly "working", zero movement. */
+  @media (prefers-reduced-motion: reduce) {
+    .rring { animation: none; opacity: .22; }
+    .rring:nth-child(1) { transform: scale(.45); }
+    .rring:nth-child(2) { transform: scale(.72); opacity: .15; }
+    .rring:nth-child(3) { transform: scale(1); opacity: .09; }
+    .rmark { animation: none; }
+  }
+
   /* Finds */
   #finds { padding: 4px 16px 20px; overflow-y: auto; }
   #finds h2 { margin: 8px 4px 4px; font-size: 22px; }
@@ -524,7 +546,13 @@
       <button id="dailyPill" class="daily-pill" style="display:none" aria-label="Today's 20 progress"></button>
       <button id="btnUndo" class="undo-btn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H14a5.5 5.5 0 0 1 0 11h-1.5"/></svg><span>Undo</span></button>
       <div class="deck" id="deck">
-        <div class="loading" id="deckLoading"><div class="spinner"></div><div>Mapping your taste…</div></div>
+        <div class="loading" id="deckLoading">
+          <div class="radar" aria-hidden="true">
+            <span class="rring"></span><span class="rring"></span><span class="rring"></span>
+            <img class="rmark" src="logo-mark.png?v=3" alt="" />
+          </div>
+          <div class="radar-status" id="deckStatus">Mapping your taste…</div>
+        </div>
       </div>
       <div class="burst" id="burst"></div>
       <div class="dock">
@@ -743,6 +771,11 @@
         <span class="tf-txt"><b>Fresh Finds</b><small>champion smaller artists</small></span>
         <span class="tf-state" id="tuneFreshState">Off</span>
       </button>
+      <div class="tune-label" id="hapticLabel">Swipe feedback</div>
+      <div class="tune-seg" id="hapticSeg">
+        <button data-hap="0">Off</button><button data-hap="1">Light</button><button data-hap="2">Full</button>
+      </div>
+      <p class="gsheet-sub" style="margin:6px 0 14px;" id="hapticNote"></p>
       <p class="gsheet-sub">Tap a genre to steer what Sift plays next. Your picks glow — tap again to ease off.</p>
       <div class="gsheet-chips" id="genreSheetChips"></div>
     </div>
@@ -820,6 +853,7 @@ const state = {
   lastDailyDone: "",    // date the daily 20 was last finished ("YYYY-MM-DD")
   seedLabels: [],       // for display
   tagProfile: null,     // tag -> weight: what this deck is ABOUT (see "Deck coherence profile")
+  haptics: 2,           // 2 = Full, 1 = Light (verdicts only), 0 = Off
 };
 
 // Each genre seeds from iconic "anchor" artists, then the related-artist graph
@@ -1577,6 +1611,13 @@ function pickArtistTracks(pool) {
   while (out.length < 2 && bag.length) out.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]); // sample, don't batch by rank
   return out;
 }
+// On Cozy, drop candidates that don't fit the deck — but only when there's something
+// better to pull instead. Never starve the queue to protect a genre boundary.
+function tightenTargets(list) {
+  if (state.adventure !== 0 || list.length < 2) return list;
+  const keep = list.filter(a => profileMult(tagsOf(a.id)) >= 0.7);
+  return keep.length ? keep : list;
+}
 async function refill() {
   if (state.refilling) return;
   state.refilling = true;
@@ -1607,12 +1648,12 @@ async function refill() {
         const rid = bridge[Math.floor(Math.random() * bridge.length)];
         const RA = state.artists[rid];
         if (RA) { await fetchRelatedInto(RA);
-          targets = (RA.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 3);
+          targets = tightenTargets((RA.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled)).slice(0, 3);
         }
         reasonOverride = "Reaching further out…";
         if (state.exploreBoost > 0) state.exploreBoost--;
       } else {
-        targets = (S.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled).slice(0, 3);
+        targets = tightenTargets((S.related || []).map(id => state.artists[id]).filter(Boolean).filter(a => !a.topPulled)).slice(0, 3);
       }
 
       // A dead end in the graph shouldn't erase the artist you actually asked for.
@@ -1658,7 +1699,9 @@ function orderQueue() {
     // Deck coherence: tracks whose artist fits the tag profile float, off-profile ones
     // sink. Bounded (profileMult is 0.4..1.35) and the shuffle noise below still runs,
     // so off-genre never vanishes — it just stops surfacing as readily as on-genre.
-    bias += (profileMult(tagsOf(t.artistId)) - 1) * 0.45;
+    // The dial sets HOW MUCH this matters: Cozy reads as "stay in my lane", which
+    // used to only mean "reach fewer hops" — it now also means "stay on-genre".
+    bias += (profileMult(tagsOf(t.artistId)) - 1) * [0.95, 0.45, 0.2][adv];
     if (fresh) {
       // Fresh Finds: champion smaller artists — favour low fan-count + low track rank.
       const fan = t.nbFan == null ? 0.5 : Math.min(1, t.nbFan / (PROVIDER.fanNorm || 800000));
@@ -1733,6 +1776,7 @@ function save() {
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
       tagProfile: state.tagProfile,
+      haptics: state.haptics,
       adventure: state.adventure,
       familiarity: state.familiarity,
       freshFinds: state.freshFinds,
@@ -1772,6 +1816,7 @@ function load() {
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
     state.tagProfile = d.tagProfile || null;
+    if (typeof d.haptics === "number") state.haptics = d.haptics;
     if (typeof d.adventure === "number") state.adventure = d.adventure;
     if (typeof d.familiarity === "number") state.familiarity = d.familiarity;
     if (typeof d.freshFinds === "boolean") state.freshFinds = d.freshFinds;
@@ -1906,6 +1951,18 @@ function updateStart() {
   startBtn.textContent = n < 2 ? "Pick at least 2 to start" : "Start discovering →";
 }
 
+// Building a first deck genuinely takes a while — MusicBrainz allows one request a
+// second, so a multi-genre start is 10–20s of real work. Saying what it's doing (and
+// naming the genre it's on) turns dead waiting into visible progress.
+let _statusT = null;
+function setDeckStatus(msg) {
+  const el = document.getElementById("deckStatus");
+  if (!el || el.textContent === msg) return;
+  clearTimeout(_statusT);
+  el.classList.add("fading");
+  _statusT = setTimeout(() => { el.textContent = msg; el.classList.remove("fading"); }, 200);
+}
+
 startBtn.onclick = async () => {
   startBtn.disabled = true; startBtn.textContent = "Building your radar…";
   document.getElementById("tabbar").style.display = "flex";
@@ -1914,11 +1971,13 @@ startBtn.onclick = async () => {
 
   // register artist seeds (weighted, expand via related)
   for (const [name, w] of seedArtists) {
+    setDeckStatus("Finding " + name + "…");
     const a = await searchArtist(name);
     if (a) ensureArtist(a.id, a.name, 2.5 * w, { origin: "seed", nbFan: a.nb_fan }); // weight scales seeding
   }
   // register genre seeds via anchor artists (weighted), then expand through the graph
   for (const [g, w] of seedGenres) {
+    setDeckStatus("Tuning in to " + g + "…");
     const anchors = GENRE_ANCHORS[g] || [g];
     for (const name of anchors) {
       const a = await searchArtist(name);
@@ -1927,8 +1986,10 @@ startBtn.onclick = async () => {
   }
   // One batched MusicBrainz call turns the seeds' tags into the deck's coherence
   // profile — worth the ~1s so even the FIRST refill filters against it.
+  setDeckStatus("Learning what that sounds like…");
   await warmProfile();
   // build out the queue from the graph
+  setDeckStatus("Finding songs you haven't heard…");
   await refill();
   if (state.queue.length < 6) await refill();
   save();
@@ -1970,7 +2031,11 @@ document.getElementById("goProfileBtn").onclick = () => showScreen("profile");
 document.getElementById("resumeBtn").onclick = async () => {
   document.getElementById("tabbar").style.display = "flex";
   showScreen("discover");
-  if (!state.queue.length) { await refill(); if (state.queue.length < 6) await refill(); }
+  if (!state.queue.length) {
+    setDeckStatus("Picking up where you left off…");
+    await refill();
+    if (state.queue.length < 6) await refill();
+  }
   next();
 };
 
@@ -2287,11 +2352,16 @@ const Haptic = (() => {
   const native = C && C.isNativePlatform && C.isNativePlatform();
   const H = native ? (C.registerPlugin ? C.registerPlugin("Haptics") : (C.Plugins && C.Plugins.Haptics)) : null;
   const run = f => { try { const p = f(); if (p && p.catch) p.catch(() => {}); } catch (_) {} };
+  // state.haptics: 2 = Full, 1 = Light (verdicts only), 0 = Off. The commit-line tick
+  // is the one that fires often — twice a swipe if you waver — so Light drops exactly
+  // that and keeps the once-per-card verdict. Read live, so the setting bites instantly.
+  const lvl = () => (state.haptics == null ? 2 : state.haptics);
   return {
-    tick() { if (H) run(() => H.impact({ style: "LIGHT" })); },          // crossed the commit line
-    love() { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // a love landed
-    drop() { if (H) run(() => H.impact({ style: "MEDIUM" })); },         // nope / heard landed
-    win()  { if (H) run(() => H.notification({ type: "SUCCESS" })); },   // today's 20 done
+    tick() { if (H && lvl() >= 2) run(() => H.impact({ style: "LIGHT" })); },        // crossed the commit line
+    love() { if (H && lvl() >= 1) run(() => H.notification({ type: "SUCCESS" })); }, // a love landed
+    drop() { if (H && lvl() >= 1) run(() => H.impact({ style: "MEDIUM" })); },       // nope / heard landed
+    win()  { if (H && lvl() >= 1) run(() => H.notification({ type: "SUCCESS" })); }, // today's 20 done
+    demo(n) { if (!H) return; if (n >= 2) run(() => H.impact({ style: "LIGHT" })); else if (n === 1) run(() => H.impact({ style: "MEDIUM" })); },
   };
 })();
 
@@ -2488,7 +2558,7 @@ function setAdventure(n) {
   state.adventure = ((n % 3) + 3) % 3;
   applyAdventureUI();
   save();
-  toast(["🛋️ Cozy — close to your favourites", "⚖️ Balanced mix", "🧭 Adventurous — reaching far out"][state.adventure]);
+  toast(["🛋️ Cozy — tight to your genres", "⚖️ Balanced mix", "🧭 Adventurous — reaching far out"][state.adventure]);
   // seed some immediate exploration when cranking it up
   if (state.adventure === 2) state.exploreBoost = Math.max(state.exploreBoost, 2);
   orderQueue(); // re-order what's already queued so the change is felt right away
@@ -2510,6 +2580,31 @@ function setFresh() {
   orderQueue();
 }
 document.getElementById("tuneFresh").onclick = setFresh;
+
+/* ---------- Swipe feedback (haptics) ---------- */
+// Hidden entirely on the web, where there's nothing to feel — an inert control that
+// never does anything is worse than no control.
+const HAPTIC_NOTE = [
+  "No buzz at all.",
+  "One tap when a song lands in your Finds or gets passed.",
+  "Adds a light tick the moment a swipe passes the point of no return.",
+];
+function hapticsAvailable() { const C = window.Capacitor; return !!(C && C.isNativePlatform && C.isNativePlatform()); }
+function applyHapticUI() {
+  const on = hapticsAvailable();
+  ["hapticLabel", "hapticSeg", "hapticNote"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; });
+  if (!on) return;
+  const n = state.haptics == null ? 2 : state.haptics;
+  document.querySelectorAll("#hapticSeg button").forEach(b => b.classList.toggle("on", Number(b.dataset.hap) === n));
+  document.getElementById("hapticNote").textContent = HAPTIC_NOTE[n];
+}
+function setHaptics(n) {
+  state.haptics = Math.max(0, Math.min(2, n));
+  applyHapticUI();
+  save();
+  Haptic.demo(state.haptics);   // feel the setting you just chose, immediately
+}
+document.querySelectorAll("#hapticSeg button").forEach(b => b.onclick = () => setHaptics(Number(b.dataset.hap)));
 
 /* ---------- Genre tuner — steer the mix mid-session ---------- */
 // A picked genre isn't a filter — it seeds that genre's anchor artists into your graph
@@ -2563,7 +2658,7 @@ async function toggleGenreLive(g, chip) {
   save();
   toast(added ? ("Now mixing in " + g + " — swipe on") : ("Added " + g + " to your mix"));
 }
-function openGenreSheet() { renderGenreSheet(); applyAdventureUI(); applyFreshUI(); document.getElementById("genreSheet").style.display = "flex"; }
+function openGenreSheet() { renderGenreSheet(); applyAdventureUI(); applyFreshUI(); applyHapticUI(); document.getElementById("genreSheet").style.display = "flex"; }
 function closeGenreSheet() { document.getElementById("genreSheet").style.display = "none"; }
 document.getElementById("genreSheetX").onclick = closeGenreSheet;
 document.getElementById("genreSheet").onclick = (e) => { if (e.target.id === "genreSheet") closeGenreSheet(); };
