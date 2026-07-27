@@ -1265,12 +1265,18 @@ function profileMult(tags) {
 // the profile directly and doesn't depend on anyone having tagged the anchors.
 //   "Oriental House" -> ["oriental house", "house"]   "Melodic Techno" -> [..., "techno"]
 // The head noun matters as much as the full name: it's what genuine scene artists carry.
-function genreTags(g) {
-  const full = normTag(String(g).replace(/[\/&]+/g, " ")).replace(/\s+/g, " ").trim();
-  if (!full) return [];
-  const parts = full.split(" ").filter(w => w.length > 2);
-  const out = [full];
-  if (parts.length > 1) out.push(parts[parts.length - 1]);
+// fullOnly: just the genre's own name(s), without the head noun. Easing a genre off
+// subtracts with fullOnly — the head noun ("techno") may be shared with a sibling
+// chip that's still active, and denting it would punish that one too.
+function genreTags(g, fullOnly) {
+  const s = String(g);
+  // Both "&" spellings: MusicBrainz writes the ampersand out ("drum and bass"),
+  // so "Drum & Bass" must yield that form or the chip's own name never matches.
+  const forms = [s.replace(/[\/&]+/g, " "), s.replace(/&/g, " and ").replace(/\//g, " ")]
+    .map(x => normTag(x).replace(/\s+/g, " ").trim()).filter(Boolean);
+  const out = [...forms];
+  const parts = forms[0] ? forms[0].split(" ").filter(w => w.length > 2) : [];
+  if (!fullOnly && parts.length > 1) out.push(parts[parts.length - 1]);
   return [...new Set(out)].filter(t => !TAG_SKIP.test(t));
 }
 // One batched MusicBrainz call turns the seeds' tags into the deck's profile.
@@ -1733,9 +1739,16 @@ function pickSource(explore) {
   // neither lineage nor a personal signal (side-door strays, pre-lineage saves) don't
   // seed refills directly — they stay reachable as related-targets and via explore's
   // frontier, which is reach enough for artists nobody asked for.
+  // Only genres still in seedLabels get a rotation slot — "ease off" must actually
+  // ease off, and without this check an eased-off genre's artists would keep their
+  // guaranteed turn forever. Its artists stay reachable through related-targets and
+  // explore, they just stop being handed the microphone.
+  const active = new Set(state.seedLabels || []);
   const buckets = {};
   for (const a of pool) {
-    const k = a.genreName || ((a.origin === "seed" || a.origin === "loved") ? "you" : null);
+    const k = (a.genreName && active.has(a.genreName)) ? a.genreName
+            : (a.origin === "loved") ? "you"                        // a love outranks its lineage — always sourced
+            : (!a.genreName && a.origin === "seed") ? "you" : null;
     if (k) (buckets[k] = buckets[k] || []).push(a);
   }
   const keys = Object.keys(buckets);
@@ -2206,7 +2219,10 @@ startBtn.onclick = async () => {
   for (const [g, arts] of seedsByGenre) {
     if (!arts.length) continue;
     const a = arts[Math.floor(Math.random() * arts.length)];
-    try { queueTracks(pickArtistTracks(await artistTop(a.id, 25, a.name)), "Exploring " + g, a.nbFan); } catch (_) {}
+    try {
+      queueTracks(pickArtistTracks(await artistTop(a.id, 25, a.name)), "Exploring " + g, a.nbFan);
+      a.topPulled = true;   // or the first refill re-pulls the exact catalogue we just took
+    } catch (_) {}
   }
   // build out the queue from the graph
   await refill();
@@ -2861,7 +2877,7 @@ async function toggleGenreLive(g, chip) {
   if (genreActive(g)) {                                   // ease off — stop reinforcing it
     state.seedLabels = (state.seedLabels || []).filter(x => x !== g);
     if (typeof seedGenres !== "undefined") seedGenres.delete(g);
-    bumpProfile(genreTags(g), -3);                        // and stop steering toward its sound
+    bumpProfile(genreTags(g, true), -3);                  // full name only — see genreTags
     chip.classList.remove("on");
     save();
     toast("Eased off " + g);
