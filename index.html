@@ -2460,13 +2460,19 @@ function bumpUsage(key) {
 async function flushUsage() {
   if (!SB || !usageDay || !usageDev) return;
   try {
-    await SB.from("usage_daily").upsert({
+    const row = {
       day: usageDay.day, device: usageDev,
       platform: isNativeIOS() ? "ios" : (matchMedia("(display-mode: standalone)").matches ? "pwa" : "web"),
       opens: usageDay.opens, swipes: usageDay.swipes, loves: usageDay.loves, heards: usageDay.heards,
       decks_sent: usageDay.decks_sent, deck_opens: usageDay.deck_opens, daily_done: usageDay.daily_done,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "day,device" });
+    };
+    // Not an upsert: ON CONFLICT DO UPDATE needs to READ the existing row, and this
+    // table is deliberately unreadable from clients. Insert; on duplicate, update.
+    const { error } = await SB.from("usage_daily").insert(row);
+    if (error && error.code === "23505") {
+      await SB.from("usage_daily").update(row).eq("day", row.day).eq("device", row.device);
+    }
   } catch (_) { /* not provisioned / offline — counts wait in localStorage */ }
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
