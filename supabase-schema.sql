@@ -202,3 +202,7 @@ create policy "send own decks" on public.deck_sends
       where (b.blocker = recipient and b.blocked = sender)
          or (b.blocker = sender and b.blocked = recipient))
   );
+
+-- Avatar (added 2026-07-27): "<colorIndex>|<emoji>" from the app's curated
+-- palette/glyph set; null = plain initial. No uploads, no moderation surface.
+alter table public.profiles add column if not exists avatar text;

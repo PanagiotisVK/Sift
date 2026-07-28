@@ -352,6 +352,20 @@
   .friend.pending { opacity: .55; }
   .fdet-actions { display: flex; gap: 8px; margin-top: 10px; }
   .fdet-actions .btn-mini { flex: 1; }
+  /* Avatars: curated color + glyph; falls back to the initial on plain glass */
+  .avtr { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 17px; color: var(--text); background: rgba(255,255,255,.10); border: 1px solid var(--glass-brd); flex-shrink: 0; overflow: hidden; user-select: none; }
+  .avtr.has-av { font-size: 21px; border-color: transparent; }
+  .avtr.me-av { cursor: pointer; }
+  .avtr.big { width: 76px; height: 76px; font-size: 30px; }
+  .avtr.big.has-av { font-size: 38px; }
+  .av-preview { display: grid; place-items: center; margin: 14px 0 16px; }
+  .av-colors { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .av-c { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .av-c.on { border-color: #fff; }
+  .av-emojis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+  .av-e { font-size: 22px; padding: 8px 0; text-align: center; border-radius: 10px; cursor: pointer; border: 1px solid var(--glass-brd); background: var(--card); }
+  .av-e.on { border-color: rgba(255,255,255,.55); background: var(--glass); }
+  .friend .fav.has-av, .dsend-av.has-av { font-size: 21px; border-color: transparent; }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .find button.mini.rm { background: transparent; color: var(--faint); }
@@ -795,9 +809,12 @@
       <!-- Logged in: account summary -->
       <div class="acct" id="profileBox" style="display:none;">
         <div class="acct-row" style="justify-content:space-between;margin-top:0;">
-          <div style="min-width:0;">
-            <div class="acct-title" id="userName">@you</div>
-            <div class="acct-sub" id="userSync">Vibe synced ✓</div>
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            <div class="avtr me-av" id="meAvatar" role="button" title="Change avatar">?</div>
+            <div style="min-width:0;">
+              <div class="acct-title" id="userName">@you</div>
+              <div class="acct-sub" id="userSync">Vibe synced ✓</div>
+            </div>
           </div>
           <div style="flex:0 0 auto;display:flex;gap:8px;">
             <button class="btn-mini ghost" id="btnEditUname" style="padding:10px 14px;">Edit</button>
@@ -928,6 +945,21 @@
         <div id="deckSendList"></div>
         <button class="btn-mini ghost" id="btnDeckLink" style="width:100%;margin-top:10px;">Share a link instead</button>
         <button class="btn-primary" id="btnDeckDone" style="margin-top:10px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar picker — curated colors + music glyphs, zero moderation surface -->
+  <div class="gsheet-ov" id="avatarSheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Your avatar</span><button class="gsheet-x" id="avatarSheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub">Pick a color and a vibe — this is you in your friends' lists.</p>
+      <div class="av-preview"><div class="avtr big" id="avPreview">?</div></div>
+      <div class="av-colors" id="avColors"></div>
+      <div class="av-emojis" id="avEmojis"></div>
+      <div class="deck-foot" style="justify-content:flex-end;">
+        <button class="btn-mini ghost" id="btnAvClear">Use my initial</button>
+        <button class="btn-mini" id="btnAvSave">Save</button>
       </div>
     </div>
   </div>
@@ -3901,6 +3933,7 @@ function renderAcct() {
   show("friendsSocial", ready);
   if (!ready) return;
   document.getElementById("userName").textContent = "@" + me_profile.username;
+  setMeAvatar();
   document.getElementById("userSync").textContent = "Backed up ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
   renderActivity();
   renderFriends();
@@ -3924,6 +3957,64 @@ function applyShareUI() {
     toast(state.shareFinds ? "Friends can now swipe your recent Finds" : "Your Finds are private again");
   };
 })();
+
+/* ---------- Avatars ----------
+   Curated color + music glyph, stored on the profile as "<colorIndex>|<emoji>".
+   No uploads = no image moderation surface; the palette and glyph set are ours. */
+const AVATAR_COLORS = ["#e05c6e", "#e0915c", "#d9c25a", "#6fbf7f", "#56a8d6", "#7d6ee0", "#c95cd9", "#4a4a54"];
+const AVATAR_EMOJIS = ["🎧", "🎸", "🎹", "🎷", "🎺", "🥁", "🎻", "🎤", "📻", "💿", "🪗", "🌊", "⚡", "🔥", "🌙", "⭐"];
+function avatarParts(av) {
+  const m = /^(\d+)\|(.+)$/.exec(av || "");
+  if (!m || !AVATAR_EMOJIS.includes(m[2])) return null;   // only our glyphs render as avatars
+  return { bg: AVATAR_COLORS[+m[1] % AVATAR_COLORS.length], emoji: m[2] };
+}
+function avatarHtml(p, cls) {
+  const a = avatarParts(p && p.avatar);
+  if (a) return '<div class="' + cls + ' has-av" style="background:' + a.bg + '">' + a.emoji + '</div>';
+  return '<div class="' + cls + '">' + esc(((p && p.username) || "?").charAt(0).toUpperCase()) + '</div>';
+}
+function setMeAvatar() {
+  const el = document.getElementById("meAvatar");
+  if (!el) return;
+  const a = avatarParts(me_profile && me_profile.avatar);
+  el.classList.toggle("has-av", !!a);
+  el.style.background = a ? a.bg : "";
+  el.textContent = a ? a.emoji : ((me_profile && me_profile.username) || "?").charAt(0).toUpperCase();
+}
+let _avSel = null;   // { c, e } while the sheet is open; null = use initial
+function openAvatarSheet() {
+  const cur = avatarParts(me_profile && me_profile.avatar);
+  _avSel = cur ? { c: AVATAR_COLORS.indexOf(cur.bg), e: cur.emoji } : { c: 4, e: "🎧" };
+  if (_avSel.c < 0) _avSel.c = 0;
+  const cw = document.getElementById("avColors"), ew = document.getElementById("avEmojis");
+  cw.innerHTML = AVATAR_COLORS.map((c, i) => '<div class="av-c" data-i="' + i + '" style="background:' + c + '"></div>').join("");
+  ew.innerHTML = AVATAR_EMOJIS.map(e => '<div class="av-e" data-e="' + e + '">' + e + '</div>').join("");
+  cw.querySelectorAll(".av-c").forEach(el => el.onclick = () => { _avSel.c = +el.dataset.i; paintAvatarSheet(); });
+  ew.querySelectorAll(".av-e").forEach(el => el.onclick = () => { _avSel.e = el.dataset.e; paintAvatarSheet(); });
+  paintAvatarSheet();
+  document.getElementById("avatarSheet").style.display = "flex";
+}
+function paintAvatarSheet() {
+  const pv = document.getElementById("avPreview");
+  pv.className = "avtr big has-av";
+  pv.style.background = AVATAR_COLORS[_avSel.c];
+  pv.textContent = _avSel.e;
+  document.querySelectorAll("#avColors .av-c").forEach(el => el.classList.toggle("on", +el.dataset.i === _avSel.c));
+  document.querySelectorAll("#avEmojis .av-e").forEach(el => el.classList.toggle("on", el.dataset.e === _avSel.e));
+}
+function closeAvatarSheet() { document.getElementById("avatarSheet").style.display = "none"; }
+async function saveAvatar(av) {   // av = "<i>|<emoji>" or null to clear
+  if (!SB || !me_session || !me_profile) return;
+  try {
+    const { error } = await SB.from("profiles").update({ avatar: av }).eq("id", me_session.user.id);
+    if (error) { toast(/avatar|schema cache|column/i.test(error.message || "") ? "Avatars aren't set up in the database yet." : error.message); return; }
+    me_profile.avatar = av;
+    setMeAvatar();
+    closeAvatarSheet();
+    toast(av ? "Looking sharp ✓" : "Back to your initial ✓");
+    renderFriends();   // your own rows elsewhere refresh on their next cycle
+  } catch (e) { toast("Couldn't save — try again."); }
+}
 
 // Friend edges, status-aware with a pre-migration fallback (no status column yet →
 // every edge counts as accepted, exactly the old behavior).
@@ -3962,7 +4053,7 @@ async function renderFriends() {
       const pct = tasteMatch(mine, p);
       const row = document.createElement("div"); row.className = "friend";
       row.innerHTML =
-        '<div class="fav">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+        avatarHtml(p, "fav") +
         '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">' + esc(p.archetype || "Fresh Ears") + ' · ' + (p.finds_count || 0) + ' finds</div></div>' +
         '<div class="match"><div class="pct">' + pct + '%</div><div class="ml">match ▾</div></div>';
       // Tap a friend → what you share + swipe their recent Finds
@@ -3993,7 +4084,7 @@ async function renderFriends() {
     // Outgoing requests they haven't answered yet — tap to withdraw.
     waiting.forEach(p => {
       const row = document.createElement("div"); row.className = "friend pending";
-      row.innerHTML = '<div class="fav">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+      row.innerHTML = avatarHtml(p, "fav") +
         '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">Request sent — tap to withdraw</div></div>';
       row.onclick = async () => { await removeFriend(p.id); toast("Request withdrawn"); };
       list.appendChild(row);
@@ -4369,6 +4460,12 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   };
   document.getElementById("btnRenameUname").onclick = renameUsername;
   document.getElementById("unameEditInput").addEventListener("keydown", e => { if (e.key === "Enter") renameUsername(); });
+  document.getElementById("meAvatar").onclick = openAvatarSheet;
+  document.getElementById("avatarSheetX").onclick = closeAvatarSheet;
+  document.getElementById("avatarSheet").onclick = e => { if (e.target.id === "avatarSheet") closeAvatarSheet(); };
+  document.getElementById("btnAvSave").onclick = () => saveAvatar(_avSel.c + "|" + _avSel.e);
+  document.getElementById("btnAvClear").onclick = () => saveAvatar(null);
+  attachSheetDrag("avatarSheet", closeAvatarSheet);
   document.getElementById("btnForgot").onclick = doForgotPass;
   document.getElementById("btnDeleteAcct").onclick = deleteAccount;
   document.getElementById("btnSaveReset").onclick = saveNewPass;
@@ -4449,7 +4546,8 @@ async function myFriends() {
   try {
     const ids = (await friendEdges()).filter(e => !e.status || e.status === "accepted").map(e => e.friend_id);
     if (!ids.length) return [];
-    const { data: profs } = await SB.from("profiles").select("id,username").in("id", ids);
+    let { data: profs, error } = await SB.from("profiles").select("id,username,avatar").in("id", ids);
+    if (error) ({ data: profs } = await SB.from("profiles").select("id,username").in("id", ids));
     return profs || [];
   } catch (e) { return []; }
 }
@@ -4482,7 +4580,7 @@ function showDeckSendStep(friends) {
   list.innerHTML = "";
   friends.forEach(p => {
     const row = document.createElement("div"); row.className = "dsend-row";
-    row.innerHTML = '<div class="dsend-av">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+    row.innerHTML = avatarHtml(p, "dsend-av") +
       '<div class="dsend-n">@' + esc(p.username || "?") + '</div><button class="btn-mini">Send</button>';
     const btn = row.querySelector("button");
     btn.onclick = async () => {
