@@ -560,6 +560,37 @@
   .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
+  /* The dancing sausage — the little guy from the loading pan, celebrating your 20.
+     Same construction as the kitchen: inline SVG, double-stroke body, CSS keyframes.
+     Two chunky poses swapped with steps() (the meme cadence) + a smooth bounce.
+     Deliberately animates regardless of Reduce Motion, same owner call as the pan. */
+  .dancescene { width: 112px; margin: 0 auto 6px; display: block; }
+  .sg-body-o { stroke: rgba(255,255,255,.95); stroke-width: 34; stroke-linecap: round; fill: none; }
+  .sg-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
+  .sg-limb { stroke: rgba(255,255,255,.95); stroke-width: 7; stroke-linecap: round; fill: none; }
+  .sg-eye { fill: rgba(255,255,255,.95); }
+  .sg-mouth { fill: #26262c; stroke: rgba(255,255,255,.95); stroke-width: 2.5; stroke-linejoin: round; }
+  .sg-dance { animation: dnBounce .62s ease-in-out infinite; transform-origin: 60px 92px; }
+  @keyframes dnBounce {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    30% { transform: translateY(3.5px) scale(1.04, .95); }
+    60% { transform: translateY(-2px) scale(.985, 1.02); }
+  }
+  .sg-tilt { animation: dnTilt 1.24s steps(1) infinite; transform-origin: 60px 90px; }
+  @keyframes dnTilt { 0% { transform: rotate(-5.5deg); } 50% { transform: rotate(5.5deg); } 100% { transform: rotate(-5.5deg); } }
+  .sg-poseA { animation: dnA 1.24s steps(1) infinite; }
+  .sg-poseB { animation: dnB 1.24s steps(1) infinite; }
+  @keyframes dnA { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes dnB { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+  .sg-note { fill: rgba(255,255,255,.65); animation: dnNote 1.9s ease-out infinite; }
+  .sg-note.n2 { animation-delay: .95s; }
+  @keyframes dnNote {
+    0%, 12% { opacity: 0; transform: translateY(6px); }
+    30% { opacity: .8; }
+    75% { opacity: 0; transform: translateY(-16px); }
+    100% { opacity: 0; }
+  }
+  .sg-note path { stroke: rgba(255,255,255,.65); }
   .daily-big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1.1; margin-top: 8px; }
   .daily-sub { color: var(--muted); font-size: 14px; font-weight: 500; margin-top: 8px; }
   .daily-sub b { color: var(--text); font-weight: 600; }
@@ -978,6 +1009,37 @@
   <!-- Today's 20 — end-of-session summary -->
   <div class="gsheet-ov" id="dailySheet" style="display:none;">
     <div class="gsheet daily-sheet">
+      <!-- the sausage from the loading pan, celebrating with you -->
+      <svg class="dancescene" viewBox="0 0 120 120" aria-hidden="true">
+        <g class="sg-dance">
+          <g class="sg-tilt">
+            <g class="sg-poseA">
+              <path class="sg-limb" d="M51 90 q-6 6 -13 7" />
+              <path class="sg-limb" d="M69 90 q2 9 6 12" />
+              <path class="sg-limb" d="M41 56 q-10 -4 -12 -14" />
+              <path class="sg-limb" d="M79 58 q10 -6 11 -14" />
+            </g>
+            <g class="sg-poseB">
+              <path class="sg-limb" d="M69 90 q6 6 13 7" />
+              <path class="sg-limb" d="M51 90 q-2 9 -6 12" />
+              <path class="sg-limb" d="M79 56 q10 -4 12 -14" />
+              <path class="sg-limb" d="M41 58 q-10 -6 -11 -14" />
+            </g>
+            <path class="sg-body-o" d="M60 42 L60 76" />
+            <path class="sg-body-i" d="M60 42 L60 76" />
+            <circle class="sg-eye" cx="51" cy="47" r="2.8" />
+            <circle class="sg-eye" cx="69" cy="47" r="2.8" />
+            <path class="sg-mouth" d="M51 56 q9 9 18 0 q-1.5 11 -9 11 q-7.5 0 -9 -11 z" />
+          </g>
+        </g>
+        <!-- notes: outer g holds position (a CSS animation transform would clobber it) -->
+        <g transform="translate(24,52)"><g class="sg-note">
+          <circle cx="0" cy="8" r="2.6" /><path d="M2.6 8 L2.6 -3 q4 0 5 3" fill="none" stroke-width="1.8" stroke-linecap="round" />
+        </g></g>
+        <g transform="translate(94,46) scale(.85)"><g class="sg-note n2">
+          <circle cx="0" cy="8" r="2.6" /><path d="M2.6 8 L2.6 -3 q4 0 5 3" fill="none" stroke-width="1.8" stroke-linecap="round" />
+        </g></g>
+      </svg>
       <div class="daily-kicker">Today's 20 · done</div>
       <div class="daily-big" id="dailyBig">That's 20</div>
       <div class="daily-sub" id="dailySub"></div>
