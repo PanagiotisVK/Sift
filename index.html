@@ -795,8 +795,16 @@
             <div class="acct-title" id="userName">@you</div>
             <div class="acct-sub" id="userSync">Vibe synced ✓</div>
           </div>
-          <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
+          <div style="flex:0 0 auto;display:flex;gap:8px;">
+            <button class="btn-mini ghost" id="btnEditUname" style="padding:10px 14px;">Edit</button>
+            <button class="btn-mini ghost" id="btnLogout" style="padding:10px 14px;">Log out</button>
+          </div>
         </div>
+        <div class="acct-row" id="unameEditRow" style="display:none;">
+          <input id="unameEditInput" placeholder="new username" autocomplete="off" maxlength="20" />
+          <button class="btn-mini" id="btnRenameUname" style="flex:0 0 auto;padding:12px 18px;">Save</button>
+        </div>
+        <div class="acct-msg" id="unameEditMsg"></div>
         <button class="tune-fresh" id="shareFindsBtn" style="margin-top:12px;">
           <span class="tf-star">🎁</span>
           <span class="tf-txt"><b>Friends can swipe my taste</b><small>share your 12 latest Finds with friends</small></span>
@@ -4205,6 +4213,26 @@ async function saveUsername() {
   } catch (e) { acctMsg("unameMsg", "Something went wrong — try again.", "err"); }
 }
 
+// Rename: same rules as picking one (cleanHandle, min 3, unique). Everything that
+// shows usernames fetches them live by profile id, so a rename propagates everywhere;
+// old deck titles and past deck_results keep the name they were made under — history.
+async function renameUsername() {
+  if (!SB || !me_session || !me_profile) return;
+  const v = cleanHandle(document.getElementById("unameEditInput").value);
+  if (v.length < 3) { acctMsg("unameEditMsg", "Username needs at least 3 letters or numbers.", "err"); return; }
+  if (v === me_profile.username) { document.getElementById("unameEditRow").style.display = "none"; acctMsg("unameEditMsg", ""); return; }
+  acctMsg("unameEditMsg", "Saving…");
+  try {
+    const { data, error } = await SB.from("profiles").update({ username: v, display_name: v }).eq("id", me_session.user.id).select().single();
+    if (error) { acctMsg("unameEditMsg", error.code === "23505" ? "That username's taken — try another." : error.message, "err"); return; }
+    me_profile = data;
+    document.getElementById("unameEditRow").style.display = "none";
+    acctMsg("unameEditMsg", "");
+    renderAcct();
+    toast("You're @" + v + " now ✓");
+  } catch (e) { acctMsg("unameEditMsg", "Something went wrong — try again.", "err"); }
+}
+
 async function addFriend() {
   if (!SB || !me_session) return;
   const v = cleanHandle(document.getElementById("friendInput").value);
@@ -4238,6 +4266,15 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
     ab.onclick = doAppleSignIn;
   }
   document.getElementById("btnLogout").onclick = doLogout;
+  document.getElementById("btnEditUname").onclick = () => {
+    const row = document.getElementById("unameEditRow");
+    const open = row.style.display !== "none";
+    row.style.display = open ? "none" : "flex";
+    acctMsg("unameEditMsg", "");
+    if (!open) { const inp = document.getElementById("unameEditInput"); inp.value = (me_profile && me_profile.username) || ""; inp.focus(); }
+  };
+  document.getElementById("btnRenameUname").onclick = renameUsername;
+  document.getElementById("unameEditInput").addEventListener("keydown", e => { if (e.key === "Enter") renameUsername(); });
   document.getElementById("btnForgot").onclick = doForgotPass;
   document.getElementById("btnDeleteAcct").onclick = deleteAccount;
   document.getElementById("btnSaveReset").onclick = saveNewPass;
