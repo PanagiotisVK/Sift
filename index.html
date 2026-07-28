@@ -4512,7 +4512,7 @@ async function doSignup() {
     const { data, error } = await SB.auth.signUp({ email, password: pass });
     if (error) { acctMsg("authMsg", error.message, "err"); return; }
     if (data.session) { me_session = data.session; acctMsg("authMsg", "Welcome to Sift! Pick a username 👇", "ok"); loadMe(); }
-    else { acctMsg("authMsg", "Account made! Check your email to confirm it, then hit Log in.", "ok"); }
+    else { acctMsg("authMsg", "Almost there — we sent a confirmation link to " + email + ". Tap it, then come back and log in. (Check spam if it's shy.)", "ok"); }
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
 
@@ -4523,7 +4523,13 @@ async function doLogin() {
   acctMsg("authMsg", "Logging in…");
   try {
     const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
-    if (error) { acctMsg("authMsg", error.message, "err"); return; }
+    if (error) {
+      // The most common stumble once confirmations are on — say what to do, not just what failed.
+      const friendly = /not confirmed/i.test(error.message || "")
+        ? "Confirm your email first — check your inbox for the link we sent."
+        : error.message;
+      acctMsg("authMsg", friendly, "err"); return;
+    }
     me_session = data.session; acctMsg("authMsg", ""); loadMe();
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
