@@ -5,5 +5,8 @@
   "ios": {
     "contentInset": "never",
     "backgroundColor": "#09090b"
+  },
+  "server": {
+    "hostname": "siftmusic.app"
   }
 }
