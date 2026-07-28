@@ -773,6 +773,18 @@
   }
   @keyframes sfEOpenE { 0%, 28% { opacity: 1; } 30%, 88% { opacity: 0; } 90%, 100% { opacity: 1; } }
   @keyframes sfEWideE { 0%, 28% { opacity: 0; } 30%, 88% { opacity: 1; } 90%, 100% { opacity: 0; } }
+  .sf-bubble { display: none; }
+  .sf-empty .sf-bubble { display: block; animation: sfBubble 4.8s ease-out infinite;
+    opacity: 0; transform-box: fill-box; transform-origin: 18% 100%; }
+  .sf-bub-fill { fill: #f4f4f5; }
+  .sf-bub-t { fill: #1c1c21; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 10.5px; font-weight: 650; text-anchor: middle; letter-spacing: -.2px; }
+  @keyframes sfBubble {
+    0%, 63% { opacity: 0; transform: scale(.5); }
+    68% { opacity: 1; transform: scale(1.06); }
+    72%, 90% { opacity: 1; transform: scale(1); }
+    95%, 100% { opacity: 0; transform: scale(1); }
+  }
   @keyframes sfCookfx { 0%, 28% { opacity: 1; } 36%, 92% { opacity: 0; } 100% { opacity: 1; } }
   /* the arc: up out of the pan, over, down onto the plate */
   @keyframes sfFly {
@@ -1388,6 +1400,14 @@
       <!-- arrival flash over the plate -->
       <g class="sf-pop">
         <path class="sf-sparkle" d="M182 92 l-5 -4 M214 92 l5 -4 M198 84 l0 -6 M186 102 l-6 1 M210 102 l6 1" />
+      </g>
+
+      <!-- Empty variant only: he answers the loading screen's own patter.
+           It pops on the shrug rather than sitting there, so it lands as a beat. -->
+      <g class="sf-bubble">
+        <path class="sf-bub-fill" d="M77 21 h52 a11 11 0 0 1 11 11 v11 a11 11 0 0 1 -11 11 h-33 l-13 9 2.5 -9 h-8.5 a11 11 0 0 1 -11 -11 v-11 a11 11 0 0 1 11 -11 z" />
+        <text class="sf-bub-t" x="103.5" y="36">Guess I</text>
+        <text class="sf-bub-t" x="103.5" y="47.5">didn't cook.</text>
       </g>
     </svg>
       <div class="daily-kicker">Today's 20 · done</div>
@@ -3797,7 +3817,7 @@ function showDailySheet() {
   document.getElementById("dailyBig").textContent =
     none ? "Nothing landed" : d.loves + (d.loves === 1 ? " new find" : " new finds");
   document.getElementById("dailySub").innerHTML = none
-    ? d.count + " songs, none of them yours. Let's change the recipe."
+    ? d.count + " songs today — let's change the recipe."
     : "<b>" + fresh + "</b> new to you · <b>" + d.loves + "</b> loved · " + d.count + " songs today";
   document.getElementById("dailyFinds").textContent = none ? "Tune my taste" : "See my Finds";
   document.getElementById("dailyStreak").textContent =
