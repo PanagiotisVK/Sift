@@ -2851,6 +2851,29 @@ function warmAppleMusic() {
   if (_mk || !state.liked.length) return;
   appleDevToken().then(t => { _mkDev = t; return ensureMusicKit(t); }).catch(() => {});
 }
+// Inside the iOS wrapper, Apple's sign-in opens outside our webview, so a finished
+// authorize() has nowhere to report back to and the promise never settles. We can't
+// see that window — but we can see the app leave and come back. If they return to
+// Sift with nothing resolved, waiting longer won't help, so give the button back at
+// once instead of stalling on "Waiting for your OK…" until the backstop fires.
+// Native only: in Safari the popup is a real child window and reports back normally.
+function watchForAbandonedAuth() {
+  let stop = () => {};
+  const promise = new Promise((_, reject) => {
+    if (!isNativeIOS()) return;   // never settles elsewhere — harmless in the race
+    let left = false, grace = null;
+    const onVis = () => {
+      if (document.hidden) { left = true; return; }
+      if (!left) return;
+      // They're back. Let a real result win the race first — authorize() can settle a
+      // beat after the app regains focus, and a false abort would be worse than a wait.
+      grace = setTimeout(() => reject(new Error("authorize abandoned")), 1500);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    stop = () => { document.removeEventListener("visibilitychange", onVis); clearTimeout(grace); };
+  });
+  return { promise, stop: () => stop() };
+}
 async function exportFindsToAppleMusic() {
   const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
   const say = (t) => { lbl.textContent = t; };
@@ -2868,10 +2891,15 @@ async function exportFindsToAppleMusic() {
     // FIRST await — the gesture is still alive. But inside the iOS app the popup may
     // open somewhere we never hear back from (Capacitor hands popups to the system
     // browser), and authorize() would then hang forever with the button dead. Cap it.
-    const userToken = await Promise.race([
-      _mk.authorize(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("authorize timeout")), 120000)),
-    ]);
+    const back = watchForAbandonedAuth();
+    let userToken;
+    try {
+      userToken = await Promise.race([
+        _mk.authorize(),
+        back.promise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("authorize timeout")), 120000)),
+      ]);
+    } finally { back.stop(); }
     const H = { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" };
     // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
     // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
@@ -2961,7 +2989,7 @@ async function exportFindsToAppleMusic() {
     say(IDLE);
     const m = String((e && e.message) || e);
     if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
-    else if (/authorize timeout/.test(m)) toast("Apple's sign-in never came back. Try Sift in Safari for this one.");
+    else if (/authorize (timeout|abandoned)/.test(m)) toast("Apple's sign-in didn't make it back to Sift. Open Sift in Safari to save these.");
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
     else if (/popup|blocked|window/i.test(m)) toast("Safari blocked Apple's sign-in window — allow pop-ups for this site, then tap again.");
     else toast("Couldn't reach Apple Music — try again in a moment.");
