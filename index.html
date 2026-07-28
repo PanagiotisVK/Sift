@@ -560,9 +560,10 @@
   .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
-  /* The dancing sausage — the little guy from the loading pan, celebrating your 20.
-     Same construction as the kitchen: inline SVG, double-stroke body, CSS keyframes.
-     Two chunky poses swapped with steps() (the meme cadence) + a smooth bounce.
+  /* SHEF — Sift's mascot (S like Sift): the little chef who cooks your deck,
+     out celebrating your Today's 20. Same construction as the kitchen: inline
+     SVG, double-stroke body, CSS keyframes. Two chunky poses swapped with
+     steps() (the meme cadence) + a smooth bounce riding on top.
      Deliberately animates regardless of Reduce Motion, same owner call as the pan. */
   .dancescene { width: 112px; margin: 0 auto 6px; display: block; }
   .sg-body-o { stroke: rgba(255,255,255,.95); stroke-width: 34; stroke-linecap: round; fill: none; }
@@ -591,6 +592,9 @@
     100% { opacity: 0; }
   }
   .sg-note path { stroke: rgba(255,255,255,.65); }
+  .sg-hat-p { fill: rgba(255,255,255,.95); }
+  .sg-hat-b { fill: rgba(255,255,255,.95); stroke: #26262c; stroke-width: 1.6; }
+  .sg-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
   .daily-big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1.1; margin-top: 8px; }
   .daily-sub { color: var(--muted); font-size: 14px; font-weight: 500; margin-top: 8px; }
   .daily-sub b { color: var(--text); font-weight: 600; }
@@ -1009,7 +1013,7 @@
   <!-- Today's 20 — end-of-session summary -->
   <div class="gsheet-ov" id="dailySheet" style="display:none;">
     <div class="gsheet daily-sheet">
-      <!-- the sausage from the loading pan, celebrating with you -->
+      <!-- Shef, celebrating with you -->
       <svg class="dancescene" viewBox="0 0 120 120" aria-hidden="true">
         <g class="sg-dance">
           <g class="sg-tilt">
@@ -1027,6 +1031,12 @@
             </g>
             <path class="sg-body-o" d="M60 42 L60 76" />
             <path class="sg-body-i" d="M60 42 L60 76" />
+            <!-- the toque: this is Shef (S like Sift) — the cook behind your deck -->
+            <g class="sg-hat" transform="rotate(-8 60 22)">
+              <path class="sg-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+              <path class="sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+              <path class="sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+            </g>
             <circle class="sg-eye" cx="51" cy="47" r="2.8" />
             <circle class="sg-eye" cx="69" cy="47" r="2.8" />
             <path class="sg-mouth" d="M51 56 q9 9 18 0 q-1.5 11 -9 11 q-7.5 0 -9 -11 z" />
@@ -2648,6 +2658,7 @@ function updateStart() {
 // simmering. Loads are short now, so a random start line keeps repeat visits fresh.
 const COOK_LINES = [
   "Let me cook…",
+  "Shef's in the kitchen…",
   "Taste-testing a few…",
   "Flipping through the crates…",
   "Adding a pinch of bass…",
