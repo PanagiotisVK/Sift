@@ -337,6 +337,35 @@
   .deck-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 12px; }
   .deck-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
   .deck-foot .btn-mini[disabled] { opacity: .45; pointer-events: none; }
+  /* Send step: friends as one-tap send rows */
+  .dsend-row { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--glass-brd); background: var(--card); border-radius: var(--r-md); margin-bottom: 8px; }
+  .dsend-av { width: 36px; height: 36px; border-radius: 50%; background: var(--glass); display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+  .dsend-n { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dsend-row .btn-mini { flex: 0 0 auto; padding: 9px 16px; }
+  .dsend-row .btn-mini.sent { opacity: .55; pointer-events: none; }
+  /* "Decks for you" inbox on the Friends tab */
+  .inbox-row { display: flex; align-items: center; gap: 10px; padding: 11px; border: 1px solid var(--glass-brd); background: var(--card); border-radius: var(--r-md); margin: 8px 0; }
+  .inbox-ic { font-size: 20px; flex-shrink: 0; }
+  .inbox-body { flex: 1; min-width: 0; font-size: 13.5px; }
+  .inbox-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .inbox-row .btn-mini { flex: 0 0 auto; padding: 9px 14px; }
+  .friend.pending { opacity: .55; }
+  .fdet-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .fdet-actions .btn-mini { flex: 1; }
+  /* Avatars: curated color + glyph; falls back to the initial on plain glass */
+  .avtr { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 17px; color: var(--text); background: rgba(255,255,255,.10); border: 1px solid var(--glass-brd); flex-shrink: 0; overflow: hidden; user-select: none; }
+  .avtr.has-av { font-size: 21px; border-color: transparent; }
+  .avtr.me-av { cursor: pointer; }
+  .avtr.big { width: 76px; height: 76px; font-size: 30px; }
+  .avtr.big.has-av { font-size: 38px; }
+  .av-preview { display: grid; place-items: center; margin: 14px 0 16px; }
+  .av-colors { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .av-c { width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .av-c.on { border-color: #fff; }
+  .av-emojis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+  .av-e { font-size: 22px; padding: 8px 0; text-align: center; border-radius: 10px; cursor: pointer; border: 1px solid var(--glass-brd); background: var(--card); }
+  .av-e.on { border-color: rgba(255,255,255,.55); background: var(--glass); }
+  .friend .fav.has-av, .dsend-av.has-av { font-size: 21px; border-color: transparent; }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .find button.mini.rm { background: transparent; color: var(--faint); }
@@ -531,6 +560,41 @@
   .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
+  /* SHEF — Sift's mascot (S like Sift): the little chef who cooks your deck,
+     out celebrating your Today's 20. Same construction as the kitchen: inline
+     SVG, double-stroke body, CSS keyframes. Two chunky poses swapped with
+     steps() (the meme cadence) + a smooth bounce riding on top.
+     Deliberately animates regardless of Reduce Motion, same owner call as the pan. */
+  .dancescene { width: 112px; margin: 0 auto 6px; display: block; }
+  .sg-body-o { stroke: rgba(255,255,255,.95); stroke-width: 34; stroke-linecap: round; fill: none; }
+  .sg-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
+  .sg-limb { stroke: rgba(255,255,255,.95); stroke-width: 7; stroke-linecap: round; fill: none; }
+  .sg-eye { fill: rgba(255,255,255,.95); }
+  .sg-mouth { fill: #26262c; stroke: rgba(255,255,255,.95); stroke-width: 2.5; stroke-linejoin: round; }
+  .sg-dance { animation: dnBounce .62s ease-in-out infinite; transform-origin: 60px 92px; }
+  @keyframes dnBounce {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    30% { transform: translateY(3.5px) scale(1.04, .95); }
+    60% { transform: translateY(-2px) scale(.985, 1.02); }
+  }
+  .sg-tilt { animation: dnTilt 1.24s steps(1) infinite; transform-origin: 60px 90px; }
+  @keyframes dnTilt { 0% { transform: rotate(-5.5deg); } 50% { transform: rotate(5.5deg); } 100% { transform: rotate(-5.5deg); } }
+  .sg-poseA { animation: dnA 1.24s steps(1) infinite; }
+  .sg-poseB { animation: dnB 1.24s steps(1) infinite; }
+  @keyframes dnA { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes dnB { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+  .sg-note { fill: rgba(255,255,255,.65); animation: dnNote 1.9s ease-out infinite; }
+  .sg-note.n2 { animation-delay: .95s; }
+  @keyframes dnNote {
+    0%, 12% { opacity: 0; transform: translateY(6px); }
+    30% { opacity: .8; }
+    75% { opacity: 0; transform: translateY(-16px); }
+    100% { opacity: 0; }
+  }
+  .sg-note path { stroke: rgba(255,255,255,.65); }
+  .sg-hat-p { fill: rgba(255,255,255,.95); }
+  .sg-hat-b { fill: rgba(255,255,255,.95); stroke: #26262c; stroke-width: 1.6; }
+  .sg-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
   .daily-big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1.1; margin-top: 8px; }
   .daily-sub { color: var(--muted); font-size: 14px; font-weight: 500; margin-top: 8px; }
   .daily-sub b { color: var(--text); font-weight: 600; }
@@ -699,6 +763,8 @@
 
       <!-- Logged in: the social surface -->
       <div class="acct" id="friendsSocial" style="display:none;">
+        <div id="deckInbox"></div>
+        <div id="friendRequests"></div>
         <div class="acct-title">Activity</div>
         <div id="activityFeed"></div>
         <div class="acct-title" style="margin-top:18px;">Friends</div>
@@ -778,12 +844,23 @@
       <!-- Logged in: account summary -->
       <div class="acct" id="profileBox" style="display:none;">
         <div class="acct-row" style="justify-content:space-between;margin-top:0;">
-          <div style="min-width:0;">
-            <div class="acct-title" id="userName">@you</div>
-            <div class="acct-sub" id="userSync">Vibe synced ✓</div>
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            <div class="avtr me-av" id="meAvatar" role="button" title="Change avatar">?</div>
+            <div style="min-width:0;">
+              <div class="acct-title" id="userName">@you</div>
+              <div class="acct-sub" id="userSync">Vibe synced ✓</div>
+            </div>
           </div>
-          <button class="btn-mini ghost" id="btnLogout" style="flex:0 0 auto;padding:10px 14px;">Log out</button>
+          <div style="flex:0 0 auto;display:flex;gap:8px;">
+            <button class="btn-mini ghost" id="btnEditUname" style="padding:10px 14px;">Edit</button>
+            <button class="btn-mini ghost" id="btnLogout" style="padding:10px 14px;">Log out</button>
+          </div>
         </div>
+        <div class="acct-row" id="unameEditRow" style="display:none;">
+          <input id="unameEditInput" placeholder="new username" autocomplete="off" maxlength="20" />
+          <button class="btn-mini" id="btnRenameUname" style="flex:0 0 auto;padding:12px 18px;">Save</button>
+        </div>
+        <div class="acct-msg" id="unameEditMsg"></div>
         <button class="tune-fresh" id="shareFindsBtn" style="margin-top:12px;">
           <span class="tf-star">🎁</span>
           <span class="tf-txt"><b>Friends can swipe my taste</b><small>share your 12 latest Finds with friends</small></span>
@@ -884,16 +961,40 @@
     </div>
   </div>
 
-  <!-- Deck picker — choose exactly which Finds ride in a shared deck -->
+  <!-- Deck picker — choose exactly which Finds ride in a shared deck, then send it
+       to a friend IN the app (deck_sends table) or fall back to a share link. -->
   <div class="gsheet-ov" id="deckSheet" style="display:none;">
     <div class="gsheet">
-      <div class="gsheet-head"><span>Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
-      <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
-      <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
-      <div class="deck-picks" id="deckPicks"></div>
-      <div class="deck-foot">
-        <span class="deck-count" id="deckCount">0/12</span>
-        <button class="btn-mini" id="btnDeckSend">Create &amp; share</button>
+      <div class="gsheet-head"><span id="deckSheetTitle">Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
+      <div id="deckPickStep">
+        <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
+        <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
+        <div class="deck-picks" id="deckPicks"></div>
+        <div class="deck-foot">
+          <span class="deck-count" id="deckCount">0/12</span>
+          <button class="btn-mini" id="btnDeckSend">Create deck</button>
+        </div>
+      </div>
+      <div id="deckSendStep" style="display:none;">
+        <p class="gsheet-sub">Deck ready 🎉 Send it to a friend right here — or share a link with anyone who doesn't have Sift yet.</p>
+        <div id="deckSendList"></div>
+        <button class="btn-mini ghost" id="btnDeckLink" style="width:100%;margin-top:10px;">Share a link instead</button>
+        <button class="btn-primary" id="btnDeckDone" style="margin-top:10px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar picker — curated colors + music glyphs, zero moderation surface -->
+  <div class="gsheet-ov" id="avatarSheet" style="display:none;">
+    <div class="gsheet">
+      <div class="gsheet-head"><span>Your avatar</span><button class="gsheet-x" id="avatarSheetX" aria-label="Close">✕</button></div>
+      <p class="gsheet-sub">Pick a color and a vibe — this is you in your friends' lists.</p>
+      <div class="av-preview"><div class="avtr big" id="avPreview">?</div></div>
+      <div class="av-colors" id="avColors"></div>
+      <div class="av-emojis" id="avEmojis"></div>
+      <div class="deck-foot" style="justify-content:flex-end;">
+        <button class="btn-mini ghost" id="btnAvClear">Use my initial</button>
+        <button class="btn-mini" id="btnAvSave">Save</button>
       </div>
     </div>
   </div>
@@ -912,6 +1013,44 @@
   <!-- Today's 20 — end-of-session summary -->
   <div class="gsheet-ov" id="dailySheet" style="display:none;">
     <div class="gsheet daily-sheet">
+      <!-- Shef, celebrating with you -->
+      <svg class="dancescene" viewBox="0 0 120 120" aria-hidden="true">
+        <g class="sg-dance">
+          <g class="sg-tilt">
+            <g class="sg-poseA">
+              <path class="sg-limb" d="M51 90 q-6 6 -13 7" />
+              <path class="sg-limb" d="M69 90 q2 9 6 12" />
+              <path class="sg-limb" d="M41 56 q-10 -4 -12 -14" />
+              <path class="sg-limb" d="M79 58 q10 -6 11 -14" />
+            </g>
+            <g class="sg-poseB">
+              <path class="sg-limb" d="M69 90 q6 6 13 7" />
+              <path class="sg-limb" d="M51 90 q-2 9 -6 12" />
+              <path class="sg-limb" d="M79 56 q10 -4 12 -14" />
+              <path class="sg-limb" d="M41 58 q-10 -6 -11 -14" />
+            </g>
+            <!-- gentle banana-bend: he's a sausage, not a pill — kin to the one in the pan -->
+            <path class="sg-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+            <path class="sg-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+            <!-- the toque: this is Shef (S like Sift) — the cook behind your deck -->
+            <g class="sg-hat" transform="rotate(-8 60 22)">
+              <path class="sg-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+              <path class="sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+              <path class="sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+            </g>
+            <circle class="sg-eye" cx="50" cy="47" r="2.8" />
+            <circle class="sg-eye" cx="68" cy="47" r="2.8" />
+            <path class="sg-mouth" d="M52.5 57 q6.5 6.5 13 0 q-1 7.5 -6.5 7.5 q-5.5 0 -6.5 -7.5 z" />
+          </g>
+        </g>
+        <!-- notes: outer g holds position (a CSS animation transform would clobber it) -->
+        <g transform="translate(24,52)"><g class="sg-note">
+          <circle cx="0" cy="8" r="2.6" /><path d="M2.6 8 L2.6 -3 q4 0 5 3" fill="none" stroke-width="1.8" stroke-linecap="round" />
+        </g></g>
+        <g transform="translate(94,46) scale(.85)"><g class="sg-note n2">
+          <circle cx="0" cy="8" r="2.6" /><path d="M2.6 8 L2.6 -3 q4 0 5 3" fill="none" stroke-width="1.8" stroke-linecap="round" />
+        </g></g>
+      </svg>
       <div class="daily-kicker">Today's 20 · done</div>
       <div class="daily-big" id="dailyBig">That's 20</div>
       <div class="daily-sub" id="dailySub"></div>
@@ -2305,6 +2444,50 @@ function load() {
   } catch (e) { return false; }
 }
 
+/* ---------- Anonymous usage counters ----------
+   One row per device per day in Supabase (usage_daily): opens, swipes, loves,
+   decks. No account link, no song history — the device id is a random string
+   that exists only so the same phone isn't counted twice. Clients can't read
+   the table at all (no select policy); it's viewed in the Supabase dashboard.
+   Fails soft everywhere: no table, no network, blocked storage — app unaffected. */
+let usageDev = null;
+try {
+  usageDev = localStorage.getItem("sift_dev");
+  if (!usageDev) {
+    usageDev = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, "0")).join("");
+    localStorage.setItem("sift_dev", usageDev);
+  }
+} catch (_) {}
+let usageDay = null, usageFlushT = null;
+try { usageDay = JSON.parse(localStorage.getItem("sift_usage") || "null"); } catch (_) {}
+function bumpUsage(key) {
+  const day = dateStr();
+  if (!usageDay || usageDay.day !== day) usageDay = { day, opens: 0, swipes: 0, loves: 0, heards: 0, decks_sent: 0, deck_opens: 0, daily_done: 0 };
+  usageDay[key] = (usageDay[key] || 0) + 1;
+  try { localStorage.setItem("sift_usage", JSON.stringify(usageDay)); } catch (_) {}
+  clearTimeout(usageFlushT);
+  usageFlushT = setTimeout(flushUsage, 6000);
+}
+async function flushUsage() {
+  if (!SB || !usageDay || !usageDev) return;
+  try {
+    const row = {
+      day: usageDay.day, device: usageDev,
+      platform: isNativeIOS() ? "ios" : (matchMedia("(display-mode: standalone)").matches ? "pwa" : "web"),
+      opens: usageDay.opens, swipes: usageDay.swipes, loves: usageDay.loves, heards: usageDay.heards,
+      decks_sent: usageDay.decks_sent, deck_opens: usageDay.deck_opens, daily_done: usageDay.daily_done,
+      updated_at: new Date().toISOString(),
+    };
+    // Not an upsert: ON CONFLICT DO UPDATE needs to READ the existing row, and this
+    // table is deliberately unreadable from clients. Insert; on duplicate, update.
+    const { error } = await SB.from("usage_daily").insert(row);
+    if (error && error.code === "23505") {
+      await SB.from("usage_daily").update(row).eq("day", row.day).eq("device", row.device);
+    }
+  } catch (_) { /* not provisioned / offline — counts wait in localStorage */ }
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
+
 /* ---------- Onboarding UI ---------- */
 const seedGenres = new Map();   // genre -> weight (1..3); bigger = seeds harder
 const seedArtists = new Map();   // artist name -> weight (1..3), same weighting as genres
@@ -2476,6 +2659,7 @@ function updateStart() {
 // simmering. Loads are short now, so a random start line keeps repeat visits fresh.
 const COOK_LINES = [
   "Let me cook…",
+  "Shef's in the kitchen…",
   "Taste-testing a few…",
   "Flipping through the crates…",
   "Adding a pinch of bass…",
@@ -2963,6 +3147,8 @@ function decide(kind, kin) {
     exploreBoostBefore: state.exploreBoost,
   };
   state.seenCount = (state.seenCount || 0) + 1;          // every swipe counts toward the scorecard
+  bumpUsage("swipes");
+  if (kind === "love") bumpUsage("loves"); else if (kind === "heard") bumpUsage("heards");
   if (kind === "heard") state.heardCount = (state.heardCount || 0) + 1; // the ones you already knew
   bumpDaily(kind);                                       // Today's 20 progress (celebrates at the goal)
   if (kind === "love") {
@@ -3080,6 +3266,7 @@ function bumpDaily(kind) {
   if (kind === "heard") d.heard++;
   if (d.count >= DAILY_GOAL && !d.celebrated) {
     d.celebrated = true;
+    bumpUsage("daily_done");
     const y = new Date(); y.setDate(y.getDate() - 1);
     state.streak = (state.lastDailyDone === dateStr(y)) ? (state.streak || 0) + 1 : 1;
     state.lastDailyDone = d.date;
@@ -3867,6 +4054,7 @@ function renderAcct() {
   show("friendsSocial", ready);
   if (!ready) return;
   document.getElementById("userName").textContent = "@" + me_profile.username;
+  setMeAvatar();
   document.getElementById("userSync").textContent = "Backed up ✓ · " + (me_profile.finds_count || state.liked.length) + " finds";
   renderActivity();
   renderFriends();
@@ -3891,21 +4079,102 @@ function applyShareUI() {
   };
 })();
 
+/* ---------- Avatars ----------
+   Curated color + music glyph, stored on the profile as "<colorIndex>|<emoji>".
+   No uploads = no image moderation surface; the palette and glyph set are ours. */
+const AVATAR_COLORS = ["#e05c6e", "#e0915c", "#d9c25a", "#6fbf7f", "#56a8d6", "#7d6ee0", "#c95cd9", "#4a4a54"];
+const AVATAR_EMOJIS = ["🎧", "🎸", "🎹", "🎷", "🎺", "🥁", "🎻", "🎤", "📻", "💿", "🪗", "🌊", "⚡", "🔥", "🌙", "⭐"];
+function avatarParts(av) {
+  const m = /^(\d+)\|(.+)$/.exec(av || "");
+  if (!m || !AVATAR_EMOJIS.includes(m[2])) return null;   // only our glyphs render as avatars
+  return { bg: AVATAR_COLORS[+m[1] % AVATAR_COLORS.length], emoji: m[2] };
+}
+function avatarHtml(p, cls) {
+  const a = avatarParts(p && p.avatar);
+  if (a) return '<div class="' + cls + ' has-av" style="background:' + a.bg + '">' + a.emoji + '</div>';
+  return '<div class="' + cls + '">' + esc(((p && p.username) || "?").charAt(0).toUpperCase()) + '</div>';
+}
+function setMeAvatar() {
+  const el = document.getElementById("meAvatar");
+  if (!el) return;
+  const a = avatarParts(me_profile && me_profile.avatar);
+  el.classList.toggle("has-av", !!a);
+  el.style.background = a ? a.bg : "";
+  el.textContent = a ? a.emoji : ((me_profile && me_profile.username) || "?").charAt(0).toUpperCase();
+}
+let _avSel = null;   // { c, e } while the sheet is open; null = use initial
+function openAvatarSheet() {
+  const cur = avatarParts(me_profile && me_profile.avatar);
+  _avSel = cur ? { c: AVATAR_COLORS.indexOf(cur.bg), e: cur.emoji } : { c: 4, e: "🎧" };
+  if (_avSel.c < 0) _avSel.c = 0;
+  const cw = document.getElementById("avColors"), ew = document.getElementById("avEmojis");
+  cw.innerHTML = AVATAR_COLORS.map((c, i) => '<div class="av-c" data-i="' + i + '" style="background:' + c + '"></div>').join("");
+  ew.innerHTML = AVATAR_EMOJIS.map(e => '<div class="av-e" data-e="' + e + '">' + e + '</div>').join("");
+  cw.querySelectorAll(".av-c").forEach(el => el.onclick = () => { _avSel.c = +el.dataset.i; paintAvatarSheet(); });
+  ew.querySelectorAll(".av-e").forEach(el => el.onclick = () => { _avSel.e = el.dataset.e; paintAvatarSheet(); });
+  paintAvatarSheet();
+  document.getElementById("avatarSheet").style.display = "flex";
+}
+function paintAvatarSheet() {
+  const pv = document.getElementById("avPreview");
+  pv.className = "avtr big has-av";
+  pv.style.background = AVATAR_COLORS[_avSel.c];
+  pv.textContent = _avSel.e;
+  document.querySelectorAll("#avColors .av-c").forEach(el => el.classList.toggle("on", +el.dataset.i === _avSel.c));
+  document.querySelectorAll("#avEmojis .av-e").forEach(el => el.classList.toggle("on", el.dataset.e === _avSel.e));
+}
+function closeAvatarSheet() { document.getElementById("avatarSheet").style.display = "none"; }
+async function saveAvatar(av) {   // av = "<i>|<emoji>" or null to clear
+  if (!SB || !me_session || !me_profile) return;
+  try {
+    const { error } = await SB.from("profiles").update({ avatar: av }).eq("id", me_session.user.id);
+    if (error) { toast(/avatar|schema cache|column/i.test(error.message || "") ? "Avatars aren't set up in the database yet." : error.message); return; }
+    me_profile.avatar = av;
+    setMeAvatar();
+    closeAvatarSheet();
+    toast(av ? "Looking sharp ✓" : "Back to your initial ✓");
+    renderFriends();   // your own rows elsewhere refresh on their next cycle
+  } catch (e) { toast("Couldn't save — try again."); }
+}
+
+// Friend edges, status-aware with a pre-migration fallback (no status column yet →
+// every edge counts as accepted, exactly the old behavior).
+async function friendEdges() {
+  let { data: edges, error } = await SB.from("friendships").select("friend_id,status").eq("user_id", me_session.user.id);
+  if (error) ({ data: edges } = await SB.from("friendships").select("friend_id").eq("user_id", me_session.user.id));
+  return edges || [];
+}
+async function removeFriend(id) {   // sever both directions
+  try {
+    await SB.from("friendships").delete().eq("user_id", me_session.user.id).eq("friend_id", id);
+    await SB.from("friendships").delete().eq("user_id", id).eq("friend_id", me_session.user.id);
+  } catch (_) {}
+  renderFriends(); renderActivity();
+}
+async function blockUser(id, uname) {
+  try { await SB.from("blocks").insert({ blocker: me_session.user.id, blocked: id }); }
+  catch (_) { toast("Blocking isn't set up yet."); return; }
+  await removeFriend(id);
+  toast("Blocked @" + (uname || "them") + " — they can't request you or send you decks.");
+}
 async function renderFriends() {
   const list = document.getElementById("friendsList");
   if (!list || !SB || !me_session) return;
   try {
-    const { data: edges } = await SB.from("friendships").select("friend_id").eq("user_id", me_session.user.id);
-    if (!edges || !edges.length) { list.innerHTML = '<div class="acct-sub" style="margin-top:12px;">No friends yet — add someone by their username above.</div>'; return; }
-    const ids = edges.map(e => e.friend_id);
-    const { data: profs } = await SB.from("profiles").select("*").in("id", ids);
+    const edges = await friendEdges();
+    const acceptedIds = edges.filter(e => !e.status || e.status === "accepted").map(e => e.friend_id);
+    const pendingOut = edges.filter(e => e.status === "pending").map(e => e.friend_id);
+    if (!acceptedIds.length && !pendingOut.length) { list.innerHTML = '<div class="acct-sub" style="margin-top:12px;">No friends yet — add someone by their username above.</div>'; return; }
+    const { data: allProfs } = await SB.from("profiles").select("*").in("id", acceptedIds.concat(pendingOut));
+    const profs = (allProfs || []).filter(p => acceptedIds.includes(p.id));
+    const waiting = (allProfs || []).filter(p => pendingOut.includes(p.id));
     const mine = myTaste();
     list.innerHTML = "";
     (profs || []).forEach(p => {
       const pct = tasteMatch(mine, p);
       const row = document.createElement("div"); row.className = "friend";
       row.innerHTML =
-        '<div class="fav">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+        avatarHtml(p, "fav") +
         '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">' + esc(p.archetype || "Fresh Ears") + ' · ' + (p.finds_count || 0) + ' finds</div></div>' +
         '<div class="match"><div class="pct">' + pct + '%</div><div class="ml">match ▾</div></div>';
       // Tap a friend → what you share + swipe their recent Finds
@@ -3924,13 +4193,62 @@ async function renderFriends() {
           : ((p.recent_finds || []).length
             ? '<div class="fdet-note">You’ve already heard everything they shared ✓</div>'
             : '<div class="fdet-note">Their recent Finds will show up here once they share some.</div>'));
+      det.innerHTML += '<div class="fdet-actions"><button class="btn-mini ghost fdet-rm">Remove friend</button><button class="btn-mini ghost fdet-block">Block</button></div>';
       const sw = det.querySelector(".fdet-swipe");
       if (sw) sw.onclick = (e) => { e.stopPropagation(); startTasteSwipe(p, fresh); };
+      det.querySelector(".fdet-rm").onclick = (e) => { e.stopPropagation(); removeFriend(p.id); toast("Removed @" + p.username); };
+      det.querySelector(".fdet-block").onclick = (e) => { e.stopPropagation(); blockUser(p.id, p.username); };
       row.onclick = () => det.classList.toggle("open");
       list.appendChild(row);
       list.appendChild(det);
     });
+    // Outgoing requests they haven't answered yet — tap to withdraw.
+    waiting.forEach(p => {
+      const row = document.createElement("div"); row.className = "friend pending";
+      row.innerHTML = avatarHtml(p, "fav") +
+        '<div class="fmeta"><div class="fn">@' + esc(p.username) + '</div><div class="fa">Request sent — tap to withdraw</div></div>';
+      row.onclick = async () => { await removeFriend(p.id); toast("Request withdrawn"); };
+      list.appendChild(row);
+    });
   } catch (e) { /* offline */ }
+}
+// --- Incoming friend requests: accept, decline, or block ---
+async function renderFriendRequests() {
+  const wrap = document.getElementById("friendRequests");
+  if (!wrap || !SB || !me_session) return;
+  try {
+    const { data: reqs, error } = await SB.from("friendships").select("user_id,created_at")
+      .eq("friend_id", me_session.user.id).eq("status", "pending");
+    if (error || !reqs || !reqs.length) { wrap.innerHTML = ""; return; }
+    const { data: profs } = await SB.from("profiles").select("id,username").in("id", reqs.map(r => r.user_id));
+    const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
+    wrap.innerHTML = '<div class="acct-title">Friend requests</div>';
+    reqs.forEach(r => {
+      const uname = nmap[r.user_id] || "someone";
+      const row = document.createElement("div"); row.className = "inbox-row";
+      row.innerHTML = '<div class="inbox-ic">🤝</div><div class="inbox-body"><b>@' + esc(uname) + '</b> wants to be friends' +
+        '<div class="inbox-sub">' + timeAgo(r.created_at) + '</div></div>' +
+        '<button class="btn-mini freq-ok">Accept</button><button class="btn-mini ghost freq-no" aria-label="Decline">✕</button><button class="btn-mini ghost freq-block" aria-label="Block" title="Block">🚫</button>';
+      row.querySelector(".freq-ok").onclick = async () => {
+        try {
+          await SB.from("friendships").update({ status: "accepted" }).eq("user_id", r.user_id).eq("friend_id", me_session.user.id);
+          const { error: e2 } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: r.user_id, status: "accepted" });
+          if (e2 && e2.code !== "23505") throw e2;
+          toast("You're now friends with @" + uname + " 🎉");
+          renderFriendRequests(); renderFriends(); renderActivity();
+        } catch (e) { toast("Couldn't accept — try again."); }
+      };
+      row.querySelector(".freq-no").onclick = async () => {
+        try { await SB.from("friendships").delete().eq("user_id", r.user_id).eq("friend_id", me_session.user.id); } catch (_) {}
+        renderFriendRequests(); renderActivity();
+      };
+      row.querySelector(".freq-block").onclick = async () => {
+        await blockUser(r.user_id, uname);
+        renderFriendRequests();
+      };
+      wrap.appendChild(row);
+    });
+  } catch (e) { wrap.innerHTML = ""; /* pre-migration database — requests simply don't exist yet */ }
 }
 
 function timeAgo(iso) {
@@ -3976,13 +4294,29 @@ async function renderActivity() {
         events.push({ icon: "🎧", time: r.created_at, html: "<b>@" + esc(r.swiper_name || "someone") + "</b> swiped your deck and loved " + n + (n === 1 ? " song" : " songs") });
       });
     }
-    // people who added me as a friend
-    const { data: adds } = await SB.from("friendships").select("user_id,created_at").eq("friend_id", me_session.user.id);
+    // friend requests + made friendships (status-aware, with pre-migration fallback)
+    let { data: adds, error: aErr } = await SB.from("friendships").select("user_id,created_at,status").eq("friend_id", me_session.user.id);
+    if (aErr) ({ data: adds } = await SB.from("friendships").select("user_id,created_at").eq("friend_id", me_session.user.id));
     if (adds && adds.length) {
       const { data: profs } = await SB.from("profiles").select("id,username").in("id", adds.map(a => a.user_id));
       const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
-      adds.forEach(a => events.push({ icon: "➕", time: a.created_at, html: "<b>@" + esc(nmap[a.user_id] || "someone") + "</b> added you as a friend" }));
+      adds.forEach(a => {
+        const who = "<b>@" + esc(nmap[a.user_id] || "someone") + "</b>";
+        if (a.status === "pending") events.push({ icon: "🤝", time: a.created_at, html: who + " wants to be friends" });
+        else events.push({ icon: "➕", time: a.created_at, html: who + " became your friend" });
+      });
     }
+    renderFriendRequests();   // same refresh cycle as the feed
+    // decks sent to me in-app (own try — the table may not be provisioned yet)
+    try {
+      const { data: sends } = await SB.from("deck_sends").select("sender,created_at").eq("recipient", me_session.user.id);
+      if (sends && sends.length) {
+        const { data: sp } = await SB.from("profiles").select("id,username").in("id", [...new Set(sends.map(s => s.sender))]);
+        const smap = {}; (sp || []).forEach(p => smap[p.id] = p.username);
+        sends.forEach(s => events.push({ icon: "🎁", time: s.created_at, html: "<b>@" + esc(smap[s.sender] || "someone") + "</b> sent you a deck" }));
+      }
+    } catch (_) {}
+    renderDeckInbox();   // same refresh cycle as the feed (60s poll + tab opens)
     events.sort((a, b) => new Date(b.time) - new Date(a.time));
     activityEvents = events;
     updateActivityBadge();
@@ -4173,6 +4507,26 @@ async function saveUsername() {
   } catch (e) { acctMsg("unameMsg", "Something went wrong — try again.", "err"); }
 }
 
+// Rename: same rules as picking one (cleanHandle, min 3, unique). Everything that
+// shows usernames fetches them live by profile id, so a rename propagates everywhere;
+// old deck titles and past deck_results keep the name they were made under — history.
+async function renameUsername() {
+  if (!SB || !me_session || !me_profile) return;
+  const v = cleanHandle(document.getElementById("unameEditInput").value);
+  if (v.length < 3) { acctMsg("unameEditMsg", "Username needs at least 3 letters or numbers.", "err"); return; }
+  if (v === me_profile.username) { document.getElementById("unameEditRow").style.display = "none"; acctMsg("unameEditMsg", ""); return; }
+  acctMsg("unameEditMsg", "Saving…");
+  try {
+    const { data, error } = await SB.from("profiles").update({ username: v, display_name: v }).eq("id", me_session.user.id).select().single();
+    if (error) { acctMsg("unameEditMsg", error.code === "23505" ? "That username's taken — try another." : error.message, "err"); return; }
+    me_profile = data;
+    document.getElementById("unameEditRow").style.display = "none";
+    acctMsg("unameEditMsg", "");
+    renderAcct();
+    toast("You're @" + v + " now ✓");
+  } catch (e) { acctMsg("unameEditMsg", "Something went wrong — try again.", "err"); }
+}
+
 async function addFriend() {
   if (!SB || !me_session) return;
   const v = cleanHandle(document.getElementById("friendInput").value);
@@ -4182,10 +4536,22 @@ async function addFriend() {
   try {
     const { data: prof } = await SB.from("profiles").select("id,username").eq("username", v).maybeSingle();
     if (!prof) { acctMsg("friendMsg", "No one with that username yet.", "err"); return; }
-    const { error } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: prof.id });
-    if (error && error.code !== "23505") { acctMsg("friendMsg", error.message, "err"); return; }
+    // Friending is a REQUEST now — the other person accepts before either side is linked.
+    let { error } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: prof.id, status: "pending" });
+    if (error && /status|schema cache/i.test(error.message || "")) {
+      // pre-migration database: fall back to the old instant add
+      ({ error } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: prof.id }));
+      if (error && error.code !== "23505") { acctMsg("friendMsg", error.message, "err"); return; }
+      acctMsg("friendMsg", "Added @" + v + " ✓", "ok");
+    } else if (error && error.code === "23505") {
+      acctMsg("friendMsg", "Already requested — or you're already friends.", "ok");
+    } else if (error) {
+      // a block on either side surfaces as an RLS refusal — don't spell out which
+      acctMsg("friendMsg", /polic|security|row-level/i.test(error.message || "") ? "Couldn't send that request." : error.message, "err"); return;
+    } else {
+      acctMsg("friendMsg", "Request sent to @" + v + " — they'll show up in Friends once they accept 🤝", "ok");
+    }
     document.getElementById("friendInput").value = "";
-    acctMsg("friendMsg", "Added @" + v + " ✓", "ok");
     renderFriends();
   } catch (e) { acctMsg("friendMsg", "Something went wrong — try again.", "err"); }
 }
@@ -4206,6 +4572,21 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
     ab.onclick = doAppleSignIn;
   }
   document.getElementById("btnLogout").onclick = doLogout;
+  document.getElementById("btnEditUname").onclick = () => {
+    const row = document.getElementById("unameEditRow");
+    const open = row.style.display !== "none";
+    row.style.display = open ? "none" : "flex";
+    acctMsg("unameEditMsg", "");
+    if (!open) { const inp = document.getElementById("unameEditInput"); inp.value = (me_profile && me_profile.username) || ""; inp.focus(); }
+  };
+  document.getElementById("btnRenameUname").onclick = renameUsername;
+  document.getElementById("unameEditInput").addEventListener("keydown", e => { if (e.key === "Enter") renameUsername(); });
+  document.getElementById("meAvatar").onclick = openAvatarSheet;
+  document.getElementById("avatarSheetX").onclick = closeAvatarSheet;
+  document.getElementById("avatarSheet").onclick = e => { if (e.target.id === "avatarSheet") closeAvatarSheet(); };
+  document.getElementById("btnAvSave").onclick = () => saveAvatar(_avSel.c + "|" + _avSel.e);
+  document.getElementById("btnAvClear").onclick = () => saveAvatar(null);
+  attachSheetDrag("avatarSheet", closeAvatarSheet);
   document.getElementById("btnForgot").onclick = doForgotPass;
   document.getElementById("btnDeleteAcct").onclick = deleteAccount;
   document.getElementById("btnSaveReset").onclick = saveNewPass;
@@ -4253,7 +4634,13 @@ function openDeckSheet() {
   renderDeckPicks();
   document.getElementById("deckSheet").style.display = "flex";
 }
-function closeDeckSheet() { document.getElementById("deckSheet").style.display = "none"; }
+function closeDeckSheet() {
+  document.getElementById("deckSheet").style.display = "none";
+  // reset to step 1 for next time
+  document.getElementById("deckSendStep").style.display = "none";
+  document.getElementById("deckPickStep").style.display = "block";
+  document.getElementById("deckSheetTitle").textContent = "Pick songs for your deck";
+}
 function renderDeckPicks() {
   const wrap = document.getElementById("deckPicks");
   wrap.innerHTML = "";
@@ -4276,26 +4663,101 @@ function updateDeckCount() {
   document.getElementById("deckCount").textContent = deckSel.size + "/12 picked" + (deckSel.size < 3 ? " · need 3+" : "");
   document.getElementById("btnDeckSend").disabled = deckSel.size < 3;
 }
+async function myFriends() {
+  try {
+    const ids = (await friendEdges()).filter(e => !e.status || e.status === "accepted").map(e => e.friend_id);
+    if (!ids.length) return [];
+    let { data: profs, error } = await SB.from("profiles").select("id,username,avatar").in("id", ids);
+    if (error) ({ data: profs } = await SB.from("profiles").select("id,username").in("id", ids));
+    return profs || [];
+  } catch (e) { return []; }
+}
+let _lastDeck = null;   // the deck just created, for the send step
 async function createDeckFromPicks() {
   if (!SB || !me_profile || !deckSel) return;
   const picks = [...state.liked].reverse().filter(t => deckSel.has(t.id)).slice(0, 12);
   if (picks.length < 3) return;
   const title = (document.getElementById("deckTitle").value || "").trim() || (me_profile.username + "'s picks");
   const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
-  closeDeckSheet();
-  acctMsg("deckMsg", "Creating your deck…");
+  const btn = document.getElementById("btnDeckSend");
+  btn.disabled = true; btn.textContent = "Creating…";
   try {
     const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title, tracks }).select().single();
-    if (error) { acctMsg("deckMsg", error.message, "err"); return; }
-    acctMsg("deckMsg", "Deck ready! Sharing link… 🚀", "ok");
-    shareDeck(WEB_URL + "?deck=" + data.id, tracks.length);
+    if (error) { acctMsg("deckMsg", error.message, "err"); closeDeckSheet(); return; }
+    _lastDeck = { id: data.id, title, n: tracks.length };
+    bumpUsage("decks_sent");
+    acctMsg("deckMsg", "");
     renderMyDecks();
-  } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); }
+    // Friends get one-tap in-app delivery; no friends yet → straight to the link.
+    const friends = await myFriends();
+    if (friends.length) showDeckSendStep(friends);
+    else { closeDeckSheet(); shareDeck(WEB_URL + "?deck=" + data.id, tracks.length); }
+  } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); closeDeckSheet(); }
+  finally { btn.disabled = false; btn.textContent = "Create deck"; }
+}
+function showDeckSendStep(friends) {
+  document.getElementById("deckSheetTitle").textContent = "Send your deck";
+  document.getElementById("deckPickStep").style.display = "none";
+  const list = document.getElementById("deckSendList");
+  list.innerHTML = "";
+  friends.forEach(p => {
+    const row = document.createElement("div"); row.className = "dsend-row";
+    row.innerHTML = avatarHtml(p, "dsend-av") +
+      '<div class="dsend-n">@' + esc(p.username || "?") + '</div><button class="btn-mini">Send</button>';
+    const btn = row.querySelector("button");
+    btn.onclick = async () => {
+      btn.textContent = "…";
+      try {
+        const { error } = await SB.from("deck_sends").insert({ deck_id: _lastDeck.id, sender: me_profile.id, recipient: p.id });
+        // A duplicate (unique deck+recipient) means it already arrived — that's a success.
+        if (error && !/duplicate|23505/i.test((error.message || "") + (error.code || ""))) throw error;
+        btn.textContent = "Sent ✓"; btn.classList.add("sent");
+      } catch (e) {
+        // deck_sends not provisioned yet, or offline — the link path always works.
+        btn.textContent = "Send";
+        toast("Couldn't send in-app — use the link below instead.");
+      }
+    };
+    list.appendChild(row);
+  });
+  document.getElementById("deckSendStep").style.display = "block";
 }
 document.getElementById("deckSheetX").onclick = closeDeckSheet;
 document.getElementById("deckSheet").onclick = e => { if (e.target.id === "deckSheet") closeDeckSheet(); };
 document.getElementById("btnDeckSend").onclick = createDeckFromPicks;
+document.getElementById("btnDeckLink").onclick = () => { if (_lastDeck) shareDeck(WEB_URL + "?deck=" + _lastDeck.id, _lastDeck.n); };
+document.getElementById("btnDeckDone").onclick = closeDeckSheet;
 attachSheetDrag("deckSheet", closeDeckSheet);
+
+// --- Receiver: "Decks for you" inbox on the Friends tab ---
+async function renderDeckInbox() {
+  const wrap = document.getElementById("deckInbox");
+  if (!wrap || !SB || !me_session) return;
+  try {
+    const { data: sends } = await SB.from("deck_sends").select("id,deck_id,sender,created_at")
+      .eq("recipient", me_session.user.id).eq("opened", false)
+      .order("created_at", { ascending: false }).limit(10);
+    if (!sends || !sends.length) { wrap.innerHTML = ""; return; }
+    const [{ data: dks }, { data: profs }] = await Promise.all([
+      SB.from("decks").select("id,title,tracks").in("id", sends.map(s => s.deck_id)),
+      SB.from("profiles").select("id,username").in("id", sends.map(s => s.sender)),
+    ]);
+    const dmap = {}; (dks || []).forEach(d => dmap[d.id] = d);
+    const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
+    wrap.innerHTML = '<div class="acct-title">Decks for you</div>';
+    sends.forEach(s => {
+      const d = dmap[s.deck_id]; if (!d) return;
+      const row = document.createElement("div"); row.className = "inbox-row";
+      row.innerHTML = '<div class="inbox-ic">🎁</div><div class="inbox-body"><b>@' + esc(nmap[s.sender] || "someone") + '</b> sent you “' + esc(d.title || "a deck") + '”' +
+        '<div class="inbox-sub">' + ((d.tracks || []).length) + ' songs · ' + timeAgo(s.created_at) + '</div></div><button class="btn-mini">Swipe it</button>';
+      row.querySelector("button").onclick = async () => {
+        try { await SB.from("deck_sends").update({ opened: true }).eq("id", s.id); } catch (_) {}
+        openDeck(s.deck_id);
+      };
+      wrap.appendChild(row);
+    });
+  } catch (e) { wrap.innerHTML = ""; /* deck_sends table not provisioned yet — inbox stays silent */ }
+}
 async function shareDeck(link, n) {
   const text = "I made you a deck of " + n + " songs on Sift 🎧 — swipe through and tell me which you love:";
   try {
@@ -4396,6 +4858,7 @@ async function openDeck(deckId) {
     showScreen("deckmode");
     // Pre-fetch fresh audio links for the whole deck now → playback is instant later.
     dmQueue.forEach(t => resolvePreview(t).catch(() => {}));
+    bumpUsage("deck_opens");
     return true;
   } catch (e) { return false; }
 }
@@ -4773,6 +5236,7 @@ function toast(msg) {
 /* ---------- Boot ---------- */
 (function boot() {
   const returning = load();
+  bumpUsage("opens");
   applyAdventureUI();
   applyFreshUI();
   // Installs saved before the coherence profile existed: build it quietly from the

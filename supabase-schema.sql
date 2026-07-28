@@ -109,3 +109,129 @@ create policy "read results" on public.deck_results
     auth.uid() = swiper
     or auth.uid() = (select owner from public.decks d where d.id = deck_id)
   );
+
+-- ============================================================
+-- IN-APP DECK SENDING (added 2026-07-27)
+-- A deck can be delivered straight to a friend inside Sift;
+-- links remain the fallback for people without the app.
+-- ============================================================
+create table if not exists public.deck_sends (
+  id uuid primary key default gen_random_uuid(),
+  deck_id uuid not null references public.decks(id) on delete cascade,
+  sender uuid not null references public.profiles(id) on delete cascade,
+  recipient uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  opened boolean not null default false,
+  unique (deck_id, recipient)
+);
+
+alter table public.deck_sends enable row level security;
+
+-- You can only send decks YOU own, as yourself.
+drop policy if exists "send own decks" on public.deck_sends;
+create policy "send own decks" on public.deck_sends
+  for insert with check (
+    auth.uid() = sender
+    and exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid())
+  );
+
+-- Sender and recipient both see the send (sender: "sent ✓", recipient: inbox).
+drop policy if exists "see own sends" on public.deck_sends;
+create policy "see own sends" on public.deck_sends
+  for select using (auth.uid() = sender or auth.uid() = recipient);
+
+-- Only the recipient marks a send opened.
+drop policy if exists "recipient marks opened" on public.deck_sends;
+create policy "recipient marks opened" on public.deck_sends
+  for update using (auth.uid() = recipient) with check (auth.uid() = recipient);
+
+-- ============================================================
+-- FRIEND REQUESTS + BLOCKS (added 2026-07-27)
+-- Friendships now start as a REQUEST the other person accepts;
+-- every pre-existing row is grandfathered as accepted. Blocks
+-- stop requests and in-app deck sends at the database level.
+-- ============================================================
+create table if not exists public.blocks (
+  blocker    uuid not null references public.profiles(id) on delete cascade,
+  blocked    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker, blocked)
+);
+alter table public.blocks enable row level security;
+drop policy if exists "manage own blocks" on public.blocks;
+create policy "manage own blocks" on public.blocks
+  for all using (auth.uid() = blocker) with check (auth.uid() = blocker);
+
+alter table public.friendships add column if not exists status text not null default 'accepted';
+
+-- Both endpoints see the edge — the recipient needs incoming rows for requests,
+-- and this also (finally) powers the "added you" activity feed properly.
+drop policy if exists "see own friendships" on public.friendships;
+drop policy if exists "see friendships to me" on public.friendships;
+drop policy if exists "see own edges" on public.friendships;
+create policy "see own edges" on public.friendships
+  for select using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Requests come from you, as you — never to or from someone in a block.
+drop policy if exists "add own friendships" on public.friendships;
+create policy "add own friendships" on public.friendships
+  for insert with check (
+    auth.uid() = user_id
+    and not exists (select 1 from public.blocks b
+      where (b.blocker = friend_id and b.blocked = user_id)
+         or (b.blocker = user_id and b.blocked = friend_id))
+  );
+
+-- The recipient answers a request (accepting flips its status).
+drop policy if exists "recipient answers" on public.friendships;
+create policy "recipient answers" on public.friendships
+  for update using (auth.uid() = friend_id) with check (auth.uid() = friend_id);
+
+-- Either endpoint can sever a friendship, withdraw, or decline a request.
+drop policy if exists "remove own friendships" on public.friendships;
+create policy "remove own friendships" on public.friendships
+  for delete using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Deck sends respect blocks too.
+drop policy if exists "send own decks" on public.deck_sends;
+create policy "send own decks" on public.deck_sends
+  for insert with check (
+    auth.uid() = sender
+    and exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid())
+    and not exists (select 1 from public.blocks b
+      where (b.blocker = recipient and b.blocked = sender)
+         or (b.blocker = sender and b.blocked = recipient))
+  );
+
+-- Avatar (added 2026-07-27): "<colorIndex>|<emoji>" from the app's curated
+-- palette/glyph set; null = plain initial. No uploads, no moderation surface.
+alter table public.profiles add column if not exists avatar text;
+
+-- ============================================================
+-- ANONYMOUS USAGE COUNTERS (added 2026-07-27)
+-- One row per device per day. Device id is a random string with
+-- no link to accounts. Clients can WRITE their own row but never
+-- read anything — you view this table in the dashboard only.
+-- ============================================================
+create table if not exists public.usage_daily (
+  day        date not null,
+  device     text not null,
+  platform   text,
+  opens      int not null default 0,
+  swipes     int not null default 0,
+  loves      int not null default 0,
+  heards     int not null default 0,
+  decks_sent int not null default 0,
+  deck_opens int not null default 0,
+  daily_done int not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (day, device)
+);
+alter table public.usage_daily enable row level security;
+drop policy if exists "write usage" on public.usage_daily;
+create policy "write usage" on public.usage_daily
+  for insert with check (true);
+drop policy if exists "update usage" on public.usage_daily;
+create policy "update usage" on public.usage_daily
+  for update using (true) with check (true);
+-- deliberately NO select policy: the publishable key cannot read usage data.
