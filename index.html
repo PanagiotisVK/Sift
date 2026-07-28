@@ -226,61 +226,81 @@
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* The wait is a kitchen: a cartoon pan flips a sausage while sizzle sparks pop
-     at the rim, flames flicker below and steam rises — rotating patter beneath.
-     Deliberately still animated under Reduce Motion (the owner's call): it's a
-     small contained loop in one corner of a static screen, not full-screen motion
-     — and it's the whole point of the loading screen. Text swaps stay instant
-     under Reduce Motion. */
-  .cookscene { width: 164px; height: 126px; overflow: visible; }
-  .cookscene * { transform-box: fill-box; }
-  .cs-pan-body { fill: #121216; stroke: rgba(255,255,255,.92); stroke-width: 3; stroke-linejoin: round; }
-  .cs-pan-rim { stroke: rgba(255,255,255,.92); stroke-width: 4.5; stroke-linecap: round; fill: none; }
-  .cs-pan-handle { stroke: rgba(255,255,255,.92); stroke-width: 5.5; stroke-linecap: round; fill: none; }
-  /* the sausage is two strokes — a fat white one with a dark one on top = cartoon outline */
-  .cs-sg-o { stroke: rgba(255,255,255,.95); stroke-width: 14; stroke-linecap: round; fill: none; }
-  .cs-sg-i { stroke: #26262c; stroke-width: 8.5; stroke-linecap: round; fill: none; }
-  .cs-sg-t { stroke: rgba(255,255,255,.85); stroke-width: 2; stroke-linecap: round; }
-  /* One 2.6s beat shared by pan, sausage and poof so the toss, the flip, the catch
-     and the splash all land on the same frame. Anticipation first (the pan dips and
-     cocks back), launch, a full 360 in the air, occluded landing, then a lazy
-     sizzle-wiggle in the pan until the next toss. */
-  .cs-pan { animation: csToss 2.6s ease-in-out infinite; transform-origin: 85% 30%; }
-  @keyframes csToss {
-    0%, 4% { transform: none; }
-    7% { transform: translateY(2px) rotate(2.5deg); }    /* wind-up dip */
-    11% { transform: translateY(-4px) rotate(-7deg); }   /* launch */
-    16% { transform: rotate(1deg); }
-    20%, 29% { transform: none; }
-    32% { transform: translateY(2.5px) rotate(1deg); }   /* the catch */
-    38%, 100% { transform: none; }
+  /* SHEF STIRS THE POT — the deck loading scene.
+     A loading graphic gets cut at a random moment, so there is no story arc:
+     everything loops on one 3.4s beat. He stirs, notes keep dropping in, the
+     pot simmers. He stands BESIDE the pot rather than behind it — a pot wide
+     enough to hide his legs is wide enough to look like a bathtub — and its
+     base sits on the same line as his feet so they share a floor.
+     The pot is ONE closed silhouette with ONE hollow cut into it; stacked
+     primitives show a joint at every crossing. Opaque ink for the same reason.
+     Everything is lk- namespaced. Deliberately still animated under Reduce
+     Motion (the owner's call): a small contained loop in one corner of an
+     otherwise static screen, and it is the whole point of the loading screen. */
+  .potscene { width: 186px; height: 120px; overflow: visible; }
+  .lk-sg-body-o { stroke: #f4f4f5; stroke-width: 34; stroke-linecap: round; fill: none; }
+  .lk-sg-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
+  .lk-sg-limb { stroke: #f4f4f5; stroke-width: 7; stroke-linecap: round; fill: none; }
+  .lk-sg-eye { fill: #f4f4f5; }
+  .lk-sg-mouth { fill: #26262c; stroke: #f4f4f5; stroke-width: 2.5; stroke-linejoin: round; }
+  .lk-sg-hat-p { fill: #f4f4f5; }
+  .lk-sg-hat-b { fill: #f4f4f5; stroke: #26262c; stroke-width: 1.6; }
+  .lk-sg-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
+  .lk-pot-out, .lk-spoon-p { fill: #f4f4f5; }
+  .lk-pot-in { fill: #121216; }
+  .lk-spoon-h { stroke: #f4f4f5; stroke-width: 3; stroke-linecap: round; fill: none; }
+  .lk-nt-head { fill: #f4f4f5; }
+  .lk-nt-stem { stroke: #f4f4f5; stroke-width: 1.8; stroke-linecap: round; fill: none; }
+  .lk-steam { stroke: #8c8c95; stroke-width: 2.6; stroke-linecap: round; fill: none; opacity: 0; }
+  .lk-bub { fill: #5c5c68; }
+  .lk-stew { stroke: #55555f; stroke-width: 2.2; stroke-linecap: round; fill: none; }
+  /* ---- the beat: every part is a whole division of 3.4s ---- */
+  .lk-bob    { animation: lkBob 1.7s ease-in-out infinite; transform-origin: 60px 102px; }
+  .lk-armR   { animation: lkArmR 1.7s ease-in-out infinite; transform-origin: 79px 57px; }
+  .lk-armL   { animation: lkArmL 3.4s ease-in-out infinite; transform-origin: 41px 57px; }
+  .lk-stir   { animation: lkStir 1.7s ease-in-out infinite; transform-origin: 116px 90px; }
+  .lk-potwob { animation: lkWob 1.7s ease-in-out infinite; transform-origin: 127px 126px; }
+  .lk-drop   { animation: lkDrop 3.4s ease-in infinite; opacity: 0; }
+  .lk-drop.lk-d2 { animation-delay: -1.133s; }
+  .lk-drop.lk-d3 { animation-delay: -2.267s; }
+  .lk-tumble { animation: lkTumble 3.4s linear infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+  .lk-st1    { animation: lkSteam 1.7s ease-in-out infinite; }
+  .lk-st2    { animation: lkSteam 1.7s ease-in-out infinite; animation-delay: -.85s; }
+  .lk-bb1    { animation: lkBub 1.7s ease-out infinite; opacity: 0; }
+  .lk-bb2    { animation: lkBub 1.7s ease-out infinite; animation-delay: -.62s; opacity: 0; }
+  .lk-bb3    { animation: lkBub 1.7s ease-out infinite; animation-delay: -1.24s; opacity: 0; }
+  @keyframes lkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+  /* the spoon see-saws on the rim, so his hand rides the end that comes up
+     while the blade goes down — the arm swings against the spoon */
+  @keyframes lkStir { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+  @keyframes lkArmR { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-6deg); } }
+  @keyframes lkWob  { 0%, 100% { transform: rotate(.6deg); } 50% { transform: rotate(-.6deg); } }
+  /* the free hand keeps time, twice as slow as the stir */
+  @keyframes lkArmL {
+    0%, 100% { transform: rotate(0); }
+    30% { transform: rotate(-14deg); }
+    62% { transform: rotate(6deg); }
   }
-  .cs-sausage { animation: csFlip 2.6s cubic-bezier(.33,.12,.3,1) infinite; transform-origin: center; }
-  @keyframes csFlip {
-    0%, 7% { transform: translateY(0) rotate(0); }
-    10% { transform: translateY(-10px) rotate(30deg); }
-    19% { transform: translateY(-46px) rotate(200deg); }
-    29% { transform: translateY(-2px) rotate(354deg); }
-    32% { transform: translateY(0) rotate(360deg); }
-    /* resting in the pan: little heat wiggles, not stillness */
-    46% { transform: rotate(358.5deg); }
-    56% { transform: rotate(361.5deg); }
-    68% { transform: rotate(359deg); }
-    80% { transform: rotate(361deg); }
-    100% { transform: rotate(360deg); }
+  /* ingredients keep coming: each note falls into the pot and is swallowed
+     by the rim. Three of them, evenly offset, so the stream never stops. */
+  @keyframes lkDrop {
+    0% { opacity: 0; transform: translate(0, 0); }
+    4% { opacity: 1; }
+    26% { opacity: 1; transform: translate(-5px, 62px); }
+    30% { opacity: 0; transform: translate(-6px, 70px); }
+    100% { opacity: 0; transform: translate(0, 0); }
   }
-  .cs-steam { stroke: rgba(255,255,255,.32); stroke-width: 3; stroke-linecap: round; fill: none; opacity: 0; animation: csSteam 2.6s ease-in-out infinite; }
-  .cs-steam.s2 { animation-delay: 1.3s; }
-  @keyframes csSteam { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: .55; } 75%, 100% { transform: translateY(-10px); opacity: 0; } }
-  /* sizzle: quick sparks in the pan beside the sausage */
-  .cs-spark { stroke: rgba(255,255,255,.8); stroke-width: 2.5; stroke-linecap: round; opacity: 0; animation: csSizzle .85s ease-out infinite; }
-  .cs-spark.k2 { animation-delay: .28s; }
-  .cs-spark.k3 { animation-delay: .55s; }
-  @keyframes csSizzle { 0% { opacity: 0; transform: translateY(2px) scale(.6); } 25% { opacity: .85; } 60%, 100% { opacity: 0; transform: translateY(-5px) scale(1.1); } }
-  /* the landing splash — synced to the same 2.6s beat as the flip */
-  .cs-poof path { stroke: rgba(255,255,255,.85); stroke-width: 2.5; stroke-linecap: round; }
-  .cs-poof { opacity: 0; animation: csPoof 2.6s linear infinite; transform-origin: center; }
-  @keyframes csPoof { 0%, 30% { opacity: 0; transform: scale(.6); } 34% { opacity: .9; transform: scale(1); } 44%, 100% { opacity: 0; transform: scale(1.2); } }
+  @keyframes lkTumble { 0% { transform: rotate(-14deg); } 30%, 100% { transform: rotate(20deg); } }
+  @keyframes lkSteam {
+    0% { transform: translateY(6px); opacity: 0; }
+    35% { opacity: .5; }
+    75%, 100% { transform: translateY(-13px); opacity: 0; }
+  }
+  @keyframes lkBub {
+    0% { opacity: 0; transform: translateY(3px) scale(.5); }
+    30% { opacity: 1; }
+    70%, 100% { opacity: 0; transform: translateY(-6px) scale(1.15); }
+  }
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
@@ -826,33 +846,81 @@
       <button id="btnUndo" class="undo-btn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H14a5.5 5.5 0 0 1 0 11h-1.5"/></svg><span>Undo</span></button>
       <div class="deck" id="deck">
         <div class="loading" id="deckLoading">
-          <!-- The kitchen: cartoon pan flipping a sausage while it sizzles. One scene,
-               done properly. Inline SVG + CSS keyframes — no image assets. -->
-          <svg class="cookscene" viewBox="0 0 170 132" aria-hidden="true">
-            <path class="cs-steam" d="M60 44 q5 -8 0 -16 q-5 -8 0 -16"/>
-            <path class="cs-steam s2" d="M88 42 q5 -8 0 -16 q-5 -8 0 -16"/>
-            <!-- sausage is drawn BEFORE the pan so the pan's front wall occludes its
-                 lower half — that's what makes it lie IN the pan instead of on it -->
-            <g class="cs-sausage">
-              <path class="cs-sg-o" d="M58 71 q18 -5 36 0"/>
-              <path class="cs-sg-i" d="M58 71 q18 -5 36 0"/>
-              <path class="cs-sg-t" d="M67 63.5 l2.5 3 M80 62.5 l2.5 3"/>
+          <!-- Shef stirs the pot while ingredients drop in -->
+    <svg class="potscene" viewBox="8 17 190 122" aria-hidden="true">
+
+        <!-- steam, in stage space so the pot's wobble doesn't drag it -->
+        <path class="lk-steam lk-st1" d="M118 84 q4 -6 0 -12 q-4 -6 0 -12" />
+        <path class="lk-steam lk-st2" d="M134 82 q4 -6 0 -12 q-4 -6 0 -12" />
+
+        <!-- SHEF — his own 120-space, placed with a translate -->
+        <g transform="translate(-8 26)">
+          <g class="lk-bob">
+            <g class="lk-armL"><path class="lk-sg-limb" d="M41 57 q-10 5 -12 13" /></g>
+            <g class="lk-armR"><path class="lk-sg-limb" d="M79 57 q13 -6 21 -11" /></g>
+            <path class="lk-sg-limb" d="M51 90 q-6 6 -13 7" />
+            <path class="lk-sg-limb" d="M69 90 q6 6 13 7" />
+            <path class="lk-sg-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+            <path class="lk-sg-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+            <g transform="rotate(-8 60 22)">
+              <path class="lk-sg-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+              <path class="lk-sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+              <path class="lk-sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
             </g>
-            <!-- sizzle: sparks pop IN the pan, beside the sausage -->
-            <path class="cs-spark" d="M52 64 l3 -5"/>
-            <path class="cs-spark k2" d="M101 63 l3 -5"/>
-            <path class="cs-spark k3" d="M77 59 l-2 -5"/>
-            <!-- landing poof — flares exactly when the sausage hits the pan -->
-            <g class="cs-poof">
-              <path d="M46 66 l-4 -4 M49 59 l-2 -5"/>
-              <path d="M106 65 l4 -4 M103 58 l2 -5"/>
-            </g>
-            <g class="cs-pan">
-              <path class="cs-pan-body" d="M34 74 L118 74 C116 92 36 92 34 74 Z"/>
-              <path class="cs-pan-rim" d="M30 74 L122 74"/>
-              <path class="cs-pan-handle" d="M121 73 q20 -3 33 -8"/>
-            </g>
-          </svg>
+            <circle class="lk-sg-eye" cx="50" cy="47" r="2.8" />
+            <circle class="lk-sg-eye" cx="68" cy="47" r="2.8" />
+            <path class="lk-sg-mouth" d="M52.5 57 q6.5 6.5 13 0 q-1 7.5 -6.5 7.5 q-5.5 0 -6.5 -7.5 z" />
+          </g>
+        </g>
+
+        <!-- the spoon: half the weight of his arm, so the two don't read as one
+             long bent limb. Drawn before the pot, so the rim swallows the bowl. -->
+        <g class="lk-stir">
+          <path class="lk-spoon-h" d="M92 72 L133 103" />
+          <ellipse class="lk-spoon-p" cx="137" cy="105" rx="6.2" ry="4.4" transform="rotate(34 137 105)" />
+        </g>
+
+        <!-- ingredients on their way in. The placement lives on an outer wrapper:
+             a CSS transform in the keyframes would replace the attribute outright. -->
+        <g transform="translate(128 24)"><g class="lk-drop"><g class="lk-tumble">
+          <ellipse class="lk-nt-head" cx="-2.2" cy="3.4" rx="3.8" ry="2.9" transform="rotate(-20 -2.2 3.4)" />
+          <path class="lk-nt-stem" d="M1.25 3.4 L1.25 -7" />
+        </g></g></g>
+        <g transform="translate(141 22)"><g class="lk-drop lk-d2"><g class="lk-tumble">
+          <ellipse class="lk-nt-head" cx="-2.2" cy="3.4" rx="3.8" ry="2.9" transform="rotate(-20 -2.2 3.4)" />
+          <path class="lk-nt-stem" d="M1.25 3.4 L1.25 -7" />
+        </g></g></g>
+        <g transform="translate(134 26)"><g class="lk-drop lk-d3"><g class="lk-tumble">
+          <ellipse class="lk-nt-head" cx="-2.2" cy="3.4" rx="3.8" ry="2.9" transform="rotate(-20 -2.2 3.4)" />
+          <path class="lk-nt-stem" d="M1.25 3.4 L1.25 -7" />
+        </g></g></g>
+
+        <!-- the pot: one silhouette — rim, two ears, belly, base — and one hollow.
+             Its base sits on the same line as his feet, so they share a floor. -->
+        <g class="lk-potwob">
+          <path class="lk-pot-out" d="M101 90 Q127 87.4, 153 90
+                                   C159 90.8, 160.5 93, 160 96.5
+                                   C159.5 100, 156.5 101, 152.5 100.6
+                                   C156 110, 150 120, 144 124.5
+                                   Q127 128, 110 124.5
+                                   C104 120, 98 110, 101.5 100.6
+                                   C97.5 101, 94.5 100, 94 96.5
+                                   C93.5 93, 95 90.8, 101 90 Z" />
+          <path class="lk-pot-in" d="M105.5 94 Q127 92, 148.5 94
+                                  C151.5 108, 146.5 117, 141 120.5
+                                  Q127 123.6, 113 120.5
+                                  C107.5 117, 102.5 108, 105.5 94 Z" />
+        </g>
+
+        <!-- what he's cooking: the surface line turns the hollow from a black slab
+             into a pot with something in it, and the bubbles ride on it -->
+        <path class="lk-stew" d="M107.5 99 Q127 103, 146.5 99" />
+
+        <!-- simmer, down inside the pot -->
+        <circle class="lk-bub lk-bb1" cx="116" cy="98" r="2.2" />
+        <circle class="lk-bub lk-bb2" cx="130" cy="101" r="1.9" />
+        <circle class="lk-bub lk-bb3" cx="142" cy="97" r="2" />
+      </svg>
           <div class="radar-status" id="deckStatus">Let me cook…</div>
         </div>
       </div>
@@ -3012,6 +3080,7 @@ const COOK_LINES = [
   "Taste-testing a few…",
   "Flipping through the crates…",
   "Adding a pinch of bass…",
+  "Giving it a stir…",
   "Chef's kiss loading…",
   "Plating up your first find… 🍽️",
 ];
