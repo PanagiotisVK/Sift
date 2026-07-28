@@ -2890,6 +2890,24 @@ function watchForAbandonedAuth() {
   });
   return { promise, stop: () => stop() };
 }
+// Apple pages library responses at 100 and hands back a `next` path for the rest.
+// Reading only the first page is worse than not reading at all here: a playlist
+// longer than 100 looks empty past that point, and everything beyond gets added a
+// second time. Follow `next` to the end and say plainly whether we got all of it.
+async function amAllPages(url, H) {
+  const items = [];
+  let next = url, pages = 0;
+  const MAX_PAGES = 25;   // 2,500 tracks — a backstop against a runaway cursor
+  while (next && pages < MAX_PAGES) {
+    const r = await fetch(next.charAt(0) === "/" ? "https://api.music.apple.com" + next : next, { headers: H });
+    if (!r.ok) return { complete: false, items: items };
+    const j = await r.json();
+    (j.data || []).forEach(d => items.push(d));
+    next = j.next || null;
+    pages++;
+  }
+  return { complete: !next, items: items };
+}
 async function exportFindsToAppleMusic() {
   const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
   const say = (t) => { lbl.textContent = t; };
@@ -2950,29 +2968,29 @@ async function exportFindsToAppleMusic() {
       // and took localStorage with it. Adopt the one we made last time rather
       // than leaving them with two playlists of the same name.
       try {
-        const mine = await fetch("https://api.music.apple.com/v1/me/library/playlists?limit=100", { headers: H });
-        if (mine.ok) {
-          const found = ((await mine.json()).data || [])
-            .find(pl => pl.attributes && pl.attributes.name === "Sift Finds");
-          if (found) pid = found.id;
-        }
+        const mine = await amAllPages("https://api.music.apple.com/v1/me/library/playlists?limit=100", H);
+        const found = mine.items
+          .find(pl => pl.attributes && pl.attributes.name === "Sift Finds");
+        if (found) pid = found.id;
       } catch (_) { /* fall through and make a fresh one */ }
     }
     if (pid) {
       const chk = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid, { headers: H });
       if (!chk.ok) { pid = null; already = new Set(); }
       else {
-        // trust the playlist itself over our local memory — they may have pruned it
         try {
-          const tr = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid + "/tracks?limit=100", { headers: H });
-          if (tr.ok) {
-            const live = new Set();
-            ((await tr.json()).data || []).forEach(t => {
-              const c = t.attributes && t.attributes.playParams && t.attributes.playParams.catalogId;
-              if (c) live.add(String(c));
-            });
-            if (live.size) already = live;
-          }
+          const tr = await amAllPages("https://api.music.apple.com/v1/me/library/playlists/" + pid + "/tracks?limit=100", H);
+          const live = new Set();
+          tr.items.forEach(t => {
+            const c = t.attributes && t.attributes.playParams && t.attributes.playParams.catalogId;
+            if (c) live.add(String(c));
+          });
+          // Read the whole playlist: trust it over our local memory, because they may
+          // have pruned it and those songs should be allowed back. Read only part of
+          // it: merge instead, since anything we didn't see is still not proof of
+          // absence — replacing here is how you get duplicates past track 100.
+          if (tr.complete) already = live;
+          else live.forEach(c => already.add(c));
         } catch (_) { /* keep the local memory */ }
       }
     }
