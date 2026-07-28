@@ -2892,6 +2892,19 @@ async function exportFindsToAppleMusic() {
     try { store = JSON.parse(localStorage.getItem("sift_amplaylist") || "null"); } catch (_) {}
     let pid = store && store.id ? store.id : null;
     let already = new Set((store && store.sent) || []);
+    if (!pid) {
+      // No local memory of a playlist — a reinstall, or the app's origin changed
+      // and took localStorage with it. Adopt the one we made last time rather
+      // than leaving them with two playlists of the same name.
+      try {
+        const mine = await fetch("https://api.music.apple.com/v1/me/library/playlists?limit=100", { headers: H });
+        if (mine.ok) {
+          const found = ((await mine.json()).data || [])
+            .find(pl => pl.attributes && pl.attributes.name === "Sift Finds");
+          if (found) pid = found.id;
+        }
+      } catch (_) { /* fall through and make a fresh one */ }
+    }
     if (pid) {
       const chk = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid, { headers: H });
       if (!chk.ok) { pid = null; already = new Set(); }
