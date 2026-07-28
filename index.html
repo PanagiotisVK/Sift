@@ -2518,7 +2518,13 @@ async function exportFindsToAppleMusic() {
   btn.disabled = true;
   try {
     say("Waiting for your OK…");
-    const userToken = await _mk.authorize();   // FIRST await — the gesture is still alive
+    // FIRST await — the gesture is still alive. But inside the iOS app the popup may
+    // open somewhere we never hear back from (Capacitor hands popups to the system
+    // browser), and authorize() would then hang forever with the button dead. Cap it.
+    const userToken = await Promise.race([
+      _mk.authorize(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("authorize timeout")), 120000)),
+    ]);
     const H = { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" };
     // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
     // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
@@ -2595,6 +2601,7 @@ async function exportFindsToAppleMusic() {
     say(IDLE);
     const m = String((e && e.message) || e);
     if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
+    else if (/authorize timeout/.test(m)) toast("Apple's sign-in never came back. Try Sift in Safari for this one.");
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
     else if (/popup|blocked|window/i.test(m)) toast("Safari blocked Apple's sign-in window — allow pop-ups for this site, then tap again.");
     else toast("Couldn't reach Apple Music — try again in a moment.");
