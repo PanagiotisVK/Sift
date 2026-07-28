@@ -206,3 +206,32 @@ create policy "send own decks" on public.deck_sends
 -- Avatar (added 2026-07-27): "<colorIndex>|<emoji>" from the app's curated
 -- palette/glyph set; null = plain initial. No uploads, no moderation surface.
 alter table public.profiles add column if not exists avatar text;
+
+-- ============================================================
+-- ANONYMOUS USAGE COUNTERS (added 2026-07-27)
+-- One row per device per day. Device id is a random string with
+-- no link to accounts. Clients can WRITE their own row but never
+-- read anything — you view this table in the dashboard only.
+-- ============================================================
+create table if not exists public.usage_daily (
+  day        date not null,
+  device     text not null,
+  platform   text,
+  opens      int not null default 0,
+  swipes     int not null default 0,
+  loves      int not null default 0,
+  heards     int not null default 0,
+  decks_sent int not null default 0,
+  deck_opens int not null default 0,
+  daily_done int not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (day, device)
+);
+alter table public.usage_daily enable row level security;
+drop policy if exists "write usage" on public.usage_daily;
+create policy "write usage" on public.usage_daily
+  for insert with check (true);
+drop policy if exists "update usage" on public.usage_daily;
+create policy "update usage" on public.usage_daily
+  for update using (true) with check (true);
+-- deliberately NO select policy: the publishable key cannot read usage data.

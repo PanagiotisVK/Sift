@@ -2433,6 +2433,44 @@ function load() {
   } catch (e) { return false; }
 }
 
+/* ---------- Anonymous usage counters ----------
+   One row per device per day in Supabase (usage_daily): opens, swipes, loves,
+   decks. No account link, no song history — the device id is a random string
+   that exists only so the same phone isn't counted twice. Clients can't read
+   the table at all (no select policy); it's viewed in the Supabase dashboard.
+   Fails soft everywhere: no table, no network, blocked storage — app unaffected. */
+let usageDev = null;
+try {
+  usageDev = localStorage.getItem("sift_dev");
+  if (!usageDev) {
+    usageDev = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, "0")).join("");
+    localStorage.setItem("sift_dev", usageDev);
+  }
+} catch (_) {}
+let usageDay = null, usageFlushT = null;
+try { usageDay = JSON.parse(localStorage.getItem("sift_usage") || "null"); } catch (_) {}
+function bumpUsage(key) {
+  const day = dateStr();
+  if (!usageDay || usageDay.day !== day) usageDay = { day, opens: 0, swipes: 0, loves: 0, heards: 0, decks_sent: 0, deck_opens: 0, daily_done: 0 };
+  usageDay[key] = (usageDay[key] || 0) + 1;
+  try { localStorage.setItem("sift_usage", JSON.stringify(usageDay)); } catch (_) {}
+  clearTimeout(usageFlushT);
+  usageFlushT = setTimeout(flushUsage, 6000);
+}
+async function flushUsage() {
+  if (!SB || !usageDay || !usageDev) return;
+  try {
+    await SB.from("usage_daily").upsert({
+      day: usageDay.day, device: usageDev,
+      platform: isNativeIOS() ? "ios" : (matchMedia("(display-mode: standalone)").matches ? "pwa" : "web"),
+      opens: usageDay.opens, swipes: usageDay.swipes, loves: usageDay.loves, heards: usageDay.heards,
+      decks_sent: usageDay.decks_sent, deck_opens: usageDay.deck_opens, daily_done: usageDay.daily_done,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "day,device" });
+  } catch (_) { /* not provisioned / offline — counts wait in localStorage */ }
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
+
 /* ---------- Onboarding UI ---------- */
 const seedGenres = new Map();   // genre -> weight (1..3); bigger = seeds harder
 const seedArtists = new Map();   // artist name -> weight (1..3), same weighting as genres
@@ -3091,6 +3129,8 @@ function decide(kind, kin) {
     exploreBoostBefore: state.exploreBoost,
   };
   state.seenCount = (state.seenCount || 0) + 1;          // every swipe counts toward the scorecard
+  bumpUsage("swipes");
+  if (kind === "love") bumpUsage("loves"); else if (kind === "heard") bumpUsage("heards");
   if (kind === "heard") state.heardCount = (state.heardCount || 0) + 1; // the ones you already knew
   bumpDaily(kind);                                       // Today's 20 progress (celebrates at the goal)
   if (kind === "love") {
@@ -3208,6 +3248,7 @@ function bumpDaily(kind) {
   if (kind === "heard") d.heard++;
   if (d.count >= DAILY_GOAL && !d.celebrated) {
     d.celebrated = true;
+    bumpUsage("daily_done");
     const y = new Date(); y.setDate(y.getDate() - 1);
     state.streak = (state.lastDailyDone === dateStr(y)) ? (state.streak || 0) + 1 : 1;
     state.lastDailyDone = d.date;
@@ -4626,6 +4667,7 @@ async function createDeckFromPicks() {
     const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title, tracks }).select().single();
     if (error) { acctMsg("deckMsg", error.message, "err"); closeDeckSheet(); return; }
     _lastDeck = { id: data.id, title, n: tracks.length };
+    bumpUsage("decks_sent");
     acctMsg("deckMsg", "");
     renderMyDecks();
     // Friends get one-tap in-app delivery; no friends yet → straight to the link.
@@ -4798,6 +4840,7 @@ async function openDeck(deckId) {
     showScreen("deckmode");
     // Pre-fetch fresh audio links for the whole deck now → playback is instant later.
     dmQueue.forEach(t => resolvePreview(t).catch(() => {}));
+    bumpUsage("deck_opens");
     return true;
   } catch (e) { return false; }
 }
@@ -5175,6 +5218,7 @@ function toast(msg) {
 /* ---------- Boot ---------- */
 (function boot() {
   const returning = load();
+  bumpUsage("opens");
   applyAdventureUI();
   applyFreshUI();
   // Installs saved before the coherence profile existed: build it quietly from the
