@@ -337,6 +337,18 @@
   .deck-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 12px; }
   .deck-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
   .deck-foot .btn-mini[disabled] { opacity: .45; pointer-events: none; }
+  /* Send step: friends as one-tap send rows */
+  .dsend-row { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--glass-brd); background: var(--card); border-radius: var(--r-md); margin-bottom: 8px; }
+  .dsend-av { width: 36px; height: 36px; border-radius: 50%; background: var(--glass); display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+  .dsend-n { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dsend-row .btn-mini { flex: 0 0 auto; padding: 9px 16px; }
+  .dsend-row .btn-mini.sent { opacity: .55; pointer-events: none; }
+  /* "Decks for you" inbox on the Friends tab */
+  .inbox-row { display: flex; align-items: center; gap: 10px; padding: 11px; border: 1px solid var(--glass-brd); background: var(--card); border-radius: var(--r-md); margin: 8px 0; }
+  .inbox-ic { font-size: 20px; flex-shrink: 0; }
+  .inbox-body { flex: 1; min-width: 0; font-size: 13.5px; }
+  .inbox-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .inbox-row .btn-mini { flex: 0 0 auto; padding: 9px 14px; }
   .find button.mini { border: 0; background: var(--glass); color: var(--text); width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer; flex-shrink:0; display: grid; place-items: center; }
   .find .mini svg { width: 15px; height: 15px; }
   .find button.mini.rm { background: transparent; color: var(--faint); }
@@ -699,6 +711,7 @@
 
       <!-- Logged in: the social surface -->
       <div class="acct" id="friendsSocial" style="display:none;">
+        <div id="deckInbox"></div>
         <div class="acct-title">Activity</div>
         <div id="activityFeed"></div>
         <div class="acct-title" style="margin-top:18px;">Friends</div>
@@ -884,16 +897,25 @@
     </div>
   </div>
 
-  <!-- Deck picker — choose exactly which Finds ride in a shared deck -->
+  <!-- Deck picker — choose exactly which Finds ride in a shared deck, then send it
+       to a friend IN the app (deck_sends table) or fall back to a share link. -->
   <div class="gsheet-ov" id="deckSheet" style="display:none;">
     <div class="gsheet">
-      <div class="gsheet-head"><span>Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
-      <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
-      <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
-      <div class="deck-picks" id="deckPicks"></div>
-      <div class="deck-foot">
-        <span class="deck-count" id="deckCount">0/12</span>
-        <button class="btn-mini" id="btnDeckSend">Create &amp; share</button>
+      <div class="gsheet-head"><span id="deckSheetTitle">Pick songs for your deck</span><button class="gsheet-x" id="deckSheetX" aria-label="Close">✕</button></div>
+      <div id="deckPickStep">
+        <p class="gsheet-sub">Up to 12 songs — your friend swipes them and you see which ones land.</p>
+        <input id="deckTitle" class="deck-title-in" placeholder="Name it (optional) — “road trip”, “for mom”…" maxlength="40" autocomplete="off" />
+        <div class="deck-picks" id="deckPicks"></div>
+        <div class="deck-foot">
+          <span class="deck-count" id="deckCount">0/12</span>
+          <button class="btn-mini" id="btnDeckSend">Create deck</button>
+        </div>
+      </div>
+      <div id="deckSendStep" style="display:none;">
+        <p class="gsheet-sub">Deck ready 🎉 Send it to a friend right here — or share a link with anyone who doesn't have Sift yet.</p>
+        <div id="deckSendList"></div>
+        <button class="btn-mini ghost" id="btnDeckLink" style="width:100%;margin-top:10px;">Share a link instead</button>
+        <button class="btn-primary" id="btnDeckDone" style="margin-top:10px;">Done</button>
       </div>
     </div>
   </div>
@@ -3983,6 +4005,16 @@ async function renderActivity() {
       const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
       adds.forEach(a => events.push({ icon: "➕", time: a.created_at, html: "<b>@" + esc(nmap[a.user_id] || "someone") + "</b> added you as a friend" }));
     }
+    // decks sent to me in-app (own try — the table may not be provisioned yet)
+    try {
+      const { data: sends } = await SB.from("deck_sends").select("sender,created_at").eq("recipient", me_session.user.id);
+      if (sends && sends.length) {
+        const { data: sp } = await SB.from("profiles").select("id,username").in("id", [...new Set(sends.map(s => s.sender))]);
+        const smap = {}; (sp || []).forEach(p => smap[p.id] = p.username);
+        sends.forEach(s => events.push({ icon: "🎁", time: s.created_at, html: "<b>@" + esc(smap[s.sender] || "someone") + "</b> sent you a deck" }));
+      }
+    } catch (_) {}
+    renderDeckInbox();   // same refresh cycle as the feed (60s poll + tab opens)
     events.sort((a, b) => new Date(b.time) - new Date(a.time));
     activityEvents = events;
     updateActivityBadge();
@@ -4253,7 +4285,13 @@ function openDeckSheet() {
   renderDeckPicks();
   document.getElementById("deckSheet").style.display = "flex";
 }
-function closeDeckSheet() { document.getElementById("deckSheet").style.display = "none"; }
+function closeDeckSheet() {
+  document.getElementById("deckSheet").style.display = "none";
+  // reset to step 1 for next time
+  document.getElementById("deckSendStep").style.display = "none";
+  document.getElementById("deckPickStep").style.display = "block";
+  document.getElementById("deckSheetTitle").textContent = "Pick songs for your deck";
+}
 function renderDeckPicks() {
   const wrap = document.getElementById("deckPicks");
   wrap.innerHTML = "";
@@ -4276,26 +4314,99 @@ function updateDeckCount() {
   document.getElementById("deckCount").textContent = deckSel.size + "/12 picked" + (deckSel.size < 3 ? " · need 3+" : "");
   document.getElementById("btnDeckSend").disabled = deckSel.size < 3;
 }
+async function myFriends() {
+  try {
+    const { data: edges } = await SB.from("friendships").select("friend_id").eq("user_id", me_session.user.id);
+    if (!edges || !edges.length) return [];
+    const { data: profs } = await SB.from("profiles").select("id,username").in("id", edges.map(e => e.friend_id));
+    return profs || [];
+  } catch (e) { return []; }
+}
+let _lastDeck = null;   // the deck just created, for the send step
 async function createDeckFromPicks() {
   if (!SB || !me_profile || !deckSel) return;
   const picks = [...state.liked].reverse().filter(t => deckSel.has(t.id)).slice(0, 12);
   if (picks.length < 3) return;
   const title = (document.getElementById("deckTitle").value || "").trim() || (me_profile.username + "'s picks");
   const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
-  closeDeckSheet();
-  acctMsg("deckMsg", "Creating your deck…");
+  const btn = document.getElementById("btnDeckSend");
+  btn.disabled = true; btn.textContent = "Creating…";
   try {
     const { data, error } = await SB.from("decks").insert({ owner: me_profile.id, title, tracks }).select().single();
-    if (error) { acctMsg("deckMsg", error.message, "err"); return; }
-    acctMsg("deckMsg", "Deck ready! Sharing link… 🚀", "ok");
-    shareDeck(WEB_URL + "?deck=" + data.id, tracks.length);
+    if (error) { acctMsg("deckMsg", error.message, "err"); closeDeckSheet(); return; }
+    _lastDeck = { id: data.id, title, n: tracks.length };
+    acctMsg("deckMsg", "");
     renderMyDecks();
-  } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); }
+    // Friends get one-tap in-app delivery; no friends yet → straight to the link.
+    const friends = await myFriends();
+    if (friends.length) showDeckSendStep(friends);
+    else { closeDeckSheet(); shareDeck(WEB_URL + "?deck=" + data.id, tracks.length); }
+  } catch (e) { acctMsg("deckMsg", "Something went wrong — try again.", "err"); closeDeckSheet(); }
+  finally { btn.disabled = false; btn.textContent = "Create deck"; }
+}
+function showDeckSendStep(friends) {
+  document.getElementById("deckSheetTitle").textContent = "Send your deck";
+  document.getElementById("deckPickStep").style.display = "none";
+  const list = document.getElementById("deckSendList");
+  list.innerHTML = "";
+  friends.forEach(p => {
+    const row = document.createElement("div"); row.className = "dsend-row";
+    row.innerHTML = '<div class="dsend-av">' + esc((p.username || "?").charAt(0).toUpperCase()) + '</div>' +
+      '<div class="dsend-n">@' + esc(p.username || "?") + '</div><button class="btn-mini">Send</button>';
+    const btn = row.querySelector("button");
+    btn.onclick = async () => {
+      btn.textContent = "…";
+      try {
+        const { error } = await SB.from("deck_sends").insert({ deck_id: _lastDeck.id, sender: me_profile.id, recipient: p.id });
+        // A duplicate (unique deck+recipient) means it already arrived — that's a success.
+        if (error && !/duplicate|23505/i.test((error.message || "") + (error.code || ""))) throw error;
+        btn.textContent = "Sent ✓"; btn.classList.add("sent");
+      } catch (e) {
+        // deck_sends not provisioned yet, or offline — the link path always works.
+        btn.textContent = "Send";
+        toast("Couldn't send in-app — use the link below instead.");
+      }
+    };
+    list.appendChild(row);
+  });
+  document.getElementById("deckSendStep").style.display = "block";
 }
 document.getElementById("deckSheetX").onclick = closeDeckSheet;
 document.getElementById("deckSheet").onclick = e => { if (e.target.id === "deckSheet") closeDeckSheet(); };
 document.getElementById("btnDeckSend").onclick = createDeckFromPicks;
+document.getElementById("btnDeckLink").onclick = () => { if (_lastDeck) shareDeck(WEB_URL + "?deck=" + _lastDeck.id, _lastDeck.n); };
+document.getElementById("btnDeckDone").onclick = closeDeckSheet;
 attachSheetDrag("deckSheet", closeDeckSheet);
+
+// --- Receiver: "Decks for you" inbox on the Friends tab ---
+async function renderDeckInbox() {
+  const wrap = document.getElementById("deckInbox");
+  if (!wrap || !SB || !me_session) return;
+  try {
+    const { data: sends } = await SB.from("deck_sends").select("id,deck_id,sender,created_at")
+      .eq("recipient", me_session.user.id).eq("opened", false)
+      .order("created_at", { ascending: false }).limit(10);
+    if (!sends || !sends.length) { wrap.innerHTML = ""; return; }
+    const [{ data: dks }, { data: profs }] = await Promise.all([
+      SB.from("decks").select("id,title,tracks").in("id", sends.map(s => s.deck_id)),
+      SB.from("profiles").select("id,username").in("id", sends.map(s => s.sender)),
+    ]);
+    const dmap = {}; (dks || []).forEach(d => dmap[d.id] = d);
+    const nmap = {}; (profs || []).forEach(p => nmap[p.id] = p.username);
+    wrap.innerHTML = '<div class="acct-title">Decks for you</div>';
+    sends.forEach(s => {
+      const d = dmap[s.deck_id]; if (!d) return;
+      const row = document.createElement("div"); row.className = "inbox-row";
+      row.innerHTML = '<div class="inbox-ic">🎁</div><div class="inbox-body"><b>@' + esc(nmap[s.sender] || "someone") + '</b> sent you “' + esc(d.title || "a deck") + '”' +
+        '<div class="inbox-sub">' + ((d.tracks || []).length) + ' songs · ' + timeAgo(s.created_at) + '</div></div><button class="btn-mini">Swipe it</button>';
+      row.querySelector("button").onclick = async () => {
+        try { await SB.from("deck_sends").update({ opened: true }).eq("id", s.id); } catch (_) {}
+        openDeck(s.deck_id);
+      };
+      wrap.appendChild(row);
+    });
+  } catch (e) { wrap.innerHTML = ""; /* deck_sends table not provisioned yet — inbox stays silent */ }
+}
 async function shareDeck(link, n) {
   const text = "I made you a deck of " + n + " songs on Sift 🎧 — swipe through and tell me which you love:";
   try {

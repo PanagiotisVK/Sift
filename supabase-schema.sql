@@ -109,3 +109,38 @@ create policy "read results" on public.deck_results
     auth.uid() = swiper
     or auth.uid() = (select owner from public.decks d where d.id = deck_id)
   );
+
+-- ============================================================
+-- IN-APP DECK SENDING (added 2026-07-27)
+-- A deck can be delivered straight to a friend inside Sift;
+-- links remain the fallback for people without the app.
+-- ============================================================
+create table if not exists public.deck_sends (
+  id uuid primary key default gen_random_uuid(),
+  deck_id uuid not null references public.decks(id) on delete cascade,
+  sender uuid not null references public.profiles(id) on delete cascade,
+  recipient uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  opened boolean not null default false,
+  unique (deck_id, recipient)
+);
+
+alter table public.deck_sends enable row level security;
+
+-- You can only send decks YOU own, as yourself.
+drop policy if exists "send own decks" on public.deck_sends;
+create policy "send own decks" on public.deck_sends
+  for insert with check (
+    auth.uid() = sender
+    and exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid())
+  );
+
+-- Sender and recipient both see the send (sender: "sent ✓", recipient: inbox).
+drop policy if exists "see own sends" on public.deck_sends;
+create policy "see own sends" on public.deck_sends
+  for select using (auth.uid() = sender or auth.uid() = recipient);
+
+-- Only the recipient marks a send opened.
+drop policy if exists "recipient marks opened" on public.deck_sends;
+create policy "recipient marks opened" on public.deck_sends
+  for update using (auth.uid() = recipient) with check (auth.uid() = recipient);
