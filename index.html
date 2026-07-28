@@ -242,7 +242,17 @@
   .lk-sg-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
   .lk-sg-limb { stroke: #f4f4f5; stroke-width: 7; stroke-linecap: round; fill: none; }
   .lk-sg-eye { fill: #f4f4f5; }
-  .lk-sg-mouth { fill: #26262c; stroke: #f4f4f5; stroke-width: 2.5; stroke-linejoin: round; }
+  .lk-sg-lash { stroke: #f4f4f5; stroke-width: 3; stroke-linecap: round; fill: none; }
+  /* one slow blink a loop, so a screen people stare at feels alive */
+  .lk-eOpen { animation: lkEOpen 3.4s steps(1) infinite; }
+  .lk-eBlink { animation: lkEBlink 3.4s steps(1) infinite; }
+  /* The mustache carries the character now: his mouth is gone and expression
+     comes from the eyes. Brown, not white, because at loading-screen size a
+     white shape under two white dots reads as a mouth -- and the app already
+     carries colour in its emoji, so the mascot is allowed one deliberate hue.
+     The hairs use the same device as the toque's pleats: thin dark strokes. */
+  .lk-stache { fill: #a07a52; }
+  .lk-stache-h { stroke: #4a3320; stroke-width: 1.5; fill: none; stroke-linecap: round; opacity: .7; }
   .lk-sg-hat-p { fill: #f4f4f5; }
   .lk-sg-hat-b { fill: #f4f4f5; stroke: #26262c; stroke-width: 1.6; }
   .lk-sg-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
@@ -269,6 +279,8 @@
   .lk-bb1    { animation: lkBub 1.7s ease-out infinite; opacity: 0; }
   .lk-bb2    { animation: lkBub 1.7s ease-out infinite; animation-delay: -.62s; opacity: 0; }
   .lk-bb3    { animation: lkBub 1.7s ease-out infinite; animation-delay: -1.24s; opacity: 0; }
+  @keyframes lkEOpen { 0%, 71% { opacity: 1; } 72%, 76% { opacity: 0; } 77%, 100% { opacity: 1; } }
+  @keyframes lkEBlink { 0%, 71% { opacity: 0; } 72%, 76% { opacity: 1; } 77%, 100% { opacity: 0; } }
   @keyframes lkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
   /* the spoon see-saws on the rim, so his hand rides the end that comes up
      while the blade goes down — the arm swings against the spoon */
@@ -604,7 +616,13 @@
   .sf-sg-limb { stroke: #f4f4f5; stroke-width: 7; stroke-linecap: round; fill: none; }
   .sf-sg-eye { fill: #f4f4f5; }
   .sf-sg-lash { stroke: #f4f4f5; stroke-width: 3; stroke-linecap: round; fill: none; }
-  .sf-sg-mouth { fill: #26262c; stroke: #f4f4f5; stroke-width: 2.5; stroke-linejoin: round; }
+  /* The mustache carries the character now: his mouth is gone and expression
+     comes from the eyes. Brown, not white, because at loading-screen size a
+     white shape under two white dots reads as a mouth -- and the app already
+     carries colour in its emoji, so the mascot is allowed one deliberate hue.
+     The hairs use the same device as the toque's pleats: thin dark strokes. */
+  .sf-stache { fill: #a07a52; }
+  .sf-stache-h { stroke: #4a3320; stroke-width: 1.5; fill: none; stroke-linecap: round; opacity: .7; }
   .sf-sg-hat-p { fill: #f4f4f5; }
   .sf-sg-hat-b { fill: #f4f4f5; stroke: #26262c; stroke-width: 1.6; }
   .sf-sg-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
@@ -631,6 +649,7 @@
   .sf-panflip{ animation: sfPanflip 4.8s ease-in-out infinite; transform-origin: 104px 94px; }
   .sf-panFood{ animation: sfPanFood 4.8s ease-in-out infinite; transform-origin: 130px 86.5px; }
   .sf-eOpen  { animation: sfEOpen 4.8s steps(1) infinite; }
+  .sf-eWide  { animation: sfEWide 4.8s steps(1) infinite; }
   .sf-eShut  { animation: sfEShut 4.8s steps(1) infinite; }
   .sf-cookfx { animation: sfCookfx 4.8s ease-in-out infinite; }
   .sf-flyWrap{ animation: sfFly 4.8s linear infinite; opacity: 0; }
@@ -708,8 +727,52 @@
     31.5%, 94% { opacity: 0; }
     99% { opacity: 1; }
   }
-  @keyframes sfEOpen { 0%, 64% { opacity: 1; } 66%, 82% { opacity: 0; } 84%, 100% { opacity: 1; } }
-  @keyframes sfEShut { 0%, 64% { opacity: 0; } 66%, 82% { opacity: 1; } 84%, 100% { opacity: 0; } }
+  @keyframes sfEOpen { 0%, 48% { opacity: 1; } 49%, 83% { opacity: 0; } 84%, 100% { opacity: 1; } }
+  @keyframes sfEWide { 0%, 48% { opacity: 0; } 49%, 63% { opacity: 1; } 64%, 100% { opacity: 0; } }
+  @keyframes sfEShut { 0%, 63% { opacity: 0; } 64%, 83% { opacity: 1; } 84%, 100% { opacity: 0; } }
+  /* EMPTY-HANDED VARIANT — 20 swiped, nothing loved.
+     Same set and the same elements: the toss simply never happens. He looks in
+     the pan, tips it toward you so you can see there's nothing in it, and
+     shrugs. The plate stays bare. Celebrating a find that doesn't exist is the
+     worst thing this screen could do, so the animation names are swapped rather
+     than a second scene being drawn. */
+  .sf-empty .sf-flyWrap, .sf-empty .sf-mflash, .sf-empty .sf-pop,
+  .sf-empty .sf-panFood, .sf-empty .sf-cs-spark { display: none; }
+  .sf-empty .sf-cookfx { animation: none; opacity: 1; }
+  .sf-empty .sf-panflip { transform-origin: 86px 96px; animation-name: sfTip; }
+  .sf-empty .sf-bow { animation-name: sfPeer; }
+  .sf-empty .sf-armL { animation-name: sfShrugL; }
+  .sf-empty .sf-armR { animation-name: sfArmEmpty; }
+  .sf-empty .sf-eShut { display: none; }
+  .sf-empty .sf-eOpen { animation-name: sfEOpenE; }
+  .sf-empty .sf-eWide { animation-name: sfEWideE; }
+  @keyframes sfTip {
+    0% { transform: rotate(0); }
+    8% { transform: rotate(2deg); }
+    16% { transform: rotate(-1.5deg); }
+    24% { transform: rotate(1deg); }
+    34%, 60% { transform: rotate(-26deg); }
+    74%, 100% { transform: rotate(0); }
+  }
+  @keyframes sfPeer {
+    0%, 24% { transform: rotate(0); }
+    36%, 56% { transform: rotate(8deg); }
+    70%, 82% { transform: rotate(-5deg); }
+    94%, 100% { transform: rotate(0); }
+  }
+  @keyframes sfShrugL {
+    0%, 58% { transform: rotate(0); }
+    70%, 82% { transform: rotate(62deg); }
+    94%, 100% { transform: rotate(0); }
+  }
+  @keyframes sfArmEmpty {
+    0%, 24% { transform: rotate(0); }
+    34%, 60% { transform: rotate(-12deg); }
+    70%, 82% { transform: rotate(-28deg); }
+    94%, 100% { transform: rotate(0); }
+  }
+  @keyframes sfEOpenE { 0%, 28% { opacity: 1; } 30%, 88% { opacity: 0; } 90%, 100% { opacity: 1; } }
+  @keyframes sfEWideE { 0%, 28% { opacity: 0; } 30%, 88% { opacity: 1; } 90%, 100% { opacity: 0; } }
   @keyframes sfCookfx { 0%, 28% { opacity: 1; } 36%, 92% { opacity: 0; } 100% { opacity: 1; } }
   /* the arc: up out of the pan, over, down onto the plate */
   @keyframes sfFly {
@@ -867,9 +930,16 @@
               <path class="lk-sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
               <path class="lk-sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
             </g>
-            <circle class="lk-sg-eye" cx="50" cy="47" r="2.8" />
-            <circle class="lk-sg-eye" cx="68" cy="47" r="2.8" />
-            <path class="lk-sg-mouth" d="M52.5 57 q6.5 6.5 13 0 q-1 7.5 -6.5 7.5 q-5.5 0 -6.5 -7.5 z" />
+            <g class="lk-eOpen">
+              <circle class="lk-sg-eye" cx="50" cy="47" r="3.2" />
+              <circle class="lk-sg-eye" cx="68" cy="47" r="3.2" />
+            </g>
+            <g class="lk-eBlink">
+              <path class="lk-sg-lash" d="M46.6 47.6 q3.4 -3.4 6.8 0" />
+              <path class="lk-sg-lash" d="M64.6 47.6 q3.4 -3.4 6.8 0" />
+            </g>
+            <path class="lk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+            <path class="lk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
           </g>
         </g>
 
@@ -1232,7 +1302,7 @@
   <div class="gsheet-ov" id="dailySheet" style="display:none;">
     <div class="gsheet daily-sheet">
       <!-- Shef cooks your find, plates it, and takes a bow -->
-  <svg class="shefscene" viewBox="8 17 224 121" aria-hidden="true">
+  <svg class="shefscene" id="dailyScene" viewBox="8 17 224 121" aria-hidden="true">
 
       <!-- heat: steam lives in stage space so the flip doesn't drag it around -->
       <g class="sf-cookfx">
@@ -1255,14 +1325,19 @@
             <path class="sf-sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
           </g></g>
           <g class="sf-eOpen">
-            <circle class="sf-sg-eye" cx="50" cy="47" r="2.8" />
-            <circle class="sf-sg-eye" cx="68" cy="47" r="2.8" />
+            <circle class="sf-sg-eye" cx="50" cy="47" r="3.2" />
+            <circle class="sf-sg-eye" cx="68" cy="47" r="3.2" />
+          </g>
+          <g class="sf-eWide">
+            <circle class="sf-sg-eye" cx="50" cy="47" r="4.1" />
+            <circle class="sf-sg-eye" cx="68" cy="47" r="4.1" />
           </g>
           <g class="sf-eShut">
             <path class="sf-sg-lash" d="M46.8 48 q3.2 -3.6 6.4 0" />
             <path class="sf-sg-lash" d="M64.8 48 q3.2 -3.6 6.4 0" />
           </g>
-          <path class="sf-sg-mouth" d="M52.5 57 q6.5 6.5 13 0 q-1 7.5 -6.5 7.5 q-5.5 0 -6.5 -7.5 z" />
+          <path class="sf-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+          <path class="sf-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
         </g></g>
       </g>
 
@@ -3714,10 +3789,17 @@ function showDailySheet() {
   ensureDaily();
   const d = state.daily;
   const fresh = Math.max(0, d.count - d.heard);
+  // Nothing loved is a real outcome, not an edge case. Shef stops celebrating,
+  // the copy stops congratulating, and the exit becomes a fix instead of a
+  // pointless trip to an empty Finds list.
+  const none = d.loves === 0;
+  document.getElementById("dailyScene").classList.toggle("sf-empty", none);
   document.getElementById("dailyBig").textContent =
-    d.loves > 0 ? d.loves + (d.loves === 1 ? " new find" : " new finds") : "That's 20";
-  document.getElementById("dailySub").innerHTML =
-    "<b>" + fresh + "</b> new to you · <b>" + d.loves + "</b> loved · " + d.count + " songs today";
+    none ? "Nothing landed" : d.loves + (d.loves === 1 ? " new find" : " new finds");
+  document.getElementById("dailySub").innerHTML = none
+    ? d.count + " songs, none of them yours. Let's change the recipe."
+    : "<b>" + fresh + "</b> new to you · <b>" + d.loves + "</b> loved · " + d.count + " songs today";
+  document.getElementById("dailyFinds").textContent = none ? "Tune my taste" : "See my Finds";
   document.getElementById("dailyStreak").textContent =
     (state.streak || 1) > 1 ? "🔥 " + state.streak + " days in a row" : "🔥 Day one — come back tomorrow to start a streak";
   document.getElementById("dailySheet").style.display = "flex";
@@ -3729,7 +3811,12 @@ function hideDailySheet(goFinds) {
   else if (state.current) safePlay();
 }
 document.getElementById("dailyKeep").onclick = () => hideDailySheet(false);
-document.getElementById("dailyFinds").onclick = () => hideDailySheet(true);
+document.getElementById("dailyFinds").onclick = () => {
+  // when they found nothing, Finds is the wrong place to send them
+  const fix = state.daily && state.daily.loves === 0;
+  hideDailySheet(!fix);
+  if (fix) setTimeout(openGenreSheet, 60);
+};
 document.getElementById("dailyPill").onclick = () => {
   ensureDaily();
   if (state.daily.celebrated) showDailySheet();
