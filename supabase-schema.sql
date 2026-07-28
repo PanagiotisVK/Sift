@@ -144,3 +144,61 @@ create policy "see own sends" on public.deck_sends
 drop policy if exists "recipient marks opened" on public.deck_sends;
 create policy "recipient marks opened" on public.deck_sends
   for update using (auth.uid() = recipient) with check (auth.uid() = recipient);
+
+-- ============================================================
+-- FRIEND REQUESTS + BLOCKS (added 2026-07-27)
+-- Friendships now start as a REQUEST the other person accepts;
+-- every pre-existing row is grandfathered as accepted. Blocks
+-- stop requests and in-app deck sends at the database level.
+-- ============================================================
+create table if not exists public.blocks (
+  blocker    uuid not null references public.profiles(id) on delete cascade,
+  blocked    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker, blocked)
+);
+alter table public.blocks enable row level security;
+drop policy if exists "manage own blocks" on public.blocks;
+create policy "manage own blocks" on public.blocks
+  for all using (auth.uid() = blocker) with check (auth.uid() = blocker);
+
+alter table public.friendships add column if not exists status text not null default 'accepted';
+
+-- Both endpoints see the edge — the recipient needs incoming rows for requests,
+-- and this also (finally) powers the "added you" activity feed properly.
+drop policy if exists "see own friendships" on public.friendships;
+drop policy if exists "see friendships to me" on public.friendships;
+drop policy if exists "see own edges" on public.friendships;
+create policy "see own edges" on public.friendships
+  for select using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Requests come from you, as you — never to or from someone in a block.
+drop policy if exists "add own friendships" on public.friendships;
+create policy "add own friendships" on public.friendships
+  for insert with check (
+    auth.uid() = user_id
+    and not exists (select 1 from public.blocks b
+      where (b.blocker = friend_id and b.blocked = user_id)
+         or (b.blocker = user_id and b.blocked = friend_id))
+  );
+
+-- The recipient answers a request (accepting flips its status).
+drop policy if exists "recipient answers" on public.friendships;
+create policy "recipient answers" on public.friendships
+  for update using (auth.uid() = friend_id) with check (auth.uid() = friend_id);
+
+-- Either endpoint can sever a friendship, withdraw, or decline a request.
+drop policy if exists "remove own friendships" on public.friendships;
+create policy "remove own friendships" on public.friendships
+  for delete using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Deck sends respect blocks too.
+drop policy if exists "send own decks" on public.deck_sends;
+create policy "send own decks" on public.deck_sends
+  for insert with check (
+    auth.uid() = sender
+    and exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid())
+    and not exists (select 1 from public.blocks b
+      where (b.blocker = recipient and b.blocked = sender)
+         or (b.blocker = sender and b.blocked = recipient))
+  );
