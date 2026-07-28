@@ -2847,8 +2847,24 @@ function ensureMusicKit(devToken) {
 // gesture, so the popup was silently blocked and authorize() hung forever. Prepare
 // everything ahead of time — quietly, when the Finds screen opens — so the tap itself
 // can call authorize() as its first act.
+// Inside the app we ask iOS for the user token directly (AppleMusicAuth.swift) —
+// no popup, so nothing can be handed off to the system browser and lost. Returns
+// null everywhere else, which is what keeps the web path exactly as it was.
+function nativeAppleMusic() {
+  const C = window.Capacitor;
+  if (!C || !isNativeIOS()) return null;
+  return C.registerPlugin ? C.registerPlugin("AppleMusicAuth")
+       : (C.Plugins && C.Plugins.AppleMusicAuth) || null;
+}
 function warmAppleMusic() {
-  if (_mk || !state.liked.length) return;
+  if (!state.liked.length) return;
+  // Native needs only the developer token — MusicKit JS isn't used there at all,
+  // so we skip loading the CDN script inside the app entirely.
+  if (nativeAppleMusic()) {
+    if (!_mkDev) appleDevToken().then(t => { _mkDev = t; }).catch(() => {});
+    return;
+  }
+  if (_mk) return;
   appleDevToken().then(t => { _mkDev = t; return ensureMusicKit(t); }).catch(() => {});
 }
 // Inside the iOS wrapper, Apple's sign-in opens outside our webview, so a finished
@@ -2878,28 +2894,37 @@ async function exportFindsToAppleMusic() {
   const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
   const say = (t) => { lbl.textContent = t; };
   const IDLE = "Save to Apple Music";
-  if (!_mk || !_mkDev) {   // not warm yet — start it and let them tap again in a moment
+  const native = nativeAppleMusic();   // null on the web — everything below forks on it
+  const warm = () => native ? !!_mkDev : (_mk && _mkDev);
+  if (!warm()) {   // not warm yet — start it and let them tap again in a moment
     say("Getting ready…");
     warmAppleMusic();
-    setTimeout(() => say(_mk ? IDLE + " — tap again" : IDLE), 1200);
+    setTimeout(() => say(warm() ? IDLE + " — tap again" : IDLE), 1200);
     return;
   }
   const dev = _mkDev;
   btn.disabled = true;
   try {
     say("Waiting for your OK…");
-    // FIRST await — the gesture is still alive. But inside the iOS app the popup may
-    // open somewhere we never hear back from (Capacitor hands popups to the system
-    // browser), and authorize() would then hang forever with the button dead. Cap it.
-    const back = watchForAbandonedAuth();
     let userToken;
-    try {
-      userToken = await Promise.race([
-        _mk.authorize(),
-        back.promise,
-        new Promise((_, rej) => setTimeout(() => rej(new Error("authorize timeout")), 120000)),
-      ]);
-    } finally { back.stop(); }
+    if (native) {
+      // iOS asks with its own permission sheet and always answers us — no popup to
+      // lose, so none of the recovery machinery below is needed here.
+      const r = await native.userToken({ developerToken: dev });
+      userToken = r && r.token;
+      if (!userToken) throw new Error("no user token");
+    } else {
+      // FIRST await — the gesture is still alive. Browsers only allow popups opened
+      // synchronously inside a real tap, which is why everything was warmed earlier.
+      const back = watchForAbandonedAuth();
+      try {
+        userToken = await Promise.race([
+          _mk.authorize(),
+          back.promise,
+          new Promise((_, rej) => setTimeout(() => rej(new Error("authorize timeout")), 120000)),
+        ]);
+      } finally { back.stop(); }
+    }
     const H = { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" };
     // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
     // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
@@ -2988,8 +3013,11 @@ async function exportFindsToAppleMusic() {
   } catch (e) {
     say(IDLE);
     const m = String((e && e.message) || e);
-    if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
-    else if (/authorize (timeout|abandoned)/.test(m)) toast("Apple's sign-in didn't make it back to Sift. Open Sift in Safari to save these.");
+    if (/AUTHORIZATION_ERROR|access denied|cancell?ed|was not granted/i.test(m)) { /* user closed Apple's sheet — their call */ }
+    else if (/NO_DEV_TOKEN|no user token|returned no user token/i.test(m)) toast("Apple Music didn't hand back a sign-in. Try again in a moment.");
+    // "not implemented" means the native plugin didn't register — the web popup can't
+    // work inside the app either, so the honest advice is the same one.
+    else if (/authorize (timeout|abandoned)|not implemented|UNIMPLEMENTED/i.test(m)) toast("Apple's sign-in didn't make it back to Sift. Open Sift in Safari to save these.");
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
     else if (/popup|blocked|window/i.test(m)) toast("Safari blocked Apple's sign-in window — allow pop-ups for this site, then tap again.");
     else toast("Couldn't reach Apple Music — try again in a moment.");
