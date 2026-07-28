@@ -349,6 +349,11 @@
   .inbox-body { flex: 1; min-width: 0; font-size: 13.5px; }
   .inbox-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .inbox-row .btn-mini { flex: 0 0 auto; padding: 9px 14px; }
+  /* Export-to-Apple-Music: brand red like the per-row Apple buttons (sanctioned zone) */
+  .am-export { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; margin-bottom: 12px; border: 0; border-radius: var(--r-md); background: #fa2d48; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .am-export svg { width: 18px; height: 18px; }
+  .am-export:active { filter: brightness(.85); }
+  .am-export[disabled] { opacity: .6; pointer-events: none; }
   .friend.pending { opacity: .55; }
   .fdet-actions { display: flex; gap: 8px; margin-top: 10px; }
   .fdet-actions .btn-mini { flex: 1; }
@@ -746,6 +751,10 @@
       </div>
       <div class="finds-genres" id="findsGenres"></div>
       <button class="radio-btn" id="btnRadio" style="display:none;"></button>
+      <button class="am-export" id="btnExportAM" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.7 3.2L8.5 5.4c-.5.1-.8.5-.8 1v9.1c-.5-.2-1-.3-1.6-.2-1.6.2-2.8 1.4-2.8 2.7 0 1.4 1.3 2.3 2.9 2.1 1.6-.2 2.8-1.4 2.8-2.7V9l8.4-1.8v5.5c-.5-.2-1-.3-1.6-.2-1.6.2-2.8 1.4-2.8 2.7 0 1.4 1.3 2.3 2.9 2.1 1.6-.2 2.8-1.4 2.8-2.7V4.2c0-.7-.6-1.2-1.3-1z"/></svg>
+        <span id="amExportLbl">Save my Finds to Apple Music</span>
+      </button>
       <div id="findsList"></div>
     </section>
 
@@ -2444,6 +2453,87 @@ function load() {
   } catch (e) { return false; }
 }
 
+/* ---------- Apple Music: developer token + playlist export ----------
+   The Supabase edge function `apple-token` mints 30-day developer tokens from the
+   MusicKit key (key lives only in Supabase secrets). With one, MusicKit JS can ask
+   the user's permission and write a real playlist into their Apple Music library.
+   Requires an Apple Music subscription on the user's side; fails into clear toasts. */
+async function appleDevToken() {
+  try {
+    const c = JSON.parse(localStorage.getItem("sift_amtoken") || "null");
+    if (c && c.exp * 1000 > Date.now() + 3 * 86400 * 1000) return c.token;   // refresh 3 days early
+  } catch (_) {}
+  const r = await fetch(SB_URL + "/functions/v1/apple-token", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + SB_KEY, apikey: SB_KEY },
+  });
+  if (!r.ok) throw new Error("token service " + r.status);
+  const d = await r.json();
+  if (!d.token) throw new Error(d.error || "no token");
+  try { localStorage.setItem("sift_amtoken", JSON.stringify(d)); } catch (_) {}
+  return d.token;
+}
+let _mkReady = null;
+function ensureMusicKit(devToken) {
+  if (_mkReady) return _mkReady;
+  _mkReady = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://js-cdn.music.apple.com/musickit/v3/musickit.js";
+    s.async = true;
+    s.onerror = () => { _mkReady = null; reject(new Error("MusicKit failed to load")); };
+    document.addEventListener("musickitloaded", async () => {
+      try {
+        await MusicKit.configure({ developerToken: devToken, app: { name: "Sift", build: "1.0" } });
+        resolve(MusicKit.getInstance());
+      } catch (e) { _mkReady = null; reject(e); }
+    }, { once: true });
+    document.body.appendChild(s);
+  });
+  return _mkReady;
+}
+async function exportFindsToAppleMusic() {
+  const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
+  const say = (t) => { lbl.textContent = t; };
+  btn.disabled = true;
+  try {
+    say("Connecting to Apple Music…");
+    const dev = await appleDevToken();
+    const mk = await ensureMusicKit(dev);
+    say("Waiting for your OK…");
+    const userToken = await mk.authorize();   // Apple's own consent sheet
+    // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
+    // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
+    say("Checking your songs…");
+    const ids = [...new Set(state.liked.map(t => String(t.id)).filter(id => /^\d+$/.test(id)))];
+    const valid = [];
+    for (let i = 0; i < ids.length; i += 25) {
+      const r = await fetch("https://api.music.apple.com/v1/catalog/us/songs?ids=" + ids.slice(i, i + 25).join(","),
+        { headers: { Authorization: "Bearer " + dev } });
+      if (r.ok) (await r.json()).data.forEach(s => valid.push(s.id));
+    }
+    if (!valid.length) { say("Save my Finds to Apple Music"); toast("None of these songs could be matched on Apple Music."); btn.disabled = false; return; }
+    say("Making your playlist…");
+    const resp = await fetch("https://api.music.apple.com/v1/me/library/playlists", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        attributes: { name: "Sift Finds — " + dateStr(), description: "Songs I found on Sift 🎧" },
+        relationships: { tracks: { data: valid.map(id => ({ id, type: "songs" })) } },
+      }),
+    });
+    if (!resp.ok) throw new Error("playlist " + resp.status);
+    say("Save my Finds to Apple Music");
+    toast("Playlist created — " + valid.length + (valid.length === 1 ? " song" : " songs") + " in your Apple Music ✓");
+  } catch (e) {
+    say("Save my Finds to Apple Music");
+    const m = String((e && e.message) || e);
+    if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
+    else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
+    else toast("Couldn't reach Apple Music — try again in a moment.");
+  }
+  btn.disabled = false;
+}
+
 /* ---------- Anonymous usage counters ----------
    One row per device per day in Supabase (usage_daily): opens, swipes, loves,
    decks. No account link, no song history — the device id is a random string
@@ -3662,6 +3752,7 @@ function updateFinds() {
     list.innerHTML = '<div class="empty-finds">No finds yet.<br>Swipe right on something you love.</div>';
     insights.style.display = "none"; gwrap.innerHTML = "";
     document.getElementById("btnRadio").style.display = "none";
+    document.getElementById("btnExportAM").style.display = "none";
     return;
   }
 
@@ -3692,6 +3783,7 @@ function updateFinds() {
   const shown = findsFilter ? byGenre[findsFilter] : state.liked;
   list.innerHTML = "";
   document.getElementById("btnRadio").style.display = "";
+  document.getElementById("btnExportAM").style.display = "flex";
   radioLabel();
   [...shown].reverse().forEach(t => {
     const row = document.createElement("div");
@@ -3864,6 +3956,7 @@ audio.addEventListener("ended", () => {
   if (radioOn) { radioPlay(radioIdx + 1); return; }
   if (findsPlayingId != null) { findsPlayingId = null; markPlayingRow(); }
 });
+document.getElementById("btnExportAM").onclick = exportFindsToAppleMusic;
 document.getElementById("btnRadio").onclick = () => {
   if (radioOn) { radioStop(); return; }
   radioList = currentFindsList();
