@@ -349,10 +349,13 @@
   .inbox-body { flex: 1; min-width: 0; font-size: 13.5px; }
   .inbox-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .inbox-row .btn-mini { flex: 0 0 auto; padding: 9px 14px; }
-  /* Export-to-Apple-Music: brand red like the per-row Apple buttons (sanctioned zone) */
-  .am-export { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; margin-bottom: 12px; border: 0; border-radius: var(--r-md); background: #fa2d48; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
-  .am-export svg { width: 18px; height: 18px; }
-  .am-export:active { filter: brightness(.85); }
+  /* Export-to-Apple-Music: same quiet chrome as Play all — Apple's mark carries the
+     attribution, so the container doesn't need to shout in brand red. (The small
+     per-row service buttons keep their brand colours; those read as a utility strip,
+     a full-width red slab read as Sift's own primary action, which it isn't.) */
+  .am-export { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; margin: 0 4px 12px; width: calc(100% - 8px); border: 1.5px solid var(--glass-brd); border-radius: var(--r-md); background: var(--card); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .am-export svg { width: 16px; height: 16px; display: block; color: #fa2d48; }
+  .am-export:active { transform: scale(.98); }
   .am-export[disabled] { opacity: .6; pointer-events: none; }
   .friend.pending { opacity: .55; }
   .fdet-actions { display: flex; gap: 8px; margin-top: 10px; }
@@ -753,7 +756,7 @@
       <button class="radio-btn" id="btnRadio" style="display:none;"></button>
       <button class="am-export" id="btnExportAM" style="display:none;">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.7 3.2L8.5 5.4c-.5.1-.8.5-.8 1v9.1c-.5-.2-1-.3-1.6-.2-1.6.2-2.8 1.4-2.8 2.7 0 1.4 1.3 2.3 2.9 2.1 1.6-.2 2.8-1.4 2.8-2.7V9l8.4-1.8v5.5c-.5-.2-1-.3-1.6-.2-1.6.2-2.8 1.4-2.8 2.7 0 1.4 1.3 2.3 2.9 2.1 1.6-.2 2.8-1.4 2.8-2.7V4.2c0-.7-.6-1.2-1.3-1z"/></svg>
-        <span id="amExportLbl">Save my Finds to Apple Music</span>
+        <span id="amExportLbl">Save to Apple Music</span>
       </button>
       <div id="findsList"></div>
     </section>
@@ -2504,10 +2507,11 @@ function warmAppleMusic() {
 async function exportFindsToAppleMusic() {
   const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
   const say = (t) => { lbl.textContent = t; };
+  const IDLE = "Save to Apple Music";
   if (!_mk || !_mkDev) {   // not warm yet — start it and let them tap again in a moment
     say("Getting ready…");
     warmAppleMusic();
-    setTimeout(() => say(_mk ? "Save my Finds to Apple Music — tap again" : "Save my Finds to Apple Music"), 1200);
+    setTimeout(() => say(_mk ? IDLE + " — tap again" : IDLE), 1200);
     return;
   }
   const dev = _mkDev;
@@ -2515,6 +2519,7 @@ async function exportFindsToAppleMusic() {
   try {
     say("Waiting for your OK…");
     const userToken = await _mk.authorize();   // FIRST await — the gesture is still alive
+    const H = { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" };
     // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
     // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
     say("Checking your songs…");
@@ -2525,21 +2530,69 @@ async function exportFindsToAppleMusic() {
         { headers: { Authorization: "Bearer " + dev } });
       if (r.ok) (await r.json()).data.forEach(s => valid.push(s.id));
     }
-    if (!valid.length) { say("Save my Finds to Apple Music"); toast("None of these songs could be matched on Apple Music."); btn.disabled = false; return; }
-    say("Making your playlist…");
-    const resp = await fetch("https://api.music.apple.com/v1/me/library/playlists", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + dev, "Music-User-Token": userToken, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        attributes: { name: "Sift Finds — " + dateStr(), description: "Songs I found on Sift 🎧" },
-        relationships: { tracks: { data: valid.map(id => ({ id, type: "songs" })) } },
-      }),
-    });
-    if (!resp.ok) throw new Error("playlist " + resp.status);
-    say("Save my Finds to Apple Music");
-    toast("Playlist created — " + valid.length + (valid.length === 1 ? " song" : " songs") + " in your Apple Music ✓");
+    if (!valid.length) { say(IDLE); toast("None of these songs could be matched on Apple Music."); btn.disabled = false; return; }
+
+    // ONE living playlist, not a new one per export. Remember the one we made; on
+    // later exports append only what isn't in it yet. If they deleted it (or switched
+    // Apple ID), the fetch 404s and we simply start a fresh one.
+    let store = null;
+    try { store = JSON.parse(localStorage.getItem("sift_amplaylist") || "null"); } catch (_) {}
+    let pid = store && store.id ? store.id : null;
+    let already = new Set((store && store.sent) || []);
+    if (pid) {
+      const chk = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid, { headers: H });
+      if (!chk.ok) { pid = null; already = new Set(); }
+      else {
+        // trust the playlist itself over our local memory — they may have pruned it
+        try {
+          const tr = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid + "/tracks?limit=100", { headers: H });
+          if (tr.ok) {
+            const live = new Set();
+            ((await tr.json()).data || []).forEach(t => {
+              const c = t.attributes && t.attributes.playParams && t.attributes.playParams.catalogId;
+              if (c) live.add(String(c));
+            });
+            if (live.size) already = live;
+          }
+        } catch (_) { /* keep the local memory */ }
+      }
+    }
+    const fresh = valid.filter(id => !already.has(String(id)));
+    const remember = (id, sent) => { try { localStorage.setItem("sift_amplaylist", JSON.stringify({ id, sent })); } catch (_) {} };
+
+    if (pid && !fresh.length) {
+      say(IDLE); toast("Your Sift Finds playlist is already up to date ✓");
+      remember(pid, [...already]);
+      btn.disabled = false; return;
+    }
+    if (pid) {
+      say("Adding to your playlist…");
+      const add = await fetch("https://api.music.apple.com/v1/me/library/playlists/" + pid + "/tracks", {
+        method: "POST", headers: H,
+        body: JSON.stringify({ data: fresh.map(id => ({ id, type: "songs" })) }),
+      });
+      if (!add.ok) throw new Error("append " + add.status);
+      remember(pid, [...already, ...fresh]);
+      say(IDLE);
+      toast("Added " + fresh.length + (fresh.length === 1 ? " song" : " songs") + " to your Sift Finds playlist ✓");
+    } else {
+      say("Making your playlist…");
+      const resp = await fetch("https://api.music.apple.com/v1/me/library/playlists", {
+        method: "POST", headers: H,
+        body: JSON.stringify({
+          attributes: { name: "Sift Finds", description: "Songs I found on Sift 🎧" },
+          relationships: { tracks: { data: valid.map(id => ({ id, type: "songs" })) } },
+        }),
+      });
+      if (!resp.ok) throw new Error("playlist " + resp.status);
+      const made = await resp.json().catch(() => null);
+      const newId = made && made.data && made.data[0] && made.data[0].id;
+      if (newId) remember(newId, valid);
+      say(IDLE);
+      toast("Playlist created — " + valid.length + (valid.length === 1 ? " song" : " songs") + " in your Apple Music ✓");
+    }
   } catch (e) {
-    say("Save my Finds to Apple Music");
+    say(IDLE);
     const m = String((e && e.message) || e);
     if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
