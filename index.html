@@ -2473,7 +2473,7 @@ async function appleDevToken() {
   try { localStorage.setItem("sift_amtoken", JSON.stringify(d)); } catch (_) {}
   return d.token;
 }
-let _mkReady = null;
+let _mkReady = null, _mk = null, _mkDev = null;
 function ensureMusicKit(devToken) {
   if (_mkReady) return _mkReady;
   _mkReady = new Promise((resolve, reject) => {
@@ -2484,23 +2484,37 @@ function ensureMusicKit(devToken) {
     document.addEventListener("musickitloaded", async () => {
       try {
         await MusicKit.configure({ developerToken: devToken, app: { name: "Sift", build: "1.0" } });
-        resolve(MusicKit.getInstance());
+        _mk = MusicKit.getInstance();
+        resolve(_mk);
       } catch (e) { _mkReady = null; reject(e); }
     }, { once: true });
     document.body.appendChild(s);
   });
   return _mkReady;
 }
+// Apple's sign-in opens a popup, and browsers only allow popups opened SYNCHRONOUSLY
+// inside a real tap. Awaiting the token fetch and the MusicKit script first spends the
+// gesture, so the popup was silently blocked and authorize() hung forever. Prepare
+// everything ahead of time — quietly, when the Finds screen opens — so the tap itself
+// can call authorize() as its first act.
+function warmAppleMusic() {
+  if (_mk || !state.liked.length) return;
+  appleDevToken().then(t => { _mkDev = t; return ensureMusicKit(t); }).catch(() => {});
+}
 async function exportFindsToAppleMusic() {
   const btn = document.getElementById("btnExportAM"), lbl = document.getElementById("amExportLbl");
   const say = (t) => { lbl.textContent = t; };
+  if (!_mk || !_mkDev) {   // not warm yet — start it and let them tap again in a moment
+    say("Getting ready…");
+    warmAppleMusic();
+    setTimeout(() => say(_mk ? "Save my Finds to Apple Music — tap again" : "Save my Finds to Apple Music"), 1200);
+    return;
+  }
+  const dev = _mkDev;
   btn.disabled = true;
   try {
-    say("Connecting to Apple Music…");
-    const dev = await appleDevToken();
-    const mk = await ensureMusicKit(dev);
     say("Waiting for your OK…");
-    const userToken = await mk.authorize();   // Apple's own consent sheet
+    const userToken = await _mk.authorize();   // FIRST await — the gesture is still alive
     // Our Finds carry Apple catalog song ids; verify them in batches so one stale id
     // can't sink the whole playlist. (Old Deezer-era ids just fail the check quietly.)
     say("Checking your songs…");
@@ -2529,6 +2543,7 @@ async function exportFindsToAppleMusic() {
     const m = String((e && e.message) || e);
     if (/AUTHORIZATION_ERROR|access denied|cancell?ed/i.test(m)) { /* user closed Apple's sheet — their call */ }
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
+    else if (/popup|blocked|window/i.test(m)) toast("Safari blocked Apple's sign-in window — allow pop-ups for this site, then tap again.");
     else toast("Couldn't reach Apple Music — try again in a moment.");
   }
   btn.disabled = false;
@@ -3784,6 +3799,7 @@ function updateFinds() {
   list.innerHTML = "";
   document.getElementById("btnRadio").style.display = "";
   document.getElementById("btnExportAM").style.display = "flex";
+  warmAppleMusic();   // so the export tap can open Apple's popup inside the gesture
   radioLabel();
   [...shown].reverse().forEach(t => {
     const row = document.createElement("div");
