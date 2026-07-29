@@ -313,6 +313,62 @@
     30% { opacity: 1; }
     70%, 100% { opacity: 0; transform: translateY(-6px) scale(1.15); }
   }
+
+  /* SHEF WALKS THE STOCKROOM — what an empty deck looks like now.
+     An empty deck used to be a 🎧 emoji floating in the middle of the screen: the
+     one moment the app has nothing to show is the one moment it stopped having a
+     character. Now he is out the back, walking the aisle, looking for more.
+     The mascot itself is the lk- drawing verbatim — same parts, only the limbs are
+     rebound to a walk — so the three scenes can quietly stay one character.
+     Everything is wk- namespaced. The rack sits in mid greys and Shef stays paper
+     white: that contrast is the whole depth cue, and it is why he reads as being
+     in front of the shelves rather than painted on them.
+     Deliberately still animated under Reduce Motion, matching the pot scene: a
+     small contained loop that is the entire point of the screen it is on. */
+  /* Hidden, unlike the other two scenes: the third bay exists only to cover the
+     gap mid-scroll and lives off the right edge, so the box has to be a window.
+     Feathered at both ends because a hard rectangle reads as a picture of a
+     stockroom, and a fade reads as an aisle that carries on past the frame. */
+  .shelfscene {
+    width: 178px; height: 105px; overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 13%, #000 87%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 13%, #000 87%, transparent);
+  }
+  .wk-rack   { stroke: #3f3f47; stroke-width: 3; stroke-linecap: round; fill: none; }
+  .wk-item   { fill: #5c5c68; }
+  .wk-sleeve { stroke: #5c5c68; stroke-width: 5; stroke-linecap: butt; fill: none; }
+  .wk-floor  { stroke: #3f3f47; stroke-width: 2.4; stroke-linecap: round; fill: none; }
+  .wk-tick   { stroke: #35353d; stroke-width: 2.4; stroke-linecap: round; fill: none; }
+  /* ink disc, light label — the way round a record actually is */
+  .wk-disc-o { fill: #121216; stroke: #5c5c68; stroke-width: 2; }
+  .wk-disc-l { fill: #5c5c68; }
+  /* ---- the beat: one stride is 1.1s, and the aisle is paced to match it ---- */
+  .wk-scroll { animation: wkScroll 3.3s linear infinite; }
+  .wk-bob    { animation: wkBob 1.1s ease-in-out infinite; transform-origin: 60px 102px; }
+  .wk-legL   { animation: wkStep 1.1s ease-in-out infinite; transform-origin: 51px 90px; }
+  .wk-legR   { animation: wkStep 1.1s ease-in-out infinite; transform-origin: 69px 90px; animation-delay: -.55s; }
+  .wk-armL   { animation: wkSwingA 1.1s ease-in-out infinite; transform-origin: 41px 57px; }
+  .wk-armR   { animation: wkSwingB 1.1s ease-in-out infinite; transform-origin: 79px 57px; }
+  .wk-eOpen  { animation: wkEOpen 3.3s steps(1) infinite; }
+  .wk-eBlink { animation: wkEBlink 3.3s steps(1) infinite; }
+  /* exactly one bay-width, so the reset frame and the first frame are the same picture */
+  @keyframes wkScroll { from { transform: translateX(0); } to { transform: translateX(-85px); } }
+  /* two dips per stride — the body rises on the push and drops on the plant */
+  @keyframes wkBob {
+    0%, 50%, 100% { transform: translateY(0); }
+    25%, 75% { transform: translateY(-1.8px); }
+  }
+  /* one foot picks up and sets down; the other runs the same curve half a beat later */
+  @keyframes wkStep {
+    0% { transform: rotate(0deg) translateY(0); }
+    22% { transform: rotate(-15deg) translateY(-2.5px); }
+    48%, 100% { transform: rotate(0deg) translateY(0); }
+  }
+  @keyframes wkSwingA { 0%, 100% { transform: rotate(11deg); } 50% { transform: rotate(-11deg); } }
+  @keyframes wkSwingB { 0%, 100% { transform: rotate(-11deg); } 50% { transform: rotate(11deg); } }
+  @keyframes wkEOpen  { 0%, 82% { opacity: 1; } 83%, 87% { opacity: 0; } 88%, 100% { opacity: 1; } }
+  @keyframes wkEBlink { 0%, 82% { opacity: 0; } 83%, 87% { opacity: 1; } 88%, 100% { opacity: 0; } }
+
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
@@ -1022,6 +1078,79 @@
         </div>
       </div>
     </section>
+
+    <!-- Shef walks the stockroom — the empty-deck scene. Kept in a template rather
+         than a string inside renderEmpty() so the drawing lives next to the other
+         two scenes, and outside #deck because rendering a card wipes that element. -->
+    <template id="shelfScene">
+      <svg class="shelfscene" viewBox="0 20 170 100" aria-hidden="true">
+        <defs>
+          <!-- One bay of shelving, drawn once and used three times. Goods first,
+               frame second: the shelf lip has to cross in FRONT of what's on it,
+               or everything looks stuck to the outside of the rack. -->
+          <g id="wkBay">
+            <path class="wk-sleeve" d="M6 52 L6 34 M12 52 L12 31 M18 52 L18 36" />
+            <circle class="wk-disc-o" cx="32" cy="44" r="8" />
+            <circle class="wk-disc-l" cx="32" cy="44" r="2.6" />
+            <path class="wk-sleeve" d="M48 52 L48 33 M54 52 L54 36 M60 52 L60 32" />
+            <rect class="wk-item" x="70" y="36" width="12" height="16" rx="2.5" />
+
+            <rect class="wk-item" x="5" y="64" width="20" height="16" rx="3" />
+            <path class="wk-sleeve" d="M34 80 L34 60 M40 80 L40 57 M46 80 L46 62 M52 80 L52 58" />
+            <circle class="wk-disc-o" cx="68" cy="71" r="8" />
+            <circle class="wk-disc-l" cx="68" cy="71" r="2.6" />
+
+            <rect class="wk-item" x="4" y="92" width="24" height="16" rx="2.5" />
+            <circle class="wk-disc-o" cx="42" cy="98" r="9" />
+            <circle class="wk-disc-l" cx="42" cy="98" r="3" />
+            <path class="wk-sleeve" d="M58 108 L58 88 M64 108 L64 85 M70 108 L70 90 M76 108 L76 86" />
+
+            <path class="wk-rack" d="M0 26 L0 108 M42.5 26 L42.5 108 M0 26 H85 M0 52 H85 M0 80 H85 M0 108 H85" />
+            <!-- the ground moves too, or his feet look like they're skating -->
+            <path class="wk-tick" d="M9 116 h11 M39 116 h11 M69 116 h11" />
+          </g>
+        </defs>
+
+        <!-- Three bays sliding exactly one bay's width: the moment the loop resets
+             is the moment the picture is identical, so there's no seam to see. -->
+        <g class="wk-scroll">
+          <use href="#wkBay" x="0" />
+          <use href="#wkBay" x="85" />
+          <use href="#wkBay" x="170" />
+        </g>
+        <path class="wk-floor" d="M0 116 H170" />
+
+        <!-- SHEF — his own 120-space, placed with a translate, and reusing the pot
+             scene's lk- parts outright so the drawings can't drift apart. Facing us
+             rather than in profile: his face is the character, and a front-on walk
+             past a side-scrolling background is a convention everyone already reads. -->
+        <g transform="translate(25 16)">
+          <g class="wk-bob">
+            <g class="wk-armL"><path class="lk-sg-limb" d="M41 57 q-10 5 -12 13" /></g>
+            <g class="wk-armR"><path class="lk-sg-limb" d="M79 57 q10 5 12 13" /></g>
+            <g class="wk-legL"><path class="lk-sg-limb" d="M51 90 q-6 6 -13 7" /></g>
+            <g class="wk-legR"><path class="lk-sg-limb" d="M69 90 q6 6 13 7" /></g>
+            <path class="lk-sg-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+            <path class="lk-sg-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+            <g transform="rotate(-8 60 22)">
+              <path class="lk-sg-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+              <path class="lk-sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+              <path class="lk-sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+            </g>
+            <g class="wk-eOpen">
+              <circle class="lk-sg-eye" cx="50" cy="47" r="3.2" />
+              <circle class="lk-sg-eye" cx="68" cy="47" r="3.2" />
+            </g>
+            <g class="wk-eBlink">
+              <path class="lk-sg-lash" d="M46.6 47.6 q3.4 -3.4 6.8 0" />
+              <path class="lk-sg-lash" d="M64.6 47.6 q3.4 -3.4 6.8 0" />
+            </g>
+            <path class="lk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+            <path class="lk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
+          </g>
+        </g>
+      </svg>
+    </template>
 
     <!-- FINDS -->
     <section class="screen" id="finds">
@@ -3473,17 +3602,38 @@ function tintFromCover(url) { /* Ink theme keeps fixed monochrome accents — no
 // bad minute of network. Now: retry, and each failed round reopens more of the graph
 // ("exhausted" and even "topPulled" are session judgments, not facts — knownIds still
 // dedupes, so re-pulling a catalogue can only surface songs the user hasn't seen).
-let emptyRetries = 0;
+let emptyRetries = 0, emptyTimer = 0;
+// Both empty states show Shef out the back walking the stockroom rather than a
+// headphone emoji — he's doing the thing the line underneath says he's doing.
+// Cloned from the template each time because innerHTML below throws the previous
+// copy away.
+function shelfScene() {
+  const t = document.getElementById("shelfScene");
+  return t ? t.innerHTML : "";
+}
 function renderEmpty() {
-  deck.innerHTML = '<div class="empty"><div style="font-size:40px">🎧</div><div>Digging deeper for you…</div></div>';
+  // Any retry already queued belongs to the round we're replacing. Left running,
+  // every tap of Dig now would stack another timer on top of the last one.
+  clearTimeout(emptyTimer);
+  deck.innerHTML = '<div class="empty">' + shelfScene() + '<div>Digging deeper for you…</div></div>';
   refill().then(() => {
     if (state.queue.length) { emptyRetries = 0; next(); return; }
     emptyRetries++;
     if (emptyRetries >= 2) Object.values(state.artists).forEach(a => { a.exhausted = false; });
     if (emptyRetries >= 3) Object.values(state.artists).forEach(a => { a.topPulled = false; });
-    deck.innerHTML = '<div class="empty" id="deckRetry"><div style="font-size:40px">🎧</div><div>Restocking the crates…</div><div style="opacity:.65;font-size:13px;margin-top:8px">Retrying in a moment — or tap to dig now.</div></div>';
-    document.getElementById("deckRetry").onclick = () => renderEmpty();
-    setTimeout(() => { if (document.getElementById("deckRetry") && !state.queue.length) renderEmpty(); }, 9000);
+    // A real button, not a tappable block. The line used to say "tap to dig now"
+    // with the whole panel wired to a click and nothing on screen that looked
+    // pressable — so the one person who ever reached this state had no way to know.
+    // Ghost, not filled: waiting works too, so this is the escape hatch, not the act.
+    deck.innerHTML = '<div class="empty" id="deckRetry">' + shelfScene() +
+      '<div>Restocking the crates…</div>' +
+      '<div style="opacity:.6;font-size:12.5px;margin-top:-6px">Trying again on its own in a moment.</div>' +
+      // The shared ghost border is 8% white, which is right beside a filled button
+      // and invisible alone on a dark empty screen. Lifted just enough here to read
+      // as an edge, which is the entire job this button has.
+      '<button class="btn-mini ghost" id="deckDig" style="flex:0 0 auto;padding:11px 24px;border-color:rgba(255,255,255,.26);">Dig now</button></div>';
+    document.getElementById("deckDig").onclick = () => renderEmpty();
+    emptyTimer = setTimeout(() => { if (document.getElementById("deckRetry") && !state.queue.length) renderEmpty(); }, 9000);
   });
 }
 function esc(s) { return (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
