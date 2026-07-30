@@ -369,6 +369,137 @@
   @keyframes wkEOpen  { 0%, 82% { opacity: 1; } 83%, 87% { opacity: 0; } 88%, 100% { opacity: 1; } }
   @keyframes wkEBlink { 0%, 82% { opacity: 0; } 83%, 87% { opacity: 1; } 88%, 100% { opacity: 0; } }
 
+  /* SHEF DIGS — the other empty-deck scene, and the one with time to be watched.
+     The stockroom walk is what "still looking" looks like. This is what "we looked
+     and came up with nothing" looks like, and it sits directly above the Dig now
+     button, which is now doing the same thing he is.
+     The gag has to survive being 244px wide, so it is built out of one idea: he
+     sinks out of sight, and everything that comes back up is treasure he has no use
+     for. Rejecting a crown is funny in a way that rejecting an old boot is not —
+     the joke is that even the good stuff is the wrong stuff, because what he is down
+     there for is a song. The last line says so, for anyone who arrived late.
+     dg- namespaced. Shef is the lk- drawing again with the limbs rebound to a swing,
+     so all four scenes stay one character. Gold appears here and nowhere else in the
+     app: value reads through colour, and the moustache already set the precedent
+     that one drawing may carry one deliberate hue.
+     The descent runs ONCE and holds; only the tossing loops. A dig that restarted
+     every cycle would say he never got anywhere, which is the opposite of what the
+     line underneath is claiming. Still animated under Reduce Motion, like the other
+     scenes: a small contained loop that is the entire point of the screen it is on. */
+  .digscene { width: 100%; max-width: 258px; height: auto; overflow: visible; }
+  /* The hole is ONE ellipse, stroked, with its own dark inside. Drawn as two arcs
+     that meet — a far lip curving up and a near lip curving down — it came out an
+     almond, and an almond on a face-height drawing reads as an eye. The near half of
+     that same ellipse is what clips him, so lip and cut are guaranteed to agree. */
+  .dg-void    { fill: #08080a; stroke: #5c5c68; stroke-width: 2.6; }
+  .dg-rim     { stroke: #5c5c68; stroke-width: 2.6; stroke-linecap: round; fill: none; }
+  .dg-line    { stroke: #43434c; stroke-width: 2.4; stroke-linecap: round; fill: none; }
+  .dg-hatch   { stroke: #2f2f38; stroke-width: 2.2; stroke-linecap: round; fill: none; }
+  .dg-mound   { fill: #33333c; stroke: #55555f; stroke-width: 1.8; }
+  .dg-mound-h { stroke: #6a6a74; stroke-width: 1.6; stroke-linecap: round; fill: none; }
+  .dg-clod    { fill: #5c5c68; }
+  /* Dust has to start ABOVE the rim and be light enough to read against the shaft.
+     Drawn inside the hole in earth grey it looked like something lumpy lying at the
+     bottom — which on a scene whose whole job is "he went down there" is the one
+     wrong idea it could possibly plant. */
+  .dg-puff    { stroke: #5c5c68; stroke-width: 2.2; stroke-linecap: round; fill: none; opacity: 0; }
+  /* ink fill, paper stroke — the same way round as the records in the stockroom */
+  .dg-tr-o    { fill: #121216; stroke: #f4f4f5; stroke-width: 2.2; stroke-linejoin: round; }
+  .dg-tr-l    { stroke: #f4f4f5; stroke-width: 1.4; stroke-linecap: round; fill: none; opacity: .8; }
+  /* A filled four-point star, not two crossed strokes. Strokes made a plus sign, and
+     a plus sign riding a group that spins 345 degrees spends most of the flight as a
+     multiplication sign sitting next to the thing it is meant to be praising. */
+  .dg-spark   { fill: #e8c26a; stroke: none; }
+  .dg-haft    { stroke: #f4f4f5; stroke-width: 4; stroke-linecap: round; fill: none; }
+  .dg-blade   { fill: #f4f4f5; }
+  .dg-bub     { fill: #16161b; stroke: #f4f4f5; stroke-width: 2; }
+  /* inherits the app's own font stack — the bubble is the one place a scene talks */
+  .dg-say-t   { fill: #f4f4f5; font-size: 11.5px; font-weight: 650; letter-spacing: -.01em; }
+  /* ---- the dig: three strokes over three seconds, once, and he is gone ---- */
+  .dg-shef  { animation: dgSink 3s cubic-bezier(.45,.05,.55,1) forwards; }
+  .dg-spade { animation: dgSwing 1s ease-in-out 3 forwards; transform-origin: 91px 70px; }
+  .dg-armR  { animation: dgArm 1s ease-in-out 3 forwards; transform-origin: 79px 57px; }
+  .dg-armL  { animation: dgArmL 1s ease-in-out 3 forwards; transform-origin: 41px 57px; }
+  .dg-lean  { animation: dgLean 1s ease-in-out 3 forwards; transform-origin: 60px 92px; }
+  /* earth leaves the hole on the same frame the blade lands, not near it */
+  .dg-clod1 { animation: dgClod .75s ease-out .58s forwards; opacity: 0; }
+  .dg-clod2 { animation: dgClod .75s ease-out 1.58s forwards; opacity: 0; }
+  .dg-clod3 { animation: dgClod .75s ease-out 2.58s forwards; opacity: 0; }
+  /* ---- the tossing: an eight second round, one find every two, starting the
+     moment the last of his hat goes under ---- */
+  /* Arc and spin are two animations on two nested groups on purpose. Rolled into one
+     transform, everything in the group span-spins — including the sparkles, which
+     then read as crossed-out rather than glinting. The find turns; its glints don't. */
+  .dg-fly  { opacity: 0; animation: dgFly 8s linear infinite; }
+  .dg-spin { animation: dgSpin 8s linear infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+  .dg-say  { opacity: 0; animation: dgSay 8s ease-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+  .dg-t1, .dg-t1 .dg-spin, .dg-s1 { animation-delay: 3.2s; }
+  .dg-t2, .dg-t2 .dg-spin, .dg-s2 { animation-delay: 5.2s; }
+  .dg-t3, .dg-t3 .dg-spin, .dg-s3 { animation-delay: 7.2s; }
+  .dg-t4, .dg-t4 .dg-spin, .dg-s4 { animation-delay: 9.2s; }
+  /* he is still working between finds, and the hole has to show it or the scene
+     goes dead for a second and a half at a time */
+  .dg-pf1 { animation: dgPuff 8s ease-out 4.1s infinite; }
+  .dg-pf2 { animation: dgPuff 8s ease-out 6.3s infinite; }
+  /* far enough that the top of the toque clears the near lip — stopping short
+     leaves a white crescent sitting in the dirt */
+  @keyframes dgSink {
+    0%   { transform: translateY(0); }
+    16%  { transform: translateY(5px); }
+    38%  { transform: translateY(29px); }
+    60%  { transform: translateY(57px); }
+    82%  { transform: translateY(85px); }
+    100% { transform: translateY(110px); }
+  }
+  /* Up slow, down fast, with a small rebound where the blade bites. It stops at 16
+     rather than driving all the way through: past that the whole blade is under the
+     lip and the frame just shows a chef holding a stick. */
+  @keyframes dgSwing {
+    0%   { transform: rotate(0deg); }
+    32%  { transform: rotate(-58deg); }
+    55%  { transform: rotate(16deg); }
+    68%  { transform: rotate(9deg); }
+    100% { transform: rotate(0deg); }
+  }
+  @keyframes dgArm  { 0%, 100% { transform: rotate(0deg); } 32% { transform: rotate(-22deg); } 55% { transform: rotate(12deg); } }
+  @keyframes dgArmL { 0%, 100% { transform: rotate(0deg); } 32% { transform: rotate(16deg); } 55% { transform: rotate(-8deg); } }
+  @keyframes dgLean { 0%, 100% { transform: rotate(0deg); } 32% { transform: rotate(-4deg); } 58% { transform: rotate(5deg); } }
+  @keyframes dgClod {
+    0%   { opacity: 0; transform: translate(0, 0) scale(.7); }
+    12%  { opacity: 1; }
+    60%  { transform: translate(30px, -26px) scale(1); }
+    100% { opacity: 0; transform: translate(52px, 4px) scale(.9); }
+  }
+  /* One arc, thrown up and to the right, spinning as it goes. It fades in mid-air
+     at the frame edge rather than falling: a find that landed would still be lying
+     there next round, and the pile would be the story instead of the hole. */
+  @keyframes dgFly {
+    0%    { opacity: 0; transform: translate(0, 0); }
+    1.5%  { opacity: 1; transform: translate(3px, -10px); }
+    4%    { transform: translate(20px, -42px); }
+    6.5%  { transform: translate(40px, -62px); }
+    9%    { transform: translate(60px, -70px); }
+    11%   { opacity: 1; transform: translate(76px, -64px); }
+    13%   { opacity: 0; transform: translate(92px, -50px); }
+    100%  { opacity: 0; transform: translate(92px, -50px); }
+  }
+  @keyframes dgSpin { 0% { transform: rotate(0deg); } 13%, 100% { transform: rotate(345deg); } }
+  /* He speaks on the follow-through, not during the throw. Overlapping the two put
+     the find in flight straight across the balloon — and a man who has already
+     dismissed the thing before it has left his hand is throwing, not judging.
+     Closed before the next find starts at 25%, so two rounds never share the frame. */
+  @keyframes dgSay {
+    0%, 11%   { opacity: 0; transform: translateY(5px) scale(.92); }
+    14%       { opacity: 1; transform: translateY(0) scale(1); }
+    21%       { opacity: 1; transform: translateY(0) scale(1); }
+    24%, 100% { opacity: 0; transform: translateY(-3px) scale(.97); }
+  }
+  @keyframes dgPuff {
+    0%        { opacity: 0; transform: translateY(0) scale(.8); }
+    4%        { opacity: .75; }
+    15%, 100% { opacity: 0; transform: translateY(-22px) scale(1.35); }
+  }
+
   .radar-status { font-size: 14px; transition: opacity .18s ease; min-height: 20px; text-align: center; max-width: 86%; }
   .radar-status.fading { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .radar-status { transition: none; } }
@@ -1148,6 +1279,199 @@
             <path class="lk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
             <path class="lk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
           </g>
+        </g>
+      </svg>
+    </template>
+
+    <!-- Shef digs — the empty-deck scene for the state that stays on screen. Same
+         reasons as the one above: it lives in a template so the drawing sits beside
+         its siblings, and outside #deck because rendering a card wipes that element. -->
+    <template id="digScene">
+      <svg class="digscene" viewBox="0 0 210 178" aria-hidden="true">
+        <defs>
+          <!-- Everything above the NEAR half of the hole ellipse, traced with the
+               same rx/ry as the ellipse itself. Clipping Shef to this is what puts
+               him IN the hole rather than behind it: the lip crosses him on a curve,
+               the way an edge you are standing down inside actually does. A straight
+               cut at ground level reads as a man sawn in half. -->
+          <clipPath id="dgAbove">
+            <path d="M0 0 H210 V130 H136 A36 10 0 0 1 64 130 H0 Z" />
+          </clipPath>
+          <!-- Soil fades out downwards, and the whole band fades out sideways. Drawn
+               as a plain filled box it was a grey rectangle sitting in the panel with
+               three visible edges — a picture OF ground rather than ground that runs
+               past the frame. Same lesson as the feathered stockroom aisle. -->
+          <linearGradient id="dgSoil" x1="0" y1="130" x2="0" y2="178" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#1c1c22" />
+            <stop offset=".55" stop-color="#16161b" />
+            <stop offset="1" stop-color="#0d0d10" stop-opacity="0" />
+          </linearGradient>
+          <linearGradient id="dgSideFade" x1="0" y1="0" x2="210" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#000" />
+            <stop offset=".15" stop-color="#fff" />
+            <stop offset=".85" stop-color="#fff" />
+            <stop offset="1" stop-color="#000" />
+          </linearGradient>
+          <mask id="dgSides"><rect x="0" y="126" width="210" height="52" fill="url(#dgSideFade)" /></mask>
+          <!-- The shaft, lit down its far wall. A flat black fill made the hole read
+               as a ring lying ON the ground; a lighter top edge inside the same
+               outline is what turns the ring into an opening. -->
+          <linearGradient id="dgShaft" x1="0" y1="120" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#20202a" />
+            <stop offset=".45" stop-color="#0c0c10" />
+            <stop offset="1" stop-color="#08080a" />
+          </linearGradient>
+          <!-- one glint, used eight times -->
+          <path id="dgStar" d="M0 -7 Q1.1 -1.1 7 0 Q1.1 1.1 0 7 Q-1.1 1.1 -7 0 Q-1.1 -1.1 0 -7 Z" />
+        </defs>
+
+        <!-- the ground in cross-section: earth below, air above, and the horizon
+             carrying on out of frame in both directions -->
+        <g mask="url(#dgSides)">
+          <rect x="0" y="130" width="210" height="48" fill="url(#dgSoil)" />
+          <path class="dg-hatch" d="M12 136 v6 M30 139 v4 M48 135 v7 M62 140 v3 M150 137 v6 M168 135 v7 M186 139 v4 M202 136 v6" />
+          <path class="dg-line" d="M0 130 H64 M136 130 H210" />
+        </g>
+
+        <!-- the hole: one ellipse, and its top edge is the far lip -->
+        <ellipse class="dg-void" cx="100" cy="130" rx="36" ry="10" fill="url(#dgShaft)" />
+
+        <g clip-path="url(#dgAbove)">
+          <!-- SHEF, in his own 120-space again and at full size, reusing the pot
+               scene's lk- parts outright. No scale on the way in: every pivot in here
+               is an absolute offset in that space, and scaling the group underneath
+               them is how a shoulder joint quietly stops being on the shoulder. -->
+          <g transform="translate(40 31)">
+            <g class="dg-shef">
+              <g class="dg-lean">
+                <!-- The spade before the arm, so his hand lands on the haft. Long
+                     haft, small blade set on the haft's own axis: the first pass had
+                     a big axis-aligned paddle on a stub handle and it read as a flag. -->
+                <g class="dg-spade">
+                  <path class="dg-haft" d="M91 70 L114 91" />
+                  <!-- The blade is drawn straight down and then turned onto the haft's
+                       axis, which is the only way I could get a spade silhouette to
+                       come out right: authored on the diagonal it kept landing as a
+                       mallet head. Shoulders square, tip rounded. -->
+                  <g transform="rotate(-47.6 114 91)">
+                    <path class="dg-blade" d="M107 86 H121 V98 Q121 104 114 107 Q107 104 107 98 Z" />
+                  </g>
+                </g>
+                <g class="dg-armR"><path class="lk-sg-limb" d="M79 57 q8 6 12 13" /></g>
+                <g class="dg-armL"><path class="lk-sg-limb" d="M41 57 q-9 6 -11 14" /></g>
+                <!-- Standing, not walking: the walk scene's legs are mid-stride and
+                     splay, which on a man in a hole reads as him doing the splits. -->
+                <path class="lk-sg-limb" d="M52 90 q-3 6 -5 9" />
+                <path class="lk-sg-limb" d="M68 90 q3 6 5 9" />
+                <path class="lk-sg-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+                <path class="lk-sg-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+                <g transform="rotate(-8 60 22)">
+                  <path class="lk-sg-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+                  <path class="lk-sg-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+                  <path class="lk-sg-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+                </g>
+                <g class="lk-eOpen">
+                  <circle class="lk-sg-eye" cx="50" cy="47" r="3.2" />
+                  <circle class="lk-sg-eye" cx="68" cy="47" r="3.2" />
+                </g>
+                <g class="lk-eBlink">
+                  <path class="lk-sg-lash" d="M46.6 47.6 q3.4 -3.4 6.8 0" />
+                  <path class="lk-sg-lash" d="M64.6 47.6 q3.4 -3.4 6.8 0" />
+                </g>
+                <path class="lk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+                <path class="lk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
+              </g>
+            </g>
+          </g>
+        </g>
+
+        <!-- near lip over the top of him, and the earth he has already moved -->
+        <path class="dg-rim" d="M136 130 A36 10 0 0 1 64 130" />
+        <path class="dg-mound" d="M136 130 q5 -15 18 -17 q13 -2 19 8 q4 6 13 9 z" />
+        <path class="dg-mound-h" d="M148 124 l5 -4 M165 121 l6 -3" />
+
+        <!-- earth thrown clear on each of the three strikes -->
+        <g transform="translate(124 126)">
+          <g class="dg-clod1"><circle class="dg-clod" r="3.6" /><circle class="dg-clod" cx="7" cy="3" r="2.4" /><circle class="dg-clod" cx="1" cy="7" r="1.8" /></g>
+        </g>
+        <g transform="translate(120 127)">
+          <g class="dg-clod2"><circle class="dg-clod" r="3.2" /><circle class="dg-clod" cx="6" cy="4" r="2.2" /><circle class="dg-clod" cx="-4" cy="5" r="1.7" /></g>
+        </g>
+        <g transform="translate(126 126)">
+          <g class="dg-clod3"><circle class="dg-clod" r="3.4" /><circle class="dg-clod" cx="-5" cy="3" r="2.2" /><circle class="dg-clod" cx="4" cy="6" r="1.8" /></g>
+        </g>
+
+        <!-- proof of life between finds -->
+        <path class="dg-puff dg-pf1" d="M80 117 q4 -5 9 -2 q5 -4 8 2" />
+        <path class="dg-puff dg-pf2" d="M108 115 q4 -5 9 -2 q5 -4 8 2" />
+
+        <!-- THE FINDS. Four things anyone would be delighted to dig up, which is the
+             whole point: he isn't. Each one is ink-filled and paper-stroked like the
+             records in the stockroom, and the only colour in the scene is the two or
+             three gold ticks that say "this was worth something". -->
+        <g transform="translate(118 124)">
+          <g class="dg-fly dg-t1">
+            <!-- A brilliant cut: flat table, angled shoulders, girdle, point. Drawn
+                 as a plain rhombus with a cross of facet lines through it, it came
+                 out a crumpled envelope. -->
+            <g class="dg-spin">
+              <path class="dg-tr-o" d="M-12 -6 L-7 -12 L7 -12 L12 -6 L0 12 Z" />
+              <path class="dg-tr-l" d="M-12 -6 H12 M-7 -12 L-4 -6 M7 -12 L4 -6 M-4 -6 L0 12 M4 -6 L0 12" />
+            </g>
+            <use class="dg-spark" href="#dgStar" transform="translate(21 -15) scale(.85)" />
+            <use class="dg-spark" href="#dgStar" transform="translate(-19 -11) scale(.6)" />
+          </g>
+        </g>
+        <g transform="translate(118 124)">
+          <g class="dg-fly dg-t2">
+            <g class="dg-spin">
+              <path class="dg-tr-o" d="M-14 -4 L-10 -11 L10 -11 L14 -4 L11 7 L-11 7 Z" />
+              <path class="dg-tr-l" d="M-14 -4 H14 M-8 0 H8 M-8 3.5 H8" />
+            </g>
+            <use class="dg-spark" href="#dgStar" transform="translate(22 -13) scale(.8)" />
+            <use class="dg-spark" href="#dgStar" transform="translate(-20 5) scale(.55)" />
+          </g>
+        </g>
+        <g transform="translate(118 124)">
+          <g class="dg-fly dg-t3">
+            <g class="dg-spin">
+              <path class="dg-tr-o" d="M-14 8 L-14 -9 L-7 -1 L0 -11 L7 -1 L14 -9 L14 8 Z" />
+              <path class="dg-tr-l" d="M-14 3 H14" />
+            </g>
+            <use class="dg-spark" href="#dgStar" transform="translate(22 -13) scale(.85)" />
+            <use class="dg-spark" href="#dgStar" transform="translate(-21 -9) scale(.6)" />
+          </g>
+        </g>
+        <g transform="translate(118 124)">
+          <g class="dg-fly dg-t4">
+            <g class="dg-spin">
+              <circle class="dg-tr-o" cx="0" cy="4" r="9" fill="none" />
+              <path class="dg-tr-o" d="M0 -16 L6 -9 L0 -3 L-6 -9 Z" />
+            </g>
+            <use class="dg-spark" href="#dgStar" transform="translate(19 -14) scale(.8)" />
+            <use class="dg-spark" href="#dgStar" transform="translate(-18 6) scale(.55)" />
+          </g>
+        </g>
+
+        <!-- What he has to say about them. One path for balloon and tail together,
+             because two shapes butted against each other leave a seam across the
+             join and a speech bubble is a single outline or it is a sticker. -->
+        <g class="dg-say dg-s1">
+          <path class="dg-bub" d="M17 58 H125 A9 9 0 0 1 134 67 V81 A9 9 0 0 1 125 90 H108 L94 108 L88 90 H17 A9 9 0 0 1 8 81 V67 A9 9 0 0 1 17 58 Z" />
+          <text class="dg-say-t" x="71" y="78.4" text-anchor="middle">That ain’t it.</text>
+        </g>
+        <g class="dg-say dg-s2">
+          <path class="dg-bub" d="M17 58 H125 A9 9 0 0 1 134 67 V81 A9 9 0 0 1 125 90 H108 L94 108 L88 90 H17 A9 9 0 0 1 8 81 V67 A9 9 0 0 1 17 58 Z" />
+          <text class="dg-say-t" x="71" y="78.4" text-anchor="middle">Nope.</text>
+        </g>
+        <g class="dg-say dg-s3">
+          <path class="dg-bub" d="M17 58 H125 A9 9 0 0 1 134 67 V81 A9 9 0 0 1 125 90 H108 L94 108 L88 90 H17 A9 9 0 0 1 8 81 V67 A9 9 0 0 1 17 58 Z" />
+          <text class="dg-say-t" x="71" y="78.4" text-anchor="middle">Not what I want.</text>
+        </g>
+        <!-- the one that says the quiet part, for anyone who joined late -->
+        <g class="dg-say dg-s4">
+          <path class="dg-bub" d="M17 58 H125 A9 9 0 0 1 134 67 V81 A9 9 0 0 1 125 90 H108 L94 108 L88 90 H17 A9 9 0 0 1 8 81 V67 A9 9 0 0 1 17 58 Z" />
+          <text class="dg-say-t" x="71" y="78.4" text-anchor="middle">I’m after a song.</text>
         </g>
       </svg>
     </template>
@@ -3603,19 +3927,22 @@ function tintFromCover(url) { /* Ink theme keeps fixed monochrome accents — no
 // ("exhausted" and even "topPulled" are session judgments, not facts — knownIds still
 // dedupes, so re-pulling a catalogue can only surface songs the user hasn't seen).
 let emptyRetries = 0, emptyTimer = 0;
-// Both empty states show Shef out the back walking the stockroom rather than a
-// headphone emoji — he's doing the thing the line underneath says he's doing.
-// Cloned from the template each time because innerHTML below throws the previous
+// Neither empty state is a headphone emoji any more — Shef is doing the thing the
+// line underneath says he's doing. Two states, so two scenes, and which goes where
+// is decided by how long each one survives rather than by which drawing is nicer.
+// Cloned out of the template each time because innerHTML below throws the previous
 // copy away.
-function shelfScene() {
-  const t = document.getElementById("shelfScene");
+function scene(id) {
+  const t = document.getElementById(id);
   return t ? t.innerHTML : "";
 }
 function renderEmpty() {
   // Any retry already queued belongs to the round we're replacing. Left running,
   // every tap of Dig now would stack another timer on top of the last one.
   clearTimeout(emptyTimer);
-  deck.innerHTML = '<div class="empty">' + shelfScene() + '<div>Digging deeper for you…</div></div>';
+  // Still looking. This can be over in half a second, so it gets the walk: a 3.3s
+  // loop that reads the same whichever frame you happen to arrive on.
+  deck.innerHTML = '<div class="empty">' + scene("shelfScene") + '<div>Checking the crates…</div></div>';
   refill().then(() => {
     if (state.queue.length) { emptyRetries = 0; next(); return; }
     emptyRetries++;
@@ -3625,8 +3952,12 @@ function renderEmpty() {
     // with the whole panel wired to a click and nothing on screen that looked
     // pressable — so the one person who ever reached this state had no way to know.
     // Ghost, not filled: waiting works too, so this is the escape hatch, not the act.
-    deck.innerHTML = '<div class="empty" id="deckRetry">' + shelfScene() +
-      '<div>Restocking the crates…</div>' +
+    // Came up empty, and this state holds for nine seconds — the only place on the
+    // whole screen with time for a scene that has a beginning and an end, which is
+    // why the dig lives here and not on the flash above. It also has him doing
+    // precisely what the button underneath offers to do.
+    deck.innerHTML = '<div class="empty" id="deckRetry">' + scene("digScene") +
+      '<div>Nothing up top — digging deeper…</div>' +
       '<div style="opacity:.6;font-size:12.5px;margin-top:-6px">Trying again on its own in a moment.</div>' +
       // The shared ghost border is 8% white, which is right beside a filled button
       // and invisible alone on a dark empty screen. Lifted just enough here to read
