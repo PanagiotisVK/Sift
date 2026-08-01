@@ -1886,6 +1886,49 @@
    artwork, store links) via JSONP. No server, no login, no key.
    ============================================================ */
 
+/* ---------- Uncaught errors ----------
+   The paths that matter below have their own try/catch, but nothing was catching what
+   escaped them. Inside the iOS wrapper there is no console to open and no way for a
+   tester to read a stack, so an uncaught error produced exactly nothing: no message on
+   screen, no record, nothing anyone could report back beyond "it broke." That is not a
+   theory — it is why the one error the owner hit could never be identified.
+   This block runs before any app code, so a throw during boot is covered too.
+   Nothing leaves the phone: no network, no account, last ten only. */
+const ERR_KEY = "sift_errors";
+let _lastErrShown = 0;
+function noteError(kind, msg, where) {
+  // Chrome hands window.onerror a message already prefixed "Uncaught Error:", which
+  // eats a third of the room in a toast and tells a tester nothing. Keep the sentence.
+  const short = String((msg && msg.message) || msg || "unknown")
+    .replace(/^Uncaught (Error: )?/, "").slice(0, 300);
+  try {
+    const log = JSON.parse(localStorage.getItem(ERR_KEY) || "[]");
+    log.push({ kind, msg: short, where: where || "", at: new Date().toISOString() });
+    localStorage.setItem(ERR_KEY, JSON.stringify(log.slice(-10)));   // ring buffer, never grows
+  } catch (_) {}
+  try { console.error("[sift]", kind, short, where || ""); } catch (_) {}
+  // One toast, not a stream. Something throwing on every frame would otherwise bury the
+  // screen, and the second message tells them nothing the first one didn't.
+  if (Date.now() - _lastErrShown < 8000) return;
+  _lastErrShown = Date.now();
+  // The detail is shown, not hidden. During a beta a screenshot of "(Failed to fetch)"
+  // is the whole difference between a fixable report and "it did something weird."
+  try { if (typeof toast === "function") toast("Something went wrong. (" + short.slice(0, 50) + ")"); } catch (_) {}
+}
+window.addEventListener("error", (e) => {
+  noteError("error", (e && e.message) || "script error",
+            e && e.filename ? e.filename.split("/").pop() + ":" + e.lineno : "");
+});
+// The common shape here. Every await in this file sits inside an async function, so a
+// missing catch surfaces as a rejected promise nobody handled and nowhere else.
+window.addEventListener("unhandledrejection", (e) => {
+  noteError("promise", (e && e.reason) || "unhandled rejection", "");
+});
+// For a plugged-in phone in Safari's Web Inspector, or the web build's own console.
+window.siftErrors = function () {
+  try { return JSON.parse(localStorage.getItem(ERR_KEY) || "[]"); } catch (_) { return []; }
+};
+
 const LS_KEY = "sonar_profile_v2";
 
 const state = {
@@ -3283,13 +3326,22 @@ function ensureMusicKit(devToken) {
     const s = document.createElement("script");
     s.src = "https://js-cdn.music.apple.com/musickit/v3/musickit.js";
     s.async = true;
-    s.onerror = () => { _mkReady = null; reject(new Error("MusicKit failed to load")); };
+    // A promise that never settles here poisons every later attempt: the `if (_mkReady)`
+    // guard above hands the same pending object back for the rest of the session, so the
+    // button sits on "Getting ready… tap again" forever and nothing is ever thrown to
+    // explain it. s.onerror is not enough of a backstop on its own — the script can load
+    // fine and `musickitloaded` still never fire. Time it out and clear the cache so the
+    // next tap is a real retry rather than a re-await of a corpse.
+    const fail = (e) => { clearTimeout(timer); _mkReady = null; reject(e); };
+    const timer = setTimeout(() => fail(new Error("MusicKit load timeout")), 15000);
+    s.onerror = () => fail(new Error("MusicKit failed to load"));
     document.addEventListener("musickitloaded", async () => {
       try {
         await MusicKit.configure({ developerToken: devToken, app: { name: "Sift", build: "1.0" } });
         _mk = MusicKit.getInstance();
+        clearTimeout(timer);
         resolve(_mk);
-      } catch (e) { _mkReady = null; reject(e); }
+      } catch (e) { fail(e); }
     }, { once: true });
     document.body.appendChild(s);
   });
@@ -3367,6 +3419,10 @@ async function exportFindsToAppleMusic() {
   const IDLE = "Save to Apple Music";
   const native = nativeAppleMusic();   // null on the web — everything below forks on it
   const warm = () => native ? !!_mkDev : (_mk && _mkDev);
+  // warmAppleMusic() deliberately gives up early when there is nothing to export, so
+  // without this the tap below would show "Getting ready…" and then quietly revert to
+  // the idle label — indistinguishable, from the outside, from a button that is broken.
+  if (!state.liked.length) { toast("Save a few songs first — then they can go to Apple Music."); return; }
   if (!warm()) {   // not warm yet — start it and let them tap again in a moment
     say("Getting ready…");
     warmAppleMusic();
@@ -6338,28 +6394,39 @@ function toast(msg) {
 
 /* ---------- Boot ---------- */
 (function boot() {
-  const returning = load();
-  bumpUsage("opens");
-  applyAdventureUI();
-  applyFreshUI();
-  // Installs saved before the coherence profile existed: build it quietly from the
-  // cached seeds once the boot-time network rush is over.
-  if (returning && !state.tagProfile) setTimeout(warmProfile, 4000);
-  function showHome() {
-    if (returning) {
-      document.getElementById("welcomeStat").textContent = state.liked.length;
-      const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
-      document.getElementById("welcomeArtists").textContent = artistsLine;
-      updateFinds();
-      showScreen("welcome");
-    } else {
-      showScreen("onboarding");
+  try {
+    const returning = load();
+    bumpUsage("opens");
+    applyAdventureUI();
+    applyFreshUI();
+    // Installs saved before the coherence profile existed: build it quietly from the
+    // cached seeds once the boot-time network rush is over.
+    if (returning && !state.tagProfile) setTimeout(warmProfile, 4000);
+    function showHome() {
+      if (returning) {
+        document.getElementById("welcomeStat").textContent = state.liked.length;
+        const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
+        document.getElementById("welcomeArtists").textContent = artistsLine;
+        updateFinds();
+        showScreen("welcome");
+      } else {
+        showScreen("onboarding");
+      }
     }
+    // A shared deck link (?deck=…) drops you straight into swiping a friend's picks.
+    const deckParam = new URLSearchParams(location.search).get("deck");
+    // The .catch matters as much as the .then. A deck link that rejected used to leave
+    // the app showing no screen at all, which from the outside is just a crash.
+    if (deckParam) { openDeck(deckParam).then(ok => { if (!ok) showHome(); }).catch(() => showHome()); return; }
+    showHome();
+  } catch (e) {
+    // A blank screen is the worst failure this app has: nothing to read, nothing to tap,
+    // nothing to report. Anything escaping boot lands here, gets recorded, and we still
+    // put a working screen up. Onboarding runs from an empty state by design, so it is
+    // the safe fallback even when the saved profile is what broke.
+    noteError("boot", e, "boot");
+    try { showScreen("onboarding"); } catch (_) {}
   }
-  // A shared deck link (?deck=…) drops you straight into swiping a friend's picks.
-  const deckParam = new URLSearchParams(location.search).get("deck");
-  if (deckParam) { openDeck(deckParam).then(ok => { if (!ok) showHome(); }); return; }
-  showHome();
 })();
 </script>
 </body>
