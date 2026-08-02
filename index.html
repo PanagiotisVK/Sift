@@ -201,6 +201,13 @@
   .artist-sug .sug-row:active { background: rgba(255,255,255,.07); }
   .artist-sug img, .artist-sug .sug-ph { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #242833; flex-shrink: 0; }
   .artist-sug .sug-row span:last-child { font-size: 14px; color: var(--text); }
+  /* Song suggestions reuse the artist dropdown, with two changes: sleeve art is square,
+     not a circle, and each row carries the artist underneath. A song title alone is not
+     enough to pick with — half a dozen records are called "Alive". */
+  #songSug img { border-radius: 5px; }
+  #songSug .sug-2 { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #songSug .sug-2 b { font-size: 14px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #songSug .sug-2 i { font-size: 12px; font-style: normal; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ctrl-wrap { display:flex; flex-direction:column; align-items:center; }
   .hint { text-align: center; color: var(--muted); font-size: 12px; padding: 2px 0 4px; }
   /* Bottom control dock — blends the player + swipe buttons into one panel */
@@ -1035,6 +1042,10 @@
   .chip-x { margin-left: 8px; opacity: .5; font-weight: 700; font-size: .85em; }
   .chip-av { width: 1.8em; height: 1.8em; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,.18); }
   .chip.has-av { display: inline-flex; align-items: center; padding-left: 6px; }
+  /* Song chips: square sleeve, and the artist rides along in a quieter weight. Without
+     the artist the chip is ambiguous the moment you add a second song with a short name. */
+  .chip-cov { width: 2em; height: 2em; border-radius: 5px; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,.18); }
+  .chip .by { opacity: .55; font-weight: 500; margin-left: 5px; }
   .chip.has-av .chip-av { margin-right: 9px; }
   /* Artist profile screen */
   #artist { padding: 8px 16px 24px; overflow-y: auto; }
@@ -1086,7 +1097,7 @@
     <!-- ONBOARDING -->
     <section class="screen" id="onboarding">
       <h1>What do you love?</h1>
-      <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
+      <p class="lead">Pick a few genres, artists or songs you already love. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
       <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
       <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. deep house, bachata, djent)…" autocomplete="off" />
       <div class="famrow" id="famRow"></div>
@@ -1099,6 +1110,15 @@
         <div class="artist-sug" id="artistSug"></div>
       </div>
       <div class="chips" id="artistChips" style="margin-top:12px;"></div>
+      <div class="section-label">Songs you love — hand Shef a few and he'll cook from them</div>
+      <!-- No + button here, unlike artists. A song has to be TAPPED from the list: the
+           lookup needs the exact title and the exact artist, and free text ("redbone")
+           resolves to nothing. Making the only route a tap means it cannot be got wrong. -->
+      <div class="artist-row">
+        <input id="songInput" placeholder="Type a song, then tap it in the list…" autocomplete="off" />
+        <div class="artist-sug" id="songSug"></div>
+      </div>
+      <div class="chips" id="songChips" style="margin-top:12px;"></div>
       <div class="start-bar"><button class="btn-primary" id="startBtn" disabled>Pick at least 2 to start</button></div>
     </section>
 
@@ -1954,6 +1974,10 @@ const state = {
   streak: 0,            // consecutive days the daily 20 was finished
   lastDailyDone: "",    // date the daily 20 was last finished ("YYYY-MM-DD")
   seedLabels: [],       // for display
+  // Songs handed to Shef at setup: [{title, artist}]. Deliberately NOT folded into
+  // seedLabels — that list doubles as the live genre filter (genreActive, pickSource),
+  // so a song called "Disco" or "House" would read as a picked genre.
+  seedSongs: [],
   tagProfile: null,     // tag -> weight: what this deck is ABOUT (see "Deck coherence profile")
   eraProfile: null,     // decade -> weight: which eras your loves cluster in
   haptics: 2,           // 2 = Full, 1 = Light (verdicts only), 0 = Off
@@ -3268,6 +3292,7 @@ function save() {
       knownIds: [...state.knownIds].slice(-1200),
       knownKeys: [...state.knownKeys].slice(-1200),
       seedLabels: state.seedLabels,
+      seedSongs: state.seedSongs,
       tagProfile: state.tagProfile,
       eraProfile: state.eraProfile,
       haptics: state.haptics,
@@ -3312,6 +3337,7 @@ function load() {
     state.knownIds = new Set(d.knownIds || []);
     state.knownKeys = new Set(d.knownKeys || []);
     state.seedLabels = d.seedLabels || [];
+    state.seedSongs = d.seedSongs || [];   // absent in every profile saved before this shipped
     state.tagProfile = d.tagProfile || null;
     state.eraProfile = d.eraProfile || null;
     if (typeof d.haptics === "number") state.haptics = d.haptics;
@@ -3785,8 +3811,111 @@ function addArtistChip(pic) {
   }
   input.value = ""; updateStart();
 }
+/* ---------- Songs you love — the third seed, and much the most specific ----------
+   A genre says "somewhere in this neighbourhood". An artist says "near this person".
+   A song says "this exact record", which is a far sharper instruction than either.
+   None of the hard part is new: similarSongsFor() already resolves a track to its real
+   neighbours, and respondToLove() has run it on every love since launch. This is that
+   same machinery moved to the front door, so it can run BEFORE the first card instead
+   of only after someone has already sat through a deck built from something vaguer.
+   Keyed on title|artist rather than the iTunes track id: the id is store-specific, so a
+   remaster reads as a different song, and title+artist is what the lookup wants anyway. */
+const seedSongs = new Map();
+const songChips = document.getElementById("songChips");
+const songSug = document.getElementById("songSug");
+const MAX_SEED_SONGS = 8;
+const songKey = (t, a) => (t + "|" + a).toLowerCase();
+
+function hideSongSug() {
+  songSug.style.display = "none"; songSug.innerHTML = "";
+  const sb = document.querySelector(".start-bar"); if (sb) sb.classList.remove("dodge");
+}
+let songTimer = null, songSeq = 0;
+document.getElementById("songInput").addEventListener("input", () => {
+  const q = document.getElementById("songInput").value.trim();
+  clearTimeout(songTimer);
+  if (q.length < 2) { hideSongSug(); return; }
+  songTimer = setTimeout(async () => {
+    const seq = ++songSeq;
+    let list = [];
+    try { list = await PROVIDER.searchTracks(q, 12); } catch (_) {}
+    if (seq !== songSeq) return;                                  // a newer keystroke superseded us
+    if (document.getElementById("songInput").value.trim().length < 2) return;
+    // One row per title+artist. The album cut, the single and the remaster all come back
+    // as separate results, and three identical-looking rows is not a choice, it's noise.
+    const seen = new Set(), rows = [];
+    for (const t of list) {
+      const k = songKey(t.title, t.artist.name);
+      if (seen.has(k) || seedSongs.has(k)) continue;              // already picked ones drop out too
+      seen.add(k); rows.push(t);
+      if (rows.length >= 7) break;
+    }
+    if (!rows.length) { hideSongSug(); return; }
+    songSug.innerHTML = "";
+    rows.forEach(t => {
+      const cover = (t.album && (t.album.cover_medium || t.album.cover_big)) || "";
+      const r = document.createElement("div");
+      r.className = "sug-row";
+      r.innerHTML = (cover ? '<img src="' + cover + '" alt="" />' : '<span class="sug-ph"></span>') +
+        '<span class="sug-2"><b>' + esc(t.title) + "</b><i>" + esc(t.artist.name) + "</i></span>";
+      r.onmousedown = e => e.preventDefault();                    // keep input focus so blur doesn't eat the tap
+      r.onclick = () => addSongChip(t);
+      songSug.appendChild(r);
+    });
+    songSug.style.display = "block";
+    const sb = document.querySelector(".start-bar"); if (sb) sb.classList.add("dodge");   // it was covering the dropdown
+  }, 320);
+});
+document.getElementById("songInput").addEventListener("blur", () => setTimeout(hideSongSug, 150));
+
+function addSongChip(t) {
+  hideSongSug();
+  document.getElementById("songInput").value = "";
+  const title = t.title, artist = t.artist.name, k = songKey(title, artist);
+  if (seedSongs.has(k)) return;
+  // Each song costs a MusicBrainz search — rate-limited to one a second — plus a handful
+  // of labs calls when Start is pressed. Eight is already a slow build; more reads as a hang.
+  if (seedSongs.size >= MAX_SEED_SONGS) { toast("That's plenty — " + MAX_SEED_SONGS + " songs is a strong start."); return; }
+  const cover = (t.album && (t.album.cover_medium || t.album.cover_big)) || "";
+  seedSongs.set(k, { title, artist, cover });
+  const el = document.createElement("div");
+  el.className = "chip w1 has-av";
+  el.innerHTML = (cover ? '<img class="chip-cov" src="' + cover + '" alt="" />' : "") +
+    esc(title) + '<span class="by">' + esc(artist) + "</span>" +
+    '<span class="chip-x" aria-label="Remove">✕</span>';
+  // ✕ only. Artist chips use a body tap to cycle their weight, but a song has no weight
+  // to cycle, and "tap anywhere to delete" on a chip you just chose is a trap.
+  el.onclick = (e) => {
+    if (!e.target.closest(".chip-x")) return;
+    seedSongs.delete(k); el.remove(); updateStart();
+  };
+  songChips.appendChild(el);
+  updateStart();
+}
+
+// Turn the picked songs into deck material. Runs at Start, after the artist and genre
+// seeds are registered so the fallback below has a graph to fall back ON.
+async function seedFromSongs() {
+  if (!seedSongs.size) return;
+  for (const s of seedSongs.values()) {
+    setDeckStatus("Listening to “" + s.title + "”…");
+    try {
+      // Register the artist first for two reasons: it gives the graph a foothold whether
+      // or not the song lookup lands, and its MBID lets similarSongsFor use the precise
+      // arid: query instead of matching on an artist name string.
+      let artistId = null;
+      const a = await searchArtist(s.artist);
+      if (a) { ensureArtist(a.id, a.name, 2.0, { origin: "seed", nbFan: a.nb_fan }); artistId = a.id; }
+      const sim = await similarSongsFor({ title: s.title, artist: s.artist, artistId });
+      if (!sim.length) continue;   // thin recording coverage — the artist seed above carries it
+      const picks = await resolveSimilarToTracks(sim, s.artist, 3);
+      queueTracks(picks, "Because you love “" + s.title + "”");
+    } catch (_) { /* one dud song must not take the whole build down with it */ }
+  }
+}
+
 function updateStart() {
-  const n = seedGenres.size + seedArtists.size;
+  const n = seedGenres.size + seedArtists.size + seedSongs.size;
   startBtn.disabled = n < 2;
   startBtn.textContent = n < 2 ? "Pick at least 2 to start" : "Start discovering →";
 }
@@ -3842,6 +3971,7 @@ startBtn.onclick = async () => {
   document.getElementById("tabbar").style.display = "flex";
   showScreen("discover");
   state.seedLabels = [...seedGenres.keys(), ...seedArtists.keys()];
+  state.seedSongs = [...seedSongs.values()].map(s => ({ title: s.title, artist: s.artist }));
 
   // register artist seeds (weighted, expand via related)
   for (const [name, w] of seedArtists) {
@@ -3862,6 +3992,10 @@ startBtn.onclick = async () => {
     }
     seedsByGenre.set(g, got);
   }
+  // Songs go after the artist and genre seeds so a song whose neighbours can't be found
+  // still has a graph to fall back on, and BEFORE warmProfile so the artists it registers
+  // are included when the coherence profile is baked.
+  await seedFromSongs();
   // One batched MusicBrainz call turns the seeds' tags into the deck's coherence
   // profile — worth the ~1s so even the FIRST refill filters against it.
   setDeckStatus("Learning what that sounds like…");
@@ -6438,7 +6572,10 @@ function toast(msg) {
     function showHome() {
       if (returning) {
         document.getElementById("welcomeStat").textContent = state.liked.length;
-        const artistsLine = state.seedLabels.length ? ("Started from: " + state.seedLabels.slice(0, 5).join(", ")) : "";
+        // Songs are quoted so "Started from: Disco" can't be misread as the genre.
+        const startedFrom = (state.seedLabels || [])
+          .concat((state.seedSongs || []).map(s => "“" + s.title + "”"));
+        const artistsLine = startedFrom.length ? ("Started from: " + startedFrom.slice(0, 5).join(", ")) : "";
         document.getElementById("welcomeArtists").textContent = artistsLine;
         updateFinds();
         showScreen("welcome");
