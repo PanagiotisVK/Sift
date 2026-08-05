@@ -37,19 +37,19 @@ music,discovery,new songs,swipe,find music,taste,friends,indie,underground,daily
 ## Promotional Text (170 chars max — editable anytime without review, shows above the description)
 
 ```
-Every swipe digs past the hits. Sift learns your taste and finds the songs you'd never have found — then jumps you straight to the best part.
+Sift listens to every preview and starts you at the chorus. Then it learns how much you already know, and digs past the hits until it finds what you've never heard.
 ```
 
 ## Description (4000 chars max)
 
 ```
-Everyone else swipes you through songs you already know. Sift is built for one thing: finding you songs you've never heard — and will love.
+Most music apps recommend you songs you already know. Sift is built for one thing: finding the ones you've never heard — and will love.
 
 HOW IT WORKS
-Pick a few genres and artists you like. Sift maps the world of music around your taste and deals you a daily hand of songs — not the hits everyone streams, but the album cuts, deep tracks and rising artists that fit you. Swipe right to keep, left to pass. That's it. Every swipe teaches Sift how deep your knowledge runs and where to dig next.
+Pick a few genres and artists you like. Sift maps the world of music around your taste and deals you a daily hand of songs — not the hits everyone streams, but the album cuts, deep tracks and rising artists that fit you. Keep what you love, pass on what you don't, and every swipe recalibrates how deep Sift digs: recognise a lot and it reaches further past the popular results, find a keeper at that depth and it holds there. The app a crate-digger sees is not the app a casual listener sees.
 
 SKIP TO THE BEST PART
-Sift analyzes each preview and jumps you straight to the hook — no sitting through intros to know if a song hits. Thirty seconds is enough when it's the right thirty seconds.
+Sift listens to every preview before you do. It measures the track's energy across its whole length, finds the loudest sustained passage rather than a single loud moment, and starts you a beat and a half before it — while making sure you never land in the fade-out. You hear the chorus first, not the intro. Thirty seconds is enough when it's the right thirty seconds.
 
 YOUR FINDS, YOURS
 Every song you keep lands in your Finds: playable as a radio, grouped by genre, with one-tap links to open it in the streaming app you already use. Sift shows you the number that matters — what percentage of your Finds you'd never heard before.
@@ -69,7 +69,7 @@ WHY SIFT
 Start swiping. Your next favorite song is out there — you've just never heard it.
 ```
 
-*(~1,650 chars — room to grow.)*
+*(1,825 chars of 4,000 — room to grow.)*
 
 ## What's New (version 1.0)
 
@@ -90,11 +90,53 @@ First release — welcome to Sift. Swipe through fresh songs picked for your tas
 - **Notes for reviewer:**
 
 ```
-Sift is a music discovery app using 30-second catalog previews (Apple's iTunes preview API) with links out to full songs on streaming services. An account is optional — the app is fully usable without one. The demo account above is pre-filled with a taste profile. Account deletion is available in-app: You tab → Delete my account. Sign in with Apple is offered alongside email signup, on the same You tab.
+WHAT SIFT DOES
+
+Sift finds you songs you have never heard, from a catalogue you already have access
+to. Three parts of it are original work and are the reason the app exists:
+
+1. HOOK DETECTION. Every 30-second preview is decoded through the Web Audio API and
+analysed for its energy envelope in 0.25-second frames. That envelope is smoothed over
+roughly two seconds so sustained loudness wins over a single loud transient, and the
+closing seconds are excluded so playback can never land in a fade-out. Playback then
+starts 1.5 seconds before the resulting peak, and the same analysis draws the waveform
+scrubber on the card. You hear the chorus first instead of the intro — which is the
+difference between 30 seconds being enough to judge a song and not being enough.
+
+2. ADAPTIVE DISCOVERY DEPTH. Sift tracks how much of what it shows you is already
+familiar to you, and uses that to decide how far past the popular results to reach when
+it builds the next set. Swiping moves it continuously: recognising a lot pushes the app
+deeper into the catalogue, and finding something you keep at a given depth eases it
+back. Two people starting from the same declared taste but with different listening
+knowledge are shown materially different music.
+
+3. OPEN-DATA RECOMMENDATION GRAPH. Artist relationships come from ListenBrainz
+co-listening statistics and MusicBrainz tags, including alias resolution so that
+artists filed under non-Latin names resolve correctly. This is not a store's built-in
+"similar artists" field.
+
+Apple's iTunes Search API supplies the preview audio and artwork, used as documented
+and with links out to the store. It is the playback layer — the selection, ordering,
+audio analysis and personalisation above are all my own work.
+
+PRACTICAL NOTES
+
+- An account is optional; the app is fully usable without one.
+- The demo account above is pre-filled with a taste profile, so the deck is populated
+  immediately on first launch.
+- Sign in with Apple is offered alongside email signup, on the You tab.
+- Account deletion is in-app: You tab → Delete my account.
 ```
 
-*(The Sign in with Apple line matters — Guideline 4.8 is checked by hand, and telling
-the reviewer exactly where the button lives saves a round trip.)*
+*(Rewritten 5 Aug 2026 after the build 7 4.3(a) rejection. The old note opened
+"a music discovery app using 30-second catalog previews (Apple's iTunes preview API)
+with links out to full songs" — that sentence describes the whole category rather than
+this app, and reads like a wrapper. The note now leads with what only Sift does and
+mentions the iTunes API second, as the playback layer. The four practical lines are
+kept because they still save round trips: Guideline 4.8 is checked by hand, and 5.1.1(v)
+account deletion is checked by hand too, so telling the reviewer exactly where both
+live is worth the space. Deliberately does not mention the rejection — a new reviewer
+sees that history in Resolution Center anyway, and naming it primes them.)*
 
 ## App Privacy questionnaire (the "nutrition label")
 
