@@ -1,0 +1,31 @@
+Hello,
+
+Thank you for the review. I would like to address the 4.3(a) finding, as I do not believe Sift matches any of the patterns the guideline describes - and I would be grateful for specifics if you still disagree after reading this.
+
+Taking the four contributing factors in your message directly:
+
+- Same source code or assets as other apps. Sift is written from scratch by me, a solo developer - a single codebase of my own authorship packaged with Capacitor. It contains no purchased or third-party app template, no white-label SDK, and no code shared with any other submission.
+
+- Multiple similar apps from a repackaged template. This is the only app I have ever submitted. There is no second bundle ID and no other app on my account.
+
+- A purchased template with problematic third-party code. None was used, at any point in development.
+
+- Several similar apps across multiple accounts. I hold one Apple Developer account and have never held another.
+
+On concept: I recognise that a swipe interface over music previews is a familiar starting point, so I want to be specific about what the app actually does, since I do not think these exist elsewhere.
+
+1. Automatic hook detection. Sift decodes each 30-second preview through the Web Audio API and computes an energy envelope in 0.25-second frames. It smooths that envelope over roughly two seconds so that sustained energy wins over a single loud transient, excludes the closing seconds so playback can never land in a fade-out, and begins playback 1.5 seconds before the resulting peak. The same analysis draws the waveform scrubber on each card. The listener hears the chorus first instead of the intro - which is the difference between a 30-second preview being enough to judge a song and not being enough.
+
+2. A discovery-depth model that adapts to the listener. Sift tracks how much of what it shows you is already familiar to you, and uses that to decide how far past the popular results to reach when building the next set. Swiping changes it continuously: recognising a lot pushes the app deeper into the catalogue, while finding something you keep at a given depth eases it back. A listener with deep knowledge of a genre and a casual listener are shown materially different music from the same starting taste.
+
+3. An open-data recommendation graph. Artist relationships are drawn from ListenBrainz co-listening statistics and MusicBrainz tags, including alias resolution so that artists filed under non-Latin names resolve correctly. This is not a store's built-in "similar artists" field.
+
+Apple's iTunes Search API supplies preview audio and artwork, used as documented and with links out to the store. It is the playback layer, not the product - the selection, ordering, audio analysis and personalisation are all my own work.
+
+One piece of context, offered as information rather than as an excuse. Build 1.0 (7) was archived on 26 July and the app has moved on considerably since. The current TestFlight build adds Apple Music integration that saves a listener's finds into a live playlist in their own library, an original illustrated mascot and hand-animated loading scenes drawn specifically for this app, a consent-based friends system with requests and blocking, and a "Why this song?" explanation attached to every recommendation. I mention it because the "same source code or assets as other apps" factor is one the current build answers directly, with artwork that exists nowhere else.
+
+I am glad to submit that build for review if it would be more useful. I have not replaced the submission already because I did not want to close this thread before hearing which app or apps Sift was found to resemble, or which specific screens or metadata prompted the finding. I will change anything that is genuinely too close - but at the moment I do not know what that would be.
+
+Thank you for your time.
+
+Peter Vlahos
