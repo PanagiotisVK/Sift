@@ -3137,20 +3137,53 @@ function spreadByArtist(list) {
 // question: "what songs do people play in the same session as THIS song". Loving one
 // moody album cut and loving the radio hit are different signals — the recording
 // dataset is the only one that can tell them apart.
+// Ask ListenBrainz which recording mbid its OWN data is filed under. This turned out to
+// be the whole ball game. A song lives under dozens of recording mbids — album cut,
+// single, remaster, every compilation it ever appeared on — and the similarity index
+// carries exactly one of them. Searching MusicBrainz by title and probing the top hits,
+// which is what this used to do, found the right door roughly one time in six (measured
+// over twelve well-known songs: only Redbone landed). Asking the mapper outright finds
+// it eleven times in twelve. The data was always there; we were knocking in the wrong place.
+async function canonicalRecordingId(title, artist) {
+  const ask = async (a, t) => {
+    const d = await lbApi("https://labs.api.listenbrainz.org/acr-lookup/json?artist_credit_name=" +
+      encodeURIComponent(a) + "&recording_name=" + encodeURIComponent(t));
+    const id = d && d[0] && d[0].recording_mbid;
+    return MBID_RE.test(id || "") ? id : null;
+  };
+  let id = await ask(artist, title);
+  // The mapper indexes on an ASCII fold, so the CORRECTLY spelled name is the one that
+  // misses: "Björk" returns nothing where "Bjork" returns the record. Strip diacritics
+  // only — nameKey() would also drop the spaces and punctuation this endpoint matches on.
+  if (!id) {
+    const flat = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "");
+    if (flat(artist) !== artist || flat(title) !== title) id = await ask(flat(artist), flat(title));
+  }
+  return id;
+}
 async function similarSongsFor(track) {
   const title = (track.title || "").replace(/"/g, "");
   if (!title) return [];
-  // A song lives under several recording MBIDs (album, single, remaster) and only the
-  // canonical one carries similarity data — so gather candidates and probe them ALL in
-  // one labs call; the results tell us which reference hit.
+  const probe = async (ids) => {
+    if (!ids.length) return [];
+    const sim = await lbApi("https://labs.api.listenbrainz.org/similar-recordings/json?" +
+      ids.map(id => "recording_mbids=" + id).join("&") + "&algorithm=" + LB_REC_ALG);
+    return Array.isArray(sim) ? sim : [];
+  };
+  // Fast path: one cheap call against no rate limit, and it lands eleven times in twelve.
+  const canon = await canonicalRecordingId(title, track.artist || "");
+  if (canon) {
+    const hit = await probe([canon]);
+    if (hit.length) return hit;
+  }
+  // Fallback: the old route, kept because it is not strictly a subset — it found Redbone
+  // too, and a mapper miss is not proof the song has no neighbours. MusicBrainz allows
+  // one request a second, so this is the slow door; only open it if the fast one gave nothing.
   const who = MBID_RE.test(track.artistId || "") ? "arid:" + track.artistId
             : 'artist:"' + (track.artist || "").replace(/"/g, "") + '"';
   const d = await mbApi("recording/", { query: 'recording:"' + title + '" AND ' + who, fmt: "json", limit: 8 });
   const ids = ((d && d.recordings) || []).map(r => r.id).filter(id => MBID_RE.test(id));
-  if (!ids.length) return [];
-  const sim = await lbApi("https://labs.api.listenbrainz.org/similar-recordings/json?" +
-    ids.map(id => "recording_mbids=" + id).join("&") + "&algorithm=" + LB_REC_ALG);
-  return Array.isArray(sim) ? sim : [];
+  return probe(ids);
 }
 // Turn similar-recording rows into playable cards: LB's own metadata→Apple mapper
 // finds the track ids (no iTunes SEARCH, so no rate-limit exposure), then ONE batched
