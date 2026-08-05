@@ -3580,7 +3580,12 @@ async function exportFindsToAppleMusic() {
     else if (/authorize (timeout|abandoned)|not implemented|UNIMPLEMENTED/i.test(m)) toast("Apple's sign-in didn't make it back to Sift. Open Sift in Safari to save these.");
     else if (/subscription|SUBSCRIBE/i.test(m)) toast("This needs an active Apple Music subscription.");
     else if (/popup|blocked|window/i.test(m)) toast("Safari blocked Apple's sign-in window — allow pop-ups for this site, then tap again.");
-    else toast("Couldn't reach Apple Music — try again in a moment.");
+    // The catch-all: anything reaching here is by definition something we did not
+    // anticipate, so "try again in a moment" throws away the only clue there is. The
+    // branches above name what they know; this one has to hand over the raw message
+    // or it is indistinguishable from a broken button. noteError shows the detail and
+    // keeps it for window.siftErrors(), which is the same reason it was written.
+    else noteError("applemusic", "Couldn't reach Apple Music: " + m, "export");
   }
   btn.disabled = false;
 }
