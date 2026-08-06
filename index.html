@@ -90,6 +90,49 @@
   #finds > *, #friends > *, #profile > *, #artist > * { flex-shrink: 0; }
 
   /* Onboarding + Welcome */
+  /* Shef on the setup screen. He used to appear only in loading and empty states —
+     places a good session never reaches — so the app's most distinctive asset was
+     invisible to most people who used it, and to anyone reviewing it. Beside the
+     heading he costs ~10px of height over the bare <h1> that was there before. */
+  .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ob-head h1 { flex: 1; min-width: 0; }
+  /* NO POT here — that was tried first and Peter vetoed it: two pots in a row made
+     setup and loading the same scene twice, and a pot on the picking screen implies
+     he's already cooking. Here he TAKES YOUR ORDER — notepad in one hand, pencil in
+     the other. The pencil ticks idly while he waits, scribbles when you pick
+     something, and a line of ink lands on the pad per pick — so the pad visibly
+     fills as your taste does. The pot appears exactly once, on the loading screen,
+     where cooking is what's actually happening. Same drawing grammar as every other
+     Shef (identical stroke weights, colours, geometry), obk- namespaced so this
+     scene owns its markup instead of copying the loading screen's. */
+  .ob-shef { flex: 0 0 auto; }
+  .ob-shef svg { width: 116px; height: 104px; overflow: visible; display: block; }
+  .obk-body-o { stroke: #f4f4f5; stroke-width: 34; stroke-linecap: round; fill: none; }
+  .obk-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
+  .obk-limb { stroke: #f4f4f5; stroke-width: 7; stroke-linecap: round; fill: none; }
+  .obk-eye { fill: #f4f4f5; }
+  .obk-lash { stroke: #f4f4f5; stroke-width: 3; stroke-linecap: round; fill: none; }
+  .obk-hat-p { fill: #f4f4f5; }
+  .obk-hat-b { fill: #f4f4f5; stroke: #26262c; stroke-width: 1.6; }
+  .obk-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
+  .obk-stache { fill: #a07a52; }
+  .obk-stache-h { stroke: #4a3320; stroke-width: 1.5; fill: none; stroke-linecap: round; opacity: .7; }
+  .obk-pad { fill: #f2efe6; }
+  .obk-rule { stroke: #23211c; stroke-width: 1.5; stroke-linecap: round; opacity: .35; fill: none; }
+  .obk-ink { stroke: #23211c; stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0; transition: opacity .3s; }
+  .obk-ink.on { opacity: 1; }
+  .obk-pencil { stroke: #a07a52; stroke-width: 4; stroke-linecap: round; }
+  .obk-tip { fill: #f4f4f5; }
+  /* Deliberately still animated under Reduce Motion, same owner's call as the
+     loading pot: a small contained idle in one corner of a static screen. */
+  .obk-bob { animation: obkBob 1.7s ease-in-out infinite; transform-origin: 60px 102px; }
+  .obk-eOpen { animation: lkEOpen 3.4s steps(1) infinite; }
+  .obk-eBlink { animation: lkEBlink 3.4s steps(1) infinite; }
+  .obk-penarm { animation: obkTick 2.6s ease-in-out infinite; transform-origin: 79px 57px; }
+  .obk-penarm.write { animation: obkWrite .5s ease-in-out 2; }
+  @keyframes obkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+  @keyframes obkTick { 0%, 86%, 100% { transform: rotate(0deg); } 92% { transform: rotate(-5deg); } }
+  @keyframes obkWrite { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-3px, 1.5px) rotate(-7deg); } }
   #onboarding, #welcome { padding: 8px 20px 24px; overflow-y: auto; }
   #onboarding h1, #welcome h1 { font-size: 26px; margin: 6px 0 4px; }
   #onboarding p.lead, #welcome p.lead { color: var(--muted); margin: 0 0 18px; line-height: 1.4; }
@@ -105,6 +148,16 @@
      on short screens the strip's buttons were getting vertically clipped. */
   .famrow { display: flex; gap: 7px; overflow-x: auto; padding: 1px 0 11px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex-shrink: 0; }
   .famrow::-webkit-scrollbar { display: none; }
+  /* 17 families over 158 genres, and the scrollbar is deliberately hidden — so nothing
+     told anyone the strip continued past the screen edge. These fade the row out where
+     it carries on, and ONLY on the side that actually has more: scrolled to the start
+     you get a right fade alone, mid-way you get both, at the end only a left one. A
+     mask on the scroller itself rather than an overlay, so no wrapper element is needed
+     and the fade stays pinned to the edges while the buttons move underneath it.
+     No motion, so this is the whole affordance under Reduce Motion. */
+  .famrow.hint-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  .famrow.hint-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+  .famrow.hint-l.hint-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
   .fam { flex: 0 0 auto; background: rgba(255,255,255,.05); border: 1px solid var(--glass-brd); color: var(--muted); border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .fam.on { background: var(--accent); color: #0b0b0d; border-color: transparent; }
   .fam .cnt { opacity: .5; margin-left: 5px; font-weight: 500; }
@@ -221,6 +274,40 @@
   .wave.on { clip-path: inset(0 100% 0 0); will-change: clip-path; }
   .wave.on i { background: var(--accent); }
   @media (prefers-reduced-motion: reduce) { .wave i { transition: none; } }
+  /* THE HOOK MARKER — where findHotStart() decided the song actually begins, and
+     where playback jumped to. Everything needed to draw this already existed
+     (hotStarts[id] in seconds, a 30s-wide scrubber); the app simply never showed it,
+     so its most original mechanism read as the player mysteriously starting late.
+     It has to stay legible over BOTH wave layers — grey unplayed bars and white
+     played ones — so the spine is white on a dark halo rather than either alone.
+     The downward cap is what stops it reading as a second playhead. */
+  .hotmark { position: absolute; top: 0; bottom: 0; width: 0; z-index: 2; pointer-events: none; display: none; }
+  .hotmark.on { display: block; }
+  .hotmark::before {                                  /* spine */
+    content: ""; position: absolute; top: 2px; bottom: 2px; left: -1.5px; width: 3px;
+    border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 1.5px rgba(9,9,11,.8);
+  }
+  .hotmark::after {                                   /* cap, pointing down at the spot */
+    content: ""; position: absolute; top: -3px; left: -4px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid var(--accent);
+    filter: drop-shadow(0 0 1.5px rgba(9,9,11,.9));
+  }
+  /* Named once, on the song where the marker first appears. After that the shape
+     carries it — a permanent label would be clutter on every card forever. */
+  .hotmark .hm-lbl {
+    position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+    font-size: 9.5px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+    color: var(--text); background: rgba(9,9,11,.9); border: 1px solid var(--line-2);
+    padding: 2.5px 7px; border-radius: 999px; opacity: 0; transition: opacity .3s;
+  }
+  .hotmark.named .hm-lbl { opacity: 1; }
+  /* The landing beat: the bars morph from placeholder to the real decoded envelope
+     and the marker drops onto it in the same moment. Enhancement only — the marker
+     is fully visible without it, because Reduce Motion must not hide the feature. */
+  .hotmark.land { animation: hotLand .45s cubic-bezier(.2,.8,.3,1); }
+  @keyframes hotLand { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .hotmark.land { animation: none; } .hotmark .hm-lbl { transition: none; } }
 
   .loading, .empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); text-align:center; padding: 0 30px; }
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
@@ -766,6 +853,18 @@
   .coach-row .ci svg { width: 18px; height: 18px; }
   .coach-row small { display: block; color: var(--muted); }
   .coach .btn-primary { margin-top: 6px; }
+  /* Digging-depth readout — the learned half of the discovery model, made visible.
+     A meter rather than a number alone: the point is that it MOVES while you swipe,
+     and a bar shows that at a glance where "38%" doesn't. */
+  .depth { margin: 12px 0 4px; }
+  .depth-top { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .depth-top b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .depth-bar { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,.09); margin: 7px 0 8px; overflow: hidden; }
+  .depth-bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); width: 0; transition: width .45s cubic-bezier(.2,.8,.3,1); }
+  @media (prefers-reduced-motion: reduce) { .depth-bar i { transition: none; } }
+  .depth-note { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0; }
+  .depth-note b { color: var(--text); font-weight: 600; }
+
   /* Genre tuner sheet */
   .gsheet-ov { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; }
   .gsheet { width: 100%; max-height: 74%; background: var(--bg2); border-radius: var(--r-lg) var(--r-lg) 0 0; border-top: 1px solid var(--glass-brd); padding: 16px 18px calc(20px + env(safe-area-inset-bottom)); box-shadow: var(--shadow-2); overflow-y: auto; animation: gsheetUp .22s cubic-bezier(.2,.7,.3,1); }
@@ -784,7 +883,26 @@
   .why-v { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
   .why-tag { display: inline-block; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 10px; margin: 0 6px 6px 0; font-size: 12px; }
   .why-tag.hit { background: var(--accent); color: #0b0b0d; font-weight: 600; }
-  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
+  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.45; }
+  /* Why-sheet, drawn: the trail as a chain of faces at the top, the cut and the
+     hook as positions rather than prose. The row scaffolding (.why-row) stays for
+     everything below the chain. Faces only where we truly have one — the song's
+     own cover; the graph stores no artist photos and this sheet must never wait
+     on a network fetch, so bridge artists get an initial in a circle. */
+  .wchain { display: flex; align-items: flex-start; margin: 4px 0 10px; }
+  .wnode { display: flex; flex-direction: column; align-items: center; width: 76px; flex: 0 0 auto; text-align: center; }
+  .wnode .wav { width: 46px; height: 46px; border-radius: 50%; background-size: cover; background-position: center; border: 1.5px solid rgba(255,255,255,.25); display: grid; place-items: center; font-size: 18px; font-weight: 700; background-color: var(--glass); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
+  .wnode.first .wav { background: var(--accent); color: #0b0b0d; border-color: transparent; }
+  .wnode.last .wav { border-color: var(--accent); border-width: 2px; }
+  .wnode .wnm { font-size: 10.5px; font-weight: 600; margin-top: 5px; max-width: 74px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wnode .wnt { font-size: 9.5px; color: var(--faint); margin-top: 1px; line-height: 1.25; }
+  .warrow { flex: 1; min-width: 14px; height: 46px; display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 13px; }
+  .wtrail { font-size: 13.5px; line-height: 1.5; margin: 0 0 8px; }
+  .cutbar { position: relative; height: 6px; border-radius: 3px; margin: 8px 0 6px; background: linear-gradient(to right, rgba(255,255,255,.30), rgba(255,255,255,.07)); }
+  .cutbar i { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 2.5px var(--bg2); }
+  .cutlbl { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); }
+  .whook { position: relative; height: 26px; margin: 6px 0 2px; display: flex; align-items: center; gap: 1.5px; }
+  .whook i { flex: 1; border-radius: 1.5px; background: rgba(255,255,255,.16); }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
   /* SHEF COOKS YOUR FIND — the mascot's signature loop, on the Today's 20 sheet.
@@ -1085,7 +1203,59 @@
 
     <!-- ONBOARDING -->
     <section class="screen" id="onboarding">
-      <h1>What do you love?</h1>
+      <!-- Shef sits beside the heading rather than above it: the scene costs almost
+           no vertical space there, and onboarding is the screen where every pixel
+           pushed below the fold costs a pick. Filled at boot from the loading
+           scene's markup, so the drawing is authored exactly once. -->
+      <div class="ob-head">
+        <h1>What do you love?</h1>
+        <!-- Shef takes your order. Notepad in the left hand, pencil poised in the
+             right; the pencil ticks while he waits and writes when you pick. Same
+             120-space and geometry as the loading scene's drawing — only the arms
+             and the prop differ, which is what keeps him one character. -->
+        <div class="ob-shef" id="obShef" aria-hidden="true">
+          <svg viewBox="8 4 100 100">
+            <g class="obk-bob">
+              <!-- the pad, held out on the left arm; three rules, ink lands per pick -->
+              <g transform="rotate(-7 30 70)">
+                <rect class="obk-pad" x="15" y="55" width="30" height="25" rx="2.5" />
+                <path class="obk-rule" d="M19 62 h21 M19 68 h21 M19 74 h14" />
+                <path class="obk-ink" d="M19.5 61 q4 -2.6 8 .4 q3.6 2.4 7.6 -.6" />
+                <path class="obk-ink" d="M19.5 67 q3.4 2.2 7 0 q3.8 -2.4 8 .4" />
+                <path class="obk-ink" d="M19.5 73 q4.4 -2 8.4 .2 q3 1.8 5.6 -.4" />
+              </g>
+              <path class="obk-limb" d="M41 57 q-7 5 -9 8" />
+              <!-- pencil arm: ticks idly, scribbles on a pick -->
+              <g class="obk-penarm">
+                <path class="obk-limb" d="M79 57 q-9 8 -19 10" />
+                <g transform="rotate(28 60 67)">
+                  <path class="obk-pencil" d="M60 67 l-13 5" />
+                  <path class="obk-tip" d="M47 72 l-4 1.6 2.6 -3.4 z" />
+                </g>
+              </g>
+              <path class="obk-limb" d="M51 90 q-6 6 -13 7" />
+              <path class="obk-limb" d="M69 90 q6 6 13 7" />
+              <path class="obk-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+              <path class="obk-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+              <g transform="rotate(-8 60 22)">
+                <path class="obk-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+                <path class="obk-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+                <path class="obk-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+              </g>
+              <g class="obk-eOpen">
+                <circle class="obk-eye" cx="50" cy="47" r="3.2" />
+                <circle class="obk-eye" cx="68" cy="47" r="3.2" />
+              </g>
+              <g class="obk-eBlink">
+                <path class="obk-lash" d="M46.6 47.6 q3.4 -3.4 6.8 0" />
+                <path class="obk-lash" d="M64.6 47.6 q3.4 -3.4 6.8 0" />
+              </g>
+              <path class="obk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+              <path class="obk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
+            </g>
+          </svg>
+        </div>
+      </div>
       <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
       <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
       <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. deep house, bachata, djent)…" autocomplete="off" />
@@ -1197,7 +1367,7 @@
       <div class="dock">
         <div class="player">
           <button class="playbtn" id="btnPlay" aria-label="Play or pause"></button>
-          <div class="seek" id="seek"><div class="wave" id="wave"></div><div class="wave on" id="waveOn"></div></div>
+          <div class="seek" id="seek"><div class="wave" id="wave"></div><div class="wave on" id="waveOn"></div><div class="hotmark" id="hotMark"><span class="hm-lbl">best part</span></div></div>
           <div class="time" id="timeLabel">0:00</div>
         </div>
         <div class="controls">
@@ -1687,6 +1857,14 @@
       <div class="tune-label">How far should Sift reach?</div>
       <div class="tune-seg" id="tuneSeg">
         <button data-adv="0">🛋️ Cozy</button><button data-adv="1">⚖️ Balanced</button><button data-adv="2">🧭 Adventurous</button>
+      </div>
+      <!-- What the depth model is doing right now. The dial above is only half of
+           what decides this: state.familiarity moves on every "Heard it" and every
+           keeper, and until now it was invisible everywhere in the app. -->
+      <div class="depth" id="depthBox">
+        <div class="depth-top"><span>Digging depth</span><b id="depthPct">—</b></div>
+        <div class="depth-bar"><i id="depthFill"></i></div>
+        <p class="depth-note" id="depthNote"></p>
       </div>
       <button class="tune-fresh" id="tuneFresh">
         <span class="tf-star">✦</span>
@@ -2958,8 +3136,16 @@ function queueTracks(list, reason, srcFan) {
 const NOPE_BAN_AT = 2;
 
 let genreCursor = 0;   // rotates pickSource across genre buckets (session-local)
+let typedCursor = 0;   // strict rotation inside the typed-artist bucket (session-local)
 function weightedPick(list) {
-  const w = list.map(a => Math.max(a.score, 0.2) * profileMult(tagsOf(a.id)));
+  // An artist the user typed BY NAME is never sunk by the tag profile. Makar (280
+  // listeners) has no MusicBrainz tags at all, so profileMult read him at 0.75 —
+  // the deck was penalising the most explicit signal it has for having no metadata.
+  // Floor at neutral, not boosted: the seed's own score already carries the intent.
+  const w = list.map(a => {
+    const m = profileMult(tagsOf(a.id));
+    return Math.max(a.score, 0.2) * (a.origin === "seed" ? Math.max(m, 1) : m);
+  });
   let r = Math.random() * w.reduce((s, x) => s + x, 0);
   for (let i = 0; i < list.length; i++) { r -= w[i]; if (r <= 0) return list[i]; }
   return list[list.length - 1];
@@ -2988,14 +3174,39 @@ function pickSource(explore) {
   const active = new Set(state.seedLabels || []);
   const buckets = {};
   for (const a of pool) {
+    // Typed artists get a "typed" slot of their own; their DESCENDANTS get "kin";
+    // loves keep "you". Every other arrangement was built and MEASURED first:
+    //  - Baseline: descendants had NO slot at all (no genreName, not loved, not
+    //    seed -> null), so INNA — reached from typing "Edward Maya" — never once
+    //    sourced a refill, and a dead-end seed served ~2 songs then went silent.
+    //  - One bucket PER typed seed swung the rotation so hard toward typed lineage
+    //    that on-genre fell ~20 points (past the ~12pt run noise) while each seed
+    //    was starved of turns by its own children sharing its bucket.
+    //  - Seeds and descendants POOLED in one bucket diluted the seeds the other
+    //    way: ~16 children outvote 4 parents, and the artists Peter actually typed
+    //    were back down to ~1.5 songs a deck.
+    // Separate slots is the balance: the seeds' turn is theirs alone (and taken in
+    // strict rotation, see below), the lineage still gets expanded, loves aren't
+    // crowded out and can't crowd, and easing an artist out of seedLabels retires
+    // seed and lineage together, the same way easing off a genre does. Strays
+    // (nobody asked) still bucket to null.
     const k = (a.genreName && active.has(a.genreName)) ? a.genreName
             : (a.origin === "loved") ? "you"                        // a love outranks its lineage — always sourced
-            : (!a.genreName && a.origin === "seed") ? "you" : null;
+            : (!a.genreName && a.origin === "seed" && active.has(a.name)) ? "typed"
+            : (a.fromSeed && active.has(a.fromSeed)) ? "kin" : null;
     if (k) (buckets[k] = buckets[k] || []).push(a);
   }
   const keys = Object.keys(buckets);
   if (!keys.length) return weightedPick(pool);
-  return weightedPick(buckets[keys[genreCursor++ % keys.length]]);
+  const key = keys[genreCursor++ % keys.length];
+  // The typed bucket takes strict turns, not weighted chance. profileMult favours
+  // the tagged, so an untagged artist you typed kept losing the draw to a tagged one
+  // you ALSO typed — measured: 1 deck in 3 served zero Makar and zero KNGZ on pure
+  // luck. The list is at most "how many artists the user typed", so strict fairness
+  // costs nothing. Every other bucket keeps the weighted draw: inside a genre or a
+  // lineage, fitting the deck SHOULD improve your odds.
+  if (key === "typed") return buckets.typed[typedCursor++ % buckets.typed.length];
+  return weightedPick(buckets[key]);
 }
 
 async function fetchRelatedInto(a) {
@@ -3006,7 +3217,14 @@ async function fetchRelatedInto(a) {
   // Children inherit the seed genre they descend from. Lineage used to die after one
   // hop — nothing downstream knew it was supposed to be "Greek" — and it's what lets
   // pickSource keep a multi-genre deck balanced.
-  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName }));
+  // Typed seeds have no genreName to hand down, and for months that meant their
+  // children carried NO lineage at all: INNA — reached from typing "Edward Maya",
+  // measurably the best-fitting artist in that whole graph — bucketed to null in
+  // pickSource and never once got to source a refill. fromSeed is the typed-artist
+  // twin of genreName: the name of the typed seed this artist descends from, passed
+  // down the same way, so pickSource can give the person's own artists their turn.
+  const fromSeed = a.genreName ? null : (a.fromSeed || (a.origin === "seed" ? a.name : null));
+  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName, fromSeed }));
   // A seed's own tags are the deck's ground truth — fold them into the profile the
   // moment they arrive (relatedArtists just fetched them, so this costs nothing).
   if (a.origin === "seed" && !a._profiled) { a._profiled = 1; bumpProfile(tagsOf(a.id), 2); }
@@ -3015,15 +3233,24 @@ async function fetchRelatedInto(a) {
 // From an artist's ranked track list (biggest hits first), reach PAST the hits into
 // album cuts — the songs you're less likely to already know. How deep depends on your
 // adventure dial + learned familiarity (how often you've hit "heard it").
+// How far past an artist's hits to reach, as a fraction of their catalogue. Pulled
+// out of pickArtistTracks so the Tune sheet can SHOW this number: a second copy of
+// the formula for display would drift from the real one the first time either moved,
+// and then the app would be confidently lying about its own behaviour.
+const DEPTH_BASE = [0.1, 0.32, 0.55];     // by adventure dial
+const DEPTH_CAP = 0.7;                    // never land in only-the-B-sides territory
+function currentDepth() {
+  // Familiarity nudges deeper, but its own contribution is capped first.
+  let depth = DEPTH_BASE[state.adventure] + Math.min(state.familiarity || 0, 3) * 0.06;
+  if (state.freshFinds) depth = Math.max(depth, 0.5);
+  return Math.max(0, Math.min(DEPTH_CAP, depth));
+}
 function pickArtistTracks(pool) {
   const list = (pool || []).filter(t => t && t.preview && t.artist);
   if (!list.length) return [];
   // Reach past the biggest hits, but not so deep the songs stop sounding like the artist
-  // you actually came here for. Familiarity nudges deeper, but capped so it never lands
-  // in only-the-obscure-B-sides territory.
-  let depth = [0.1, 0.32, 0.55][state.adventure] + Math.min(state.familiarity || 0, 3) * 0.06;
-  if (state.freshFinds) depth = Math.max(depth, 0.5);
-  depth = Math.max(0, Math.min(0.7, depth));
+  // you actually came here for.
+  const depth = currentDepth();
   const skip = Math.min(Math.floor(list.length * depth), Math.max(0, list.length - 3)); // never skip everything
   const deep = list.slice(skip);
   const out = [], bag = deep.slice();
@@ -3090,9 +3317,27 @@ async function refill() {
       // Τσιτσάνης returns zero), and marking the source exhausted meant its own songs
       // never got pulled either — so a deck seeded entirely from artists like that came
       // back empty. Fall back to the source's own catalogue before writing it off.
+      // This fallback used to run ONCE: the second visit saw topPulled and stamped the
+      // artist exhausted with almost their whole catalogue unserved (pickArtistTracks
+      // takes at most 2 per pull, so typing "Makar" bought 2 songs out of his 25 and
+      // then permanent silence). knownIds/knownKeys already dedupe, so re-pulling can
+      // only surface songs the user hasn't seen. Exhausted now means what it says:
+      // the pull came back with nothing new — for a graph-less artist, the only
+      // honest definition it can have. (It stays a session judgment; load() clears it.)
+      // A typed artist's FIRST sourcing turn serves them before their neighbours.
+      // startBtn makes exactly this guarantee for genres (every genre you picked is
+      // in the first deck); typed seeds had it only by accident — a rich-graph seed
+      // like Akcent spent every turn on his neighbourhood and a 50-card deck ended
+      // before the fallback ever reached his own songs. You typed the name; the
+      // deck should contain the artist at least once.
+      if (S.origin === "seed" && !S.genreName && !S.topPulled) {
+        targets = [S].concat(targets.filter(t => t !== S)).slice(0, 3);
+      }
+
+      let ownFallback = false;
       if (!targets.length) {
-        if (S.topPulled) { S.exhausted = true; continue; }
         targets = [S];
+        ownFallback = true;
         reasonOverride = (S.genreName && S.origin === "seed") ? "Exploring " + S.genreName : "More from " + S.name;
       }
 
@@ -3108,7 +3353,11 @@ async function refill() {
           else if (S.origin === "seed") reason = "Fans of " + S.name + " also like this";
           else reason = "Related to " + S.name;
         }
-        added += queueTracks(tracks, reason, T.nbFan);
+        const got = queueTracks(tracks, reason, T.nbFan);
+        added += got;
+        // The catalogue genuinely ran dry (or close enough that a random reach into
+        // its depths found nothing unseen) — NOW the artist has had their full run.
+        if (ownFallback && !got) S.exhausted = true;
       }
     }
   } finally { state.refilling = false; }
@@ -3131,7 +3380,12 @@ function orderQueue() {
     // so off-genre never vanishes — it just stops surfacing as readily as on-genre.
     // The dial sets HOW MUCH this matters: Cozy reads as "stay in my lane", which
     // used to only mean "reach fewer hops" — it now also means "stay on-genre".
-    bias += (profileMult(tagsOf(t.artistId)) - 1) * [0.95, 0.45, 0.2][adv];
+    // Same floor as weightedPick: a typed seed's own songs are never ordered DOWN for
+    // the artist lacking tags — you asked for them, the profile doesn't get a veto.
+    const _ta = state.artists[t.artistId];
+    let _pm = profileMult(tagsOf(t.artistId));
+    if (_ta && _ta.origin === "seed" && _pm < 1) _pm = 1;
+    bias += (_pm - 1) * [0.95, 0.45, 0.2][adv];
     // Decades you love float too — a gentler pull than genre (eraMult is 0.8..1.25
     // and silent until a few loves agree on a decade).
     bias += (eraMult(t.year) - 1) * 0.5;
@@ -3323,6 +3577,8 @@ function save() {
       lastDailyDone: state.lastDailyDone,
       coached: state.coached,
       tuneHinted: state.tuneHinted,
+      hotNamed: state.hotNamed,
+      stripHinted: state.stripHinted,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (e) { /* storage may be blocked; app still works in-session */ }
@@ -3367,6 +3623,8 @@ function load() {
     if (typeof d.lastDailyDone === "string") state.lastDailyDone = d.lastDailyDone;
     if (d.coached) state.coached = 1;
     if (d.tuneHinted) state.tuneHinted = 1;
+    if (d.hotNamed) state.hotNamed = 1;
+    if (d.stripHinted) state.stripHinted = 1;
     return Object.keys(state.artists).length > 0 || state.liked.length > 0;
   } catch (e) { return false; }
 }
@@ -3674,6 +3932,18 @@ async function flushUsage() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
 
 /* ---------- Onboarding UI ---------- */
+// Shef writes your pick down: the pencil arm scribbles, and a line of ink lands on
+// the pad — one per pick, up to the three ruled lines, so the pad visibly fills as
+// your taste does. (The pot version of this screen was tried and vetoed: setup and
+// loading read as the same scene twice. He takes the order here; he cooks there.)
+let obInkN = 0;
+function obScribble() {
+  const arm = document.querySelector("#obShef .obk-penarm");
+  if (!arm) return;
+  arm.classList.remove("write"); void arm.getBoundingClientRect(); arm.classList.add("write");
+  const inks = document.querySelectorAll("#obShef .obk-ink");
+  if (inks.length) inks[Math.min(obInkN++, inks.length - 1)].classList.add("on");
+}
 const seedGenres = new Map();   // genre -> weight (1..3); bigger = seeds harder
 const seedArtists = new Map();   // artist name -> weight (1..3), same weighting as genres
 const genreChips = document.getElementById("genreChips");
@@ -3701,6 +3971,7 @@ GENRES.forEach(g => {
     let w = (seedGenres.get(g) || 0) + 1;
     if (w > 3) { seedGenres.delete(g); w = 0; } else { seedGenres.set(g, w); }
     renderChip(el, g, w, lead);
+    if (w > 0) obScribble();      // adding or turning up — not the tap that clears it
     updateStart();
   };
   genreChips.appendChild(el);
@@ -3737,6 +4008,42 @@ function buildFamRow(rowEl, active, onPick) {
   // Centre the selected family in the strip. Set scrollLeft directly rather than
   // scrollIntoView, which would also scroll the whole page vertically to reach it.
   if (activeEl) rowEl.scrollLeft = Math.max(0, activeEl.offsetLeft - rowEl.clientWidth / 2 + activeEl.offsetWidth / 2);
+  attachStripHints(rowEl);
+}
+// Which edges of a family strip have more behind them. Runs after every rebuild
+// because the answer changes with the active family and with the screen width.
+function syncStripHints(rowEl) {
+  const max = rowEl.scrollWidth - rowEl.clientWidth;
+  rowEl.classList.toggle("hint-l", max > 8 && rowEl.scrollLeft > 4);
+  rowEl.classList.toggle("hint-r", max > 8 && rowEl.scrollLeft < max - 4);
+}
+function attachStripHints(rowEl) {
+  if (!rowEl._hinted) {
+    rowEl._hinted = 1;
+    rowEl.addEventListener("scroll", () => syncStripHints(rowEl), { passive: true });
+    window.addEventListener("resize", () => syncStripHints(rowEl));
+  }
+  // Layout isn't settled on the frame the buttons are appended — scrollWidth reads
+  // as clientWidth and every strip would look like it had nothing to reveal.
+  requestAnimationFrame(() => syncStripHints(rowEl));
+}
+// Once per install, on the first strip anyone sees: scroll out and back so the gesture
+// is demonstrated rather than implied. The fade alone says "there is more"; this says
+// "and you get to it by dragging". Skipped entirely under Reduce Motion, where the
+// fade is left to do the whole job.
+function nudgeStrip(rowEl) {
+  if (!rowEl || state.stripHinted) return;
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const max = rowEl.scrollWidth - rowEl.clientWidth;
+  if (max < 30 || rowEl.scrollLeft > 5) return;   // nothing to show, or not at the start
+  state.stripHinted = 1; save();
+  const t0 = performance.now(), DUR = 900, PEAK = 30;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / DUR);
+    rowEl.scrollLeft = Math.sin(p * Math.PI) * PEAK;   // out and back on one arc
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 let activeFamily = FAMILY_NAMES[0];
@@ -3763,6 +4070,8 @@ function setFamily(f) {
 }
 document.getElementById("genreSearch").addEventListener("input", refreshGenreVisibility);
 setFamily(activeFamily);   // start on ★ Popular
+// Demonstrate the strip once, after layout has settled enough for scrollWidth to be real.
+setTimeout(() => nudgeStrip(document.getElementById("famRow")), 700);
 document.getElementById("addArtist").onclick = () => addArtistChip();
 document.getElementById("artistInput").addEventListener("keydown", e => { if (e.key === "Enter") addArtistChip(); });
 
@@ -3806,6 +4115,7 @@ function addArtistChip(pic) {
   const val = input.value.trim();
   if (val && !seedArtists.has(val)) {
     seedArtists.set(val, 1);
+    obScribble();                 // a typed artist goes on the order too
     const el = document.createElement("div");
     el.className = "chip";
     el._lead = "";
@@ -4133,6 +4443,31 @@ function renderWave(track) {
     for (let i = 0; i < kids.length; i++) kids[i].style.height = (shape ? 10 + shape[i] * 90 : 26) + "%";
   }
 }
+// Draw the hook marker at the point findHotStart() chose. Safe to call at any time:
+// before analysis lands hotStarts[id] is undefined and this just clears whatever the
+// previous song left behind.
+const hotMarkEl = document.getElementById("hotMark");
+function renderHotMark(track) {
+  if (!hotMarkEl) return;
+  const h = track ? hotStarts[track.id] : undefined;
+  // The SAME test playTrack uses before jumping (h > 1.5). Anything looser and the
+  // marker would claim a jump that never happened — findHotStart returns 0 when the
+  // hook is already at the top of the clip, and small values are left alone.
+  if (!h || h <= 1.5) { hotMarkEl.classList.remove("on", "land", "named"); return; }
+  // Against the preview's REAL duration, not a hardcoded 30 — Apple's clips are
+  // often 29.x and a fixed divisor would drift the marker off the bars it describes.
+  const dur = (audio.duration && isFinite(audio.duration) && audio.duration > 5) ? audio.duration : 30;
+  hotMarkEl.style.left = (Math.min(1, h / dur) * 100).toFixed(2) + "%";
+  if (hotMarkEl.classList.contains("on")) return;    // already placed for this song
+  hotMarkEl.classList.add("on");
+  hotMarkEl.classList.remove("land"); void hotMarkEl.offsetWidth; hotMarkEl.classList.add("land");
+  // Say what it is exactly once per install, then let the shape speak for itself.
+  if (!state.hotNamed) {
+    state.hotNamed = 1; save();
+    hotMarkEl.classList.add("named");
+    setTimeout(() => hotMarkEl.classList.remove("named"), 4200);
+  }
+}
 let scrubbing = false;
 // The displayed fill EASES toward the true position instead of snapping: a new song
 // visibly sweeps back to empty, the best-part jump glides forward, the loop restart
@@ -4274,10 +4609,13 @@ function ensureHot(track) {
     .then(r => {
       hotStarts[track.id] = (r && r.sec) || 0;
       if (r && r.fine) waveFine[track.id] = r.fine;
-      if (r && r.shape) {
-        waveShapes[track.id] = r.shape;
-        // If this song is on the card right now, morph the placeholder into the real wave
-        if (state.current && state.current.id === track.id) renderWave(track);
+      if (r && r.shape) waveShapes[track.id] = r.shape;
+      // If this song is on the card right now, morph the placeholder into the real
+      // wave and land the marker on it in the same beat. The marker is drawn even
+      // when no shape came back — the hook time is the useful half.
+      if (state.current && state.current.id === track.id) {
+        if (r && r.shape) renderWave(track);
+        renderHotMark(track);
       }
     })
     .catch(() => { hotStarts[track.id] = 0; })       // CORS/decoding failed → just play from start
@@ -4292,12 +4630,14 @@ function playTrack(track) {
   audio.src = track.preview;
   try { audio.currentTime = 0; } catch (_) {}
   renderWave(track);
+  renderHotMark(track);                             // clears the previous song's marker
   updateSeekUI(0, true);
   clearBounce(); bounceIdx = -1;
   const applyHot = () => {
     if (token !== audioToken) return;               // a newer card took over
     const h = hotStarts[track.id];
     if (h && h > 1.5 && audio.currentTime < 2.5) { try { audio.currentTime = h; } catch (_) {} showBestTag(); }
+    renderHotMark(track);   // duration is known by now, so the position is exact
   };
   audio.onloadedmetadata = applyHot;
   safePlay();
@@ -4546,8 +4886,36 @@ document.getElementById("dailyPill").onclick = () => {
 
 /* ---------- Tune sheet controls — adventurousness dial + Fresh Finds ---------- */
 const ADV_NAMES = ["Cozy", "Balanced", "Adventurous"];
+// Show where the depth model currently sits, and — the part that was invisible —
+// WHICH of the two inputs put it there. Reads currentDepth(), the same function
+// pickArtistTracks uses, so it cannot disagree with what the deck actually does.
+function renderDepth() {
+  const box = document.getElementById("depthBox");
+  if (!box) return;
+  const d = currentDepth();
+  const pct = Math.round(d * 100);
+  document.getElementById("depthPct").textContent = pct + "%";
+  // Scaled against the cap, not against 100%: 0.7 IS full travel here, and a meter
+  // that stops seven-tenths along when the model is maxed out reads as broken.
+  document.getElementById("depthFill").style.width = Math.round((d / DEPTH_CAP) * 100) + "%";
+  const base = DEPTH_BASE[state.adventure];
+  const famAdd = Math.min(state.familiarity || 0, 3) * 0.06;
+  const out = ["Sift skips the top <b>" + pct + "%</b> of each artist's catalogue before choosing a song."];
+  if (state.freshFinds && base + famAdd < 0.5) {
+    out.push("<b>✦ Fresh Finds</b> is holding it at least this deep.");
+  } else if (famAdd >= 0.03) {
+    out.push("Your <b>Heard it</b> taps have pushed it " + Math.round(famAdd * 100) +
+             " points past " + ["Cozy", "Balanced", "Adventurous"][state.adventure] +
+             " on its own — finding keepers eases it back.");
+  } else {
+    out.push("Tap <b>Heard it</b> on songs you already know and this digs deeper by itself.");
+  }
+  if (d >= DEPTH_CAP) out.push("It is at its limit — deeper than this stops sounding like the artist you came for.");
+  document.getElementById("depthNote").innerHTML = out.join(" ");
+}
 function applyAdventureUI() {
   document.querySelectorAll("#tuneSeg button").forEach(b => b.classList.toggle("on", Number(b.dataset.adv) === state.adventure));
+  renderDepth();
 }
 function setAdventure(n) {
   state.adventure = ((n % 3) + 3) % 3;
@@ -4565,6 +4933,7 @@ function applyFreshUI() {
   f.classList.toggle("on", !!state.freshFinds);
   document.getElementById("tuneFreshState").textContent = state.freshFinds ? "On" : "Off";
   document.getElementById("tuneDot").classList.toggle("on", !!state.freshFinds); // header dot = fresh is on
+  renderDepth();   // Fresh Finds sets a floor under the depth, so the meter moves with it
 }
 function setFresh() {
   state.freshFinds = !state.freshFinds;
@@ -4688,17 +5057,52 @@ document.getElementById("whySheet").onclick = e => { if (e.target.id === "whyShe
 function whyHtml(t) {
   const a = state.artists[t.artistId] || {};
   const row = (k, v) => '<div class="why-row"><div class="why-k">' + k + '</div><div class="why-v">' + v + "</div></div>";
-  const rows = [];
-  // 1 — the trail: how the graph got from what you asked for to this card
-  let path;
-  if (a.origin === "loved") path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
-  else if (a.origin === "seed" && a.genreName) path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
-  else if (a.origin === "seed") path = "You asked for " + esc(a.name || t.artist) + " by name.";
-  else if (a.via && a.genreName) path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
-  else if (a.via) path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
-  else path = esc(t.reason || "Surfaced by your mix.");
-  rows.push(row("The trail", path));
-  // 2 — their sound, against what this deck is about
+  // 1 — THE TRAIL, drawn as a chain: what you asked for -> the bridge -> this song,
+  // with the sentence kept underneath as the receipt. Every node is data the engine
+  // actually used (origin / genreName / via / fromSeed) — nothing is invented, which
+  // is the whole point of this sheet: no other music app can render this screen
+  // because no other app has the route.
+  const node = (img, txt, name, note, cls) =>
+    '<div class="wnode' + (cls ? " " + cls : "") + '"><div class="wav"' +
+    (img ? ' style="background-image:url(\'' + img + '\')"' : "") + '>' +
+    (img ? "" : esc(txt || "")) + '</div>' +
+    '<div class="wnm">' + esc(name) + '</div><div class="wnt">' + note + '</div></div>';
+  const arrow = '<div class="warrow">→</div>';
+  const initial = s => (s || "?").trim().charAt(0).toUpperCase();
+  const me = node(t.cover, initial(t.artist), t.artist, "this song", "last");
+  // A typed seed whose graph came back empty gets the honest version of its story.
+  const deadEnd = a.relatedFetched && (!a.related || !a.related.length);
+  let chain, path;
+  if (a.origin === "loved") {
+    chain = node(null, "♥", a.name || t.artist, "you loved them", "first") + arrow + me;
+    path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
+  } else if (a.origin === "seed" && a.genreName) {
+    chain = node(null, GENRE_EMOJI[a.genreName] || "🎵", a.genreName, "you picked it", "first") + arrow + me;
+    path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
+  } else if (a.origin === "seed") {
+    chain = node(null, "⌨️", a.name || t.artist, "you typed the name", "first") + arrow + me;
+    path = "You asked for " + esc(a.name || t.artist) + " by name." +
+      (deadEnd ? " ListenBrainz knows no neighbours for them, so this is their own catalogue — served until it genuinely runs out." : "");
+  } else if (a.fromSeed) {
+    const hop = a.via && a.via !== a.fromSeed;
+    chain = node(null, "⌨️", a.fromSeed, "you typed the name", "first") +
+      (hop ? arrow + node(null, initial(a.via), a.via, "their graph led here") : "") + arrow + me;
+    path = hop
+      ? "You typed <b>" + esc(a.fromSeed) + "</b> — that led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + "."
+      : "You typed <b>" + esc(a.fromSeed) + "</b> — people who listen to them also play " + esc(t.artist) + ".";
+  } else if (a.via && a.genreName) {
+    chain = node(null, GENRE_EMOJI[a.genreName] || "🎵", a.genreName, "you picked it", "first") + arrow + node(null, initial(a.via), a.via, "its graph led here") + arrow + me;
+    path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
+  } else if (a.via) {
+    chain = node(null, initial(a.via), a.via, "in your mix", "first") + arrow + me;
+    path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
+  } else {
+    chain = me;
+    path = esc(t.reason || "Surfaced by your mix.");
+  }
+  const rows = ['<div class="wchain">' + chain + '</div><p class="wtrail">' + path + '</p>'];
+  // 2 — their sound, against what this deck is about. An untagged TYPED seed gets
+  // the honest explanation instead of silence — the scoring rule is worth saying.
   const tags = tagsOf(t.artistId).slice(0, 6);
   if (tags.length) {
     const p = state.tagProfile || {};
@@ -4706,15 +5110,36 @@ function whyHtml(t) {
     rows.push(row("Their sound",
       tags.map(x => '<span class="why-tag' + ((p[x] || 0) > 0 ? " hit" : "") + '">' + esc(x) + "</span>").join("") +
       (hit ? '<div class="why-note">bright = the sound of your current mix</div>' : "")));
+  } else if (a.origin === "seed" && !a.genreName) {
+    rows.push(row("Their sound", '<div class="why-note">MusicBrainz has no tags for this artist — Sift scores that as neutral, never as a penalty. You typed the name; the profile doesn&#39;t get a veto.</div>'));
   }
-  // 3 — how deep the cut is
+  // 3 — how deep the cut is, drawn: a position between their hits and their depths,
+  // with the old sentence kept as the caption.
   const pop = (t.rank || 0) / 1000000;
   const fans = t.nbFan != null ? t.nbFan : a.nbFan;
   let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
   if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
-  rows.push(row("The cut", cut + "."));
+  rows.push(row("The cut",
+    '<div class="cutbar"><i style="left:' + Math.round(Math.min(1, Math.max(0, 1 - pop)) * 100) + '%"></i></div>' +
+    '<div class="cutlbl"><span>their biggest hits</span><span>deep cuts</span></div>' +
+    '<div class="why-note">' + cut + '.</div>'));
   // 3½ — era, only when it actually influenced the pick
   if (t.year && eraMult(t.year) > 1.05) rows.push(row("The era", "From the " + (Math.floor(t.year / 10) * 10) + "s — a decade your loves keep landing in."));
+  // 3¾ — the best part: the flagship mechanism, finally accounted for in the one
+  // place recommendations explain themselves. Same h > 1.5 rule as playback and the
+  // scrubber marker, so this row can never claim a jump that didn't happen. Bars are
+  // the REAL decoded envelope when analysis has landed, the same per-song
+  // placeholder the dock shows when it hasn't.
+  const h = hotStarts[t.id];
+  if (h && h > 1.5) {
+    const shape = waveShapes[t.id] || waveFallback(t.id);
+    const dur = (audio.duration && isFinite(audio.duration) && audio.duration > 5) ? audio.duration : 30;
+    let bars = "";
+    for (let i = 0; i + 1 < WAVE_N; i += 2) bars += '<i style="height:' + Math.round(14 + ((shape[i] + shape[i + 1]) / 2) * 80) + '%"></i>';
+    rows.push(row("The best part",
+      '<div class="whook">' + bars + '<div class="hotmark on" style="left:' + Math.min(100, h / dur * 100).toFixed(1) + '%"></div></div>' +
+      '<div class="why-note">playback starts you at ' + fmtTime(h) + ' — the loudest sustained passage, found by decoding the preview</div>'));
+  }
   // 4 — the dials you set
   rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
   return rows.join("");
