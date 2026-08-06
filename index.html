@@ -96,19 +96,43 @@
      heading he costs ~10px of height over the bare <h1> that was there before. */
   .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .ob-head h1 { flex: 1; min-width: 0; }
-  .ob-pot { flex: 0 0 auto; }
-  .ob-pot .potscene { width: 112px; height: 72px; }
-  /* The ingredients stop raining on a loop here and drop once per pick instead, so
-     choosing a genre visibly puts something in the pot. Same keyframes as the
-     loading scene — only the trigger changes. */
-  .ob-pot .lk-drop { animation: none; opacity: 0; }
-  .ob-pot .lk-drop.fire { animation: lkDrop 1.6s ease-in 1; }
-  /* He WAITS here and cooks on the loading screen, so this copy keeps only the signs
-     of life — the bob and the blink — and drops everything that implies he has already
-     started. The two screens then read as one sequence rather than the same loop
-     twice: you fill the pot, you press Start, he cooks it. */
-  .ob-pot .lk-stir, .ob-pot .lk-potwob, .ob-pot .lk-armR { animation: none; }
-  .ob-pot .lk-steam, .ob-pot .lk-bub { animation: none; opacity: 0; }
+  /* NO POT here — that was tried first and Peter vetoed it: two pots in a row made
+     setup and loading the same scene twice, and a pot on the picking screen implies
+     he's already cooking. Here he TAKES YOUR ORDER — notepad in one hand, pencil in
+     the other. The pencil ticks idly while he waits, scribbles when you pick
+     something, and a line of ink lands on the pad per pick — so the pad visibly
+     fills as your taste does. The pot appears exactly once, on the loading screen,
+     where cooking is what's actually happening. Same drawing grammar as every other
+     Shef (identical stroke weights, colours, geometry), obk- namespaced so this
+     scene owns its markup instead of copying the loading screen's. */
+  .ob-shef { flex: 0 0 auto; }
+  .ob-shef svg { width: 116px; height: 104px; overflow: visible; display: block; }
+  .obk-body-o { stroke: #f4f4f5; stroke-width: 34; stroke-linecap: round; fill: none; }
+  .obk-body-i { stroke: #26262c; stroke-width: 26; stroke-linecap: round; fill: none; }
+  .obk-limb { stroke: #f4f4f5; stroke-width: 7; stroke-linecap: round; fill: none; }
+  .obk-eye { fill: #f4f4f5; }
+  .obk-lash { stroke: #f4f4f5; stroke-width: 3; stroke-linecap: round; fill: none; }
+  .obk-hat-p { fill: #f4f4f5; }
+  .obk-hat-b { fill: #f4f4f5; stroke: #26262c; stroke-width: 1.6; }
+  .obk-hat-s { stroke: #26262c; stroke-width: 1.4; fill: none; stroke-linecap: round; opacity: .55; }
+  .obk-stache { fill: #a07a52; }
+  .obk-stache-h { stroke: #4a3320; stroke-width: 1.5; fill: none; stroke-linecap: round; opacity: .7; }
+  .obk-pad { fill: #f2efe6; }
+  .obk-rule { stroke: #23211c; stroke-width: 1.5; stroke-linecap: round; opacity: .35; fill: none; }
+  .obk-ink { stroke: #23211c; stroke-width: 1.9; stroke-linecap: round; fill: none; opacity: 0; transition: opacity .3s; }
+  .obk-ink.on { opacity: 1; }
+  .obk-pencil { stroke: #a07a52; stroke-width: 4; stroke-linecap: round; }
+  .obk-tip { fill: #f4f4f5; }
+  /* Deliberately still animated under Reduce Motion, same owner's call as the
+     loading pot: a small contained idle in one corner of a static screen. */
+  .obk-bob { animation: obkBob 1.7s ease-in-out infinite; transform-origin: 60px 102px; }
+  .obk-eOpen { animation: lkEOpen 3.4s steps(1) infinite; }
+  .obk-eBlink { animation: lkEBlink 3.4s steps(1) infinite; }
+  .obk-penarm { animation: obkTick 2.6s ease-in-out infinite; transform-origin: 79px 57px; }
+  .obk-penarm.write { animation: obkWrite .5s ease-in-out 2; }
+  @keyframes obkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+  @keyframes obkTick { 0%, 86%, 100% { transform: rotate(0deg); } 92% { transform: rotate(-5deg); } }
+  @keyframes obkWrite { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-3px, 1.5px) rotate(-7deg); } }
   #onboarding, #welcome { padding: 8px 20px 24px; overflow-y: auto; }
   #onboarding h1, #welcome h1 { font-size: 26px; margin: 6px 0 4px; }
   #onboarding p.lead, #welcome p.lead { color: var(--muted); margin: 0 0 18px; line-height: 1.4; }
@@ -1185,7 +1209,52 @@
            scene's markup, so the drawing is authored exactly once. -->
       <div class="ob-head">
         <h1>What do you love?</h1>
-        <div class="ob-pot" id="obPot" aria-hidden="true"></div>
+        <!-- Shef takes your order. Notepad in the left hand, pencil poised in the
+             right; the pencil ticks while he waits and writes when you pick. Same
+             120-space and geometry as the loading scene's drawing — only the arms
+             and the prop differ, which is what keeps him one character. -->
+        <div class="ob-shef" id="obShef" aria-hidden="true">
+          <svg viewBox="8 4 100 100">
+            <g class="obk-bob">
+              <!-- the pad, held out on the left arm; three rules, ink lands per pick -->
+              <g transform="rotate(-7 30 70)">
+                <rect class="obk-pad" x="15" y="55" width="30" height="25" rx="2.5" />
+                <path class="obk-rule" d="M19 62 h21 M19 68 h21 M19 74 h14" />
+                <path class="obk-ink" d="M19.5 61 q4 -2.6 8 .4 q3.6 2.4 7.6 -.6" />
+                <path class="obk-ink" d="M19.5 67 q3.4 2.2 7 0 q3.8 -2.4 8 .4" />
+                <path class="obk-ink" d="M19.5 73 q4.4 -2 8.4 .2 q3 1.8 5.6 -.4" />
+              </g>
+              <path class="obk-limb" d="M41 57 q-7 5 -9 8" />
+              <!-- pencil arm: ticks idly, scribbles on a pick -->
+              <g class="obk-penarm">
+                <path class="obk-limb" d="M79 57 q-9 8 -19 10" />
+                <g transform="rotate(28 60 67)">
+                  <path class="obk-pencil" d="M60 67 l-13 5" />
+                  <path class="obk-tip" d="M47 72 l-4 1.6 2.6 -3.4 z" />
+                </g>
+              </g>
+              <path class="obk-limb" d="M51 90 q-6 6 -13 7" />
+              <path class="obk-limb" d="M69 90 q6 6 13 7" />
+              <path class="obk-body-o" d="M61.5 42 q-7 17 -1.5 34" />
+              <path class="obk-body-i" d="M61.5 42 q-7 17 -1.5 34" />
+              <g transform="rotate(-8 60 22)">
+                <path class="obk-hat-p" d="M47 25 q-6 -11 4 -12 q2 -6 9 -6 q7 0 9 6 q10 1 4 12 z" />
+                <path class="obk-hat-b" d="M46 25 h28 v5 q0 2 -2 2 h-24 q-2 0 -2 -2 z" />
+                <path class="obk-hat-s" d="M55 14 q1 5 0 10 M65 14 q-1 5 0 10" />
+              </g>
+              <g class="obk-eOpen">
+                <circle class="obk-eye" cx="50" cy="47" r="3.2" />
+                <circle class="obk-eye" cx="68" cy="47" r="3.2" />
+              </g>
+              <g class="obk-eBlink">
+                <path class="obk-lash" d="M46.6 47.6 q3.4 -3.4 6.8 0" />
+                <path class="obk-lash" d="M64.6 47.6 q3.4 -3.4 6.8 0" />
+              </g>
+              <path class="obk-stache" d="M48.6 60.8 C50.2 57.4, 54.6 56.4, 57.6 58.2 C60.6 56.4, 65 57.4, 66.6 60.8 C67.3 62.5, 65.2 63.5, 62.7 64.8 C60.4 65.9, 58.6 64.4, 57.6 62.8 C56.6 64.4, 54.8 65.9, 52.5 64.8 C50 63.5, 47.9 62.5, 48.6 60.8 Z" />
+              <path class="obk-stache-h" d="M56.3 58.7 q-2.8 2.1 -4.7 4.4 M54.1 58.7 q-2.5 1.9 -4.1 3.7 M51.9 59.3 q-1.9 1.4 -3 2.6 M58.9 58.7 q2.8 2.1 4.7 4.4 M61.1 58.7 q2.5 1.9 4.1 3.7 M63.3 59.3 q1.9 1.4 3 2.6" />
+            </g>
+          </svg>
+        </div>
       </div>
       <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
       <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
@@ -3863,22 +3932,17 @@ async function flushUsage() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
 
 /* ---------- Onboarding UI ---------- */
-// Shef's pot is authored once, inside #deckLoading. Copy it now rather than
-// duplicating 90 lines of SVG: this runs at boot, before the first renderCard()
-// empties the deck and takes the original with it.
-(function seedObPot() {
-  const src = document.querySelector("#deckLoading .potscene");
-  const slot = document.getElementById("obPot");
-  if (src && slot) slot.innerHTML = src.outerHTML;
-})();
-// One ingredient per pick, cycling through the three drop groups so consecutive
-// picks don't retrigger the same falling note.
-let obDropN = 0;
-function obDrop() {
-  const drops = document.querySelectorAll("#obPot .lk-drop");
-  if (!drops.length) return;
-  const d = drops[obDropN++ % drops.length];
-  d.classList.remove("fire"); void d.getBoundingClientRect(); d.classList.add("fire");
+// Shef writes your pick down: the pencil arm scribbles, and a line of ink lands on
+// the pad — one per pick, up to the three ruled lines, so the pad visibly fills as
+// your taste does. (The pot version of this screen was tried and vetoed: setup and
+// loading read as the same scene twice. He takes the order here; he cooks there.)
+let obInkN = 0;
+function obScribble() {
+  const arm = document.querySelector("#obShef .obk-penarm");
+  if (!arm) return;
+  arm.classList.remove("write"); void arm.getBoundingClientRect(); arm.classList.add("write");
+  const inks = document.querySelectorAll("#obShef .obk-ink");
+  if (inks.length) inks[Math.min(obInkN++, inks.length - 1)].classList.add("on");
 }
 const seedGenres = new Map();   // genre -> weight (1..3); bigger = seeds harder
 const seedArtists = new Map();   // artist name -> weight (1..3), same weighting as genres
@@ -3907,7 +3971,7 @@ GENRES.forEach(g => {
     let w = (seedGenres.get(g) || 0) + 1;
     if (w > 3) { seedGenres.delete(g); w = 0; } else { seedGenres.set(g, w); }
     renderChip(el, g, w, lead);
-    if (w > 0) obDrop();          // adding or turning up — not the tap that clears it
+    if (w > 0) obScribble();      // adding or turning up — not the tap that clears it
     updateStart();
   };
   genreChips.appendChild(el);
@@ -4051,7 +4115,7 @@ function addArtistChip(pic) {
   const val = input.value.trim();
   if (val && !seedArtists.has(val)) {
     seedArtists.set(val, 1);
-    obDrop();                     // a typed artist is an ingredient too
+    obScribble();                 // a typed artist goes on the order too
     const el = document.createElement("div");
     el.className = "chip";
     el._lead = "";
