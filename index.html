@@ -1980,7 +1980,17 @@ const GENRE_ANCHORS = {
   "Post-Punk": ["Joy Division","Interpol"], "Post-Rock": ["Explosions in the Sky","Mogwai"],
   "Shoegaze": ["Slowdive","My Bloody Valentine"], "Psychedelic": ["King Gizzard & The Lizard Wizard","Pink Floyd"],
   "Math Rock": ["American Football","tricot"],
-  "Electronic": ["ODESZA","Flume"], "House": ["Disclosure","Fisher"],
+  "Electronic": ["ODESZA","Flume"],
+  // "Fisher" was the second anchor and resolved to the WRONG artist: MusicBrainz files
+  // that name under Kathy Fisher, a vocal-trance singer (1,039 listeners), not the
+  // Australian tech-house FISHER. Apple still returned "Losing It" — appleArtistId
+  // matches on the name — so the chip looked fine while ListenBrainz quietly expanded a
+  // trance neighbourhood: Dash Berlin, ATB, Kyau & Albert, Julie Thompson, OceanLab all
+  // entered House decks this way. Duke Dumont resolves exactly, carries house/deep
+  // house/tech house, and every one of his eight neighbours is house (Kiesza, Lost
+  // Frequencies, Oliver Heldens, ZHU, Disclosure, Gorgon City, Jax Jones).
+  // Measured on a House deck: off-genre cards 26% -> 17.5%.
+  "House": ["Disclosure","Duke Dumont"],
   // &ME is a Keinemusik member and, unlike the group, has a real neighbourhood (29) —
   // Keinemusik stays for its own catalogue but can't expand the deck on its own.
   "Afro House": ["Black Coffee","&ME","Keinemusik"],
@@ -2298,7 +2308,17 @@ function itunesApi(path, params) {  // JSONP — works everywhere, incl. file://
 // book-keeping that MusicBrainz users leave on artists ("bookmark", "favorites") — it
 // polluted the coherence profile with words no artist is ever tagged with musically.
 const TAG_SKIP = /^(english|american|british|uk|usa|canadian|australian|irish|european|seen live|[a-z ]*vocalists|\d{2,4}s|bookmark|bookmarks|favou?rites?|my music|radio|playlist|check ?out|todo|wishlist)$/;
-const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative"]);  // umbrella genres half the catalog wears
+// Umbrella genres half the catalog wears. The compound ones matter as much as the bare
+// words: "dance pop" and "electropop" are worn by Rihanna, Shakira, Bieber, Kesha, Flo
+// Rida, Calvin Harris AND by every Romanian dance act — so a deck seeded on Akcent
+// (tagged "dance pop, electropop, romanian, romanian band") scored the entire Top 40 at
+// 1.20, "squarely what this deck is about". The coherence filter was endorsing exactly
+// the drift it exists to stop. The specific tags — romanian, deep house — still carry
+// the deck; only the words that mean "popular music" are ignored.
+// "edm" is deliberately NOT here: genreTags feeds bumpProfile, and the EDM chip's only
+// tag IS "edm", so blocking it would leave that chip unable to seed a profile at all.
+const TAG_GENERIC = new Set(["pop", "rock", "hip hop", "rap", "electronic", "dance", "r&b", "rnb", "soul", "indie", "alternative",
+  "dance pop", "electropop", "pop rap", "pop rock", "contemporary r&b", "teen pop"]);
 const normTag = t => t.toLowerCase().replace(/-/g, " ").trim();
 async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for a whole neighborhood
   const need = mbids.filter(id => MBID_RE.test(id) && !(lbArtist[id] && lbArtist[id].tags));
@@ -2334,7 +2354,18 @@ async function mbMetaFor(mbids) {  // ONE batched arid:() search fills tags for 
 function tagsCompatible(src, cand) {
   if (!src.length || !cand.length) return true;   // untagged (usually small) artists get the benefit of the doubt
   const shared = cand.filter(t => src.includes(t));
-  return shared.some(t => !TAG_GENERIC.has(t)) || shared.length >= 2;  // a specific shared genre, or 2+ umbrella ones
+  // A SPECIFIC shared genre, and nothing else. The old rule also accepted "2+ umbrella
+  // tags in common", which sounds like corroboration and isn't: chart artists wear four
+  // or five umbrella tags each, so Akcent (dance pop, electropop, romanian, romanian
+  // band) counted Shakira, Pitbull, Kesha and Calvin Harris as genre-kin on the strength
+  // of "dance pop" plus "electropop". Measured over 4 full decks on those seeds, dropping
+  // the escape moves on-genre cards from 45% to 75% and chart pop from 5% to 1%.
+  // This pairs with the compound umbrella tags added to TAG_GENERIC: neither change does
+  // anything alone, because TAG_GENERIC is what the word "specific" means here.
+  // Thin neighbourhoods are unharmed - Greek 34->40 cards, Rebetiko 32->42, and the two
+  // genuinely data-poor scenes (Amapiano, Gqom) are equally thin either way, which is a
+  // ListenBrainz coverage problem the kinship rule was never load-bearing for.
+  return shared.some(t => !TAG_GENERIC.has(t));
 }
 /* ---------- Deck coherence profile ----------
    The deck's tag-level memory of what it's ABOUT. Pairwise kinship (above) only
@@ -3008,6 +3039,14 @@ function tightenTargets(list) {
   const keep = list.filter(a => profileMult(tagsOf(a.id)) >= 0.7);
   return keep.length ? keep : list;
 }
+// NOTE (2026-08-06): two hops out is where a deck slips its genre, and nothing checks
+// where it LANDS — tightenTargets returns early on every dial except Cozy. An attempt to
+// filter the far targets against the deck profile was measured and REJECTED: over 5 full
+// decks it scored 63.7% on-genre against 68.2% for leaving it alone, i.e. it made the
+// deck slightly worse. Plausible reason: cutting the far targets pushes refill() into the
+// dead-end fallback more often, and that path ignores genre entirely. If this is revisited,
+// fix the fallback first — tightening a filter that sits in front of an unfiltered escape
+// hatch is what made TAG_GENERIC alone useless too.
 async function refill() {
   if (state.refilling) return;
   state.refilling = true;
