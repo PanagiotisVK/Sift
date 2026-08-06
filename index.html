@@ -859,7 +859,26 @@
   .why-v { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
   .why-tag { display: inline-block; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 10px; margin: 0 6px 6px 0; font-size: 12px; }
   .why-tag.hit { background: var(--accent); color: #0b0b0d; font-weight: 600; }
-  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
+  .why-note { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.45; }
+  /* Why-sheet, drawn: the trail as a chain of faces at the top, the cut and the
+     hook as positions rather than prose. The row scaffolding (.why-row) stays for
+     everything below the chain. Faces only where we truly have one — the song's
+     own cover; the graph stores no artist photos and this sheet must never wait
+     on a network fetch, so bridge artists get an initial in a circle. */
+  .wchain { display: flex; align-items: flex-start; margin: 4px 0 10px; }
+  .wnode { display: flex; flex-direction: column; align-items: center; width: 76px; flex: 0 0 auto; text-align: center; }
+  .wnode .wav { width: 46px; height: 46px; border-radius: 50%; background-size: cover; background-position: center; border: 1.5px solid rgba(255,255,255,.25); display: grid; place-items: center; font-size: 18px; font-weight: 700; background-color: var(--glass); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
+  .wnode.first .wav { background: var(--accent); color: #0b0b0d; border-color: transparent; }
+  .wnode.last .wav { border-color: var(--accent); border-width: 2px; }
+  .wnode .wnm { font-size: 10.5px; font-weight: 600; margin-top: 5px; max-width: 74px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wnode .wnt { font-size: 9.5px; color: var(--faint); margin-top: 1px; line-height: 1.25; }
+  .warrow { flex: 1; min-width: 14px; height: 46px; display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 13px; }
+  .wtrail { font-size: 13.5px; line-height: 1.5; margin: 0 0 8px; }
+  .cutbar { position: relative; height: 6px; border-radius: 3px; margin: 8px 0 6px; background: linear-gradient(to right, rgba(255,255,255,.30), rgba(255,255,255,.07)); }
+  .cutbar i { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 2.5px var(--bg2); }
+  .cutlbl { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); }
+  .whook { position: relative; height: 26px; margin: 6px 0 2px; display: flex; align-items: center; gap: 1.5px; }
+  .whook i { flex: 1; border-radius: 1.5px; background: rgba(255,255,255,.16); }
   .daily-sheet { text-align: center; }
   .daily-kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
   /* SHEF COOKS YOUR FIND — the mascot's signature loop, on the Today's 20 sheet.
@@ -4974,17 +4993,52 @@ document.getElementById("whySheet").onclick = e => { if (e.target.id === "whyShe
 function whyHtml(t) {
   const a = state.artists[t.artistId] || {};
   const row = (k, v) => '<div class="why-row"><div class="why-k">' + k + '</div><div class="why-v">' + v + "</div></div>";
-  const rows = [];
-  // 1 — the trail: how the graph got from what you asked for to this card
-  let path;
-  if (a.origin === "loved") path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
-  else if (a.origin === "seed" && a.genreName) path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
-  else if (a.origin === "seed") path = "You asked for " + esc(a.name || t.artist) + " by name.";
-  else if (a.via && a.genreName) path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
-  else if (a.via) path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
-  else path = esc(t.reason || "Surfaced by your mix.");
-  rows.push(row("The trail", path));
-  // 2 — their sound, against what this deck is about
+  // 1 — THE TRAIL, drawn as a chain: what you asked for -> the bridge -> this song,
+  // with the sentence kept underneath as the receipt. Every node is data the engine
+  // actually used (origin / genreName / via / fromSeed) — nothing is invented, which
+  // is the whole point of this sheet: no other music app can render this screen
+  // because no other app has the route.
+  const node = (img, txt, name, note, cls) =>
+    '<div class="wnode' + (cls ? " " + cls : "") + '"><div class="wav"' +
+    (img ? ' style="background-image:url(\'' + img + '\')"' : "") + '>' +
+    (img ? "" : esc(txt || "")) + '</div>' +
+    '<div class="wnm">' + esc(name) + '</div><div class="wnt">' + note + '</div></div>';
+  const arrow = '<div class="warrow">→</div>';
+  const initial = s => (s || "?").trim().charAt(0).toUpperCase();
+  const me = node(t.cover, initial(t.artist), t.artist, "this song", "last");
+  // A typed seed whose graph came back empty gets the honest version of its story.
+  const deadEnd = a.relatedFetched && (!a.related || !a.related.length);
+  let chain, path;
+  if (a.origin === "loved") {
+    chain = node(null, "♥", a.name || t.artist, "you loved them", "first") + arrow + me;
+    path = "You loved " + esc(a.name || t.artist) + ", so Sift went looking for more of them.";
+  } else if (a.origin === "seed" && a.genreName) {
+    chain = node(null, GENRE_EMOJI[a.genreName] || "🎵", a.genreName, "you picked it", "first") + arrow + me;
+    path = "You picked <b>" + esc(a.genreName) + "</b> — " + esc(t.artist) + " is one of the artists that pick starts from.";
+  } else if (a.origin === "seed") {
+    chain = node(null, "⌨️", a.name || t.artist, "you typed the name", "first") + arrow + me;
+    path = "You asked for " + esc(a.name || t.artist) + " by name." +
+      (deadEnd ? " ListenBrainz knows no neighbours for them, so this is their own catalogue — served until it genuinely runs out." : "");
+  } else if (a.fromSeed) {
+    const hop = a.via && a.via !== a.fromSeed;
+    chain = node(null, "⌨️", a.fromSeed, "you typed the name", "first") +
+      (hop ? arrow + node(null, initial(a.via), a.via, "their graph led here") : "") + arrow + me;
+    path = hop
+      ? "You typed <b>" + esc(a.fromSeed) + "</b> — that led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + "."
+      : "You typed <b>" + esc(a.fromSeed) + "</b> — people who listen to them also play " + esc(t.artist) + ".";
+  } else if (a.via && a.genreName) {
+    chain = node(null, GENRE_EMOJI[a.genreName] || "🎵", a.genreName, "you picked it", "first") + arrow + node(null, initial(a.via), a.via, "its graph led here") + arrow + me;
+    path = "Your <b>" + esc(a.genreName) + "</b> pick led to " + esc(a.via) + ", and people who listen to them also play " + esc(t.artist) + ".";
+  } else if (a.via) {
+    chain = node(null, initial(a.via), a.via, "in your mix", "first") + arrow + me;
+    path = "People who listen to " + esc(a.via) + " also play " + esc(t.artist) + ".";
+  } else {
+    chain = me;
+    path = esc(t.reason || "Surfaced by your mix.");
+  }
+  const rows = ['<div class="wchain">' + chain + '</div><p class="wtrail">' + path + '</p>'];
+  // 2 — their sound, against what this deck is about. An untagged TYPED seed gets
+  // the honest explanation instead of silence — the scoring rule is worth saying.
   const tags = tagsOf(t.artistId).slice(0, 6);
   if (tags.length) {
     const p = state.tagProfile || {};
@@ -4992,15 +5046,36 @@ function whyHtml(t) {
     rows.push(row("Their sound",
       tags.map(x => '<span class="why-tag' + ((p[x] || 0) > 0 ? " hit" : "") + '">' + esc(x) + "</span>").join("") +
       (hit ? '<div class="why-note">bright = the sound of your current mix</div>' : "")));
+  } else if (a.origin === "seed" && !a.genreName) {
+    rows.push(row("Their sound", '<div class="why-note">MusicBrainz has no tags for this artist — Sift scores that as neutral, never as a penalty. You typed the name; the profile doesn&#39;t get a veto.</div>'));
   }
-  // 3 — how deep the cut is
+  // 3 — how deep the cut is, drawn: a position between their hits and their depths,
+  // with the old sentence kept as the caption.
   const pop = (t.rank || 0) / 1000000;
   const fans = t.nbFan != null ? t.nbFan : a.nbFan;
   let cut = pop > 0.55 ? "One of their bigger songs" : pop > 0.2 ? "Past the hits — an album cut" : "A deep cut";
   if (fans != null) cut += fans < (PROVIDER.freshFanCap || 4000) ? ", from a genuinely small artist — ✦ " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans") : " · " + fans.toLocaleString() + " " + (PROVIDER.fanNoun || "fans");
-  rows.push(row("The cut", cut + "."));
+  rows.push(row("The cut",
+    '<div class="cutbar"><i style="left:' + Math.round(Math.min(1, Math.max(0, 1 - pop)) * 100) + '%"></i></div>' +
+    '<div class="cutlbl"><span>their biggest hits</span><span>deep cuts</span></div>' +
+    '<div class="why-note">' + cut + '.</div>'));
   // 3½ — era, only when it actually influenced the pick
   if (t.year && eraMult(t.year) > 1.05) rows.push(row("The era", "From the " + (Math.floor(t.year / 10) * 10) + "s — a decade your loves keep landing in."));
+  // 3¾ — the best part: the flagship mechanism, finally accounted for in the one
+  // place recommendations explain themselves. Same h > 1.5 rule as playback and the
+  // scrubber marker, so this row can never claim a jump that didn't happen. Bars are
+  // the REAL decoded envelope when analysis has landed, the same per-song
+  // placeholder the dock shows when it hasn't.
+  const h = hotStarts[t.id];
+  if (h && h > 1.5) {
+    const shape = waveShapes[t.id] || waveFallback(t.id);
+    const dur = (audio.duration && isFinite(audio.duration) && audio.duration > 5) ? audio.duration : 30;
+    let bars = "";
+    for (let i = 0; i + 1 < WAVE_N; i += 2) bars += '<i style="height:' + Math.round(14 + ((shape[i] + shape[i + 1]) / 2) * 80) + '%"></i>';
+    rows.push(row("The best part",
+      '<div class="whook">' + bars + '<div class="hotmark on" style="left:' + Math.min(100, h / dur * 100).toFixed(1) + '%"></div></div>' +
+      '<div class="why-note">playback starts you at ' + fmtTime(h) + ' — the loudest sustained passage, found by decoding the preview</div>'));
+  }
   // 4 — the dials you set
   rows.push(row("Your dials", ["🛋️ Cozy — staying close to home", "⚖️ Balanced", "🧭 Adventurous — reaching far out"][state.adventure] + (state.freshFinds ? " · ✦ Fresh Finds on" : "")));
   return rows.join("");
