@@ -3048,8 +3048,16 @@ function queueTracks(list, reason, srcFan) {
 const NOPE_BAN_AT = 2;
 
 let genreCursor = 0;   // rotates pickSource across genre buckets (session-local)
+let typedCursor = 0;   // strict rotation inside the typed-artist bucket (session-local)
 function weightedPick(list) {
-  const w = list.map(a => Math.max(a.score, 0.2) * profileMult(tagsOf(a.id)));
+  // An artist the user typed BY NAME is never sunk by the tag profile. Makar (280
+  // listeners) has no MusicBrainz tags at all, so profileMult read him at 0.75 —
+  // the deck was penalising the most explicit signal it has for having no metadata.
+  // Floor at neutral, not boosted: the seed's own score already carries the intent.
+  const w = list.map(a => {
+    const m = profileMult(tagsOf(a.id));
+    return Math.max(a.score, 0.2) * (a.origin === "seed" ? Math.max(m, 1) : m);
+  });
   let r = Math.random() * w.reduce((s, x) => s + x, 0);
   for (let i = 0; i < list.length; i++) { r -= w[i]; if (r <= 0) return list[i]; }
   return list[list.length - 1];
@@ -3078,14 +3086,39 @@ function pickSource(explore) {
   const active = new Set(state.seedLabels || []);
   const buckets = {};
   for (const a of pool) {
+    // Typed artists get a "typed" slot of their own; their DESCENDANTS get "kin";
+    // loves keep "you". Every other arrangement was built and MEASURED first:
+    //  - Baseline: descendants had NO slot at all (no genreName, not loved, not
+    //    seed -> null), so INNA — reached from typing "Edward Maya" — never once
+    //    sourced a refill, and a dead-end seed served ~2 songs then went silent.
+    //  - One bucket PER typed seed swung the rotation so hard toward typed lineage
+    //    that on-genre fell ~20 points (past the ~12pt run noise) while each seed
+    //    was starved of turns by its own children sharing its bucket.
+    //  - Seeds and descendants POOLED in one bucket diluted the seeds the other
+    //    way: ~16 children outvote 4 parents, and the artists Peter actually typed
+    //    were back down to ~1.5 songs a deck.
+    // Separate slots is the balance: the seeds' turn is theirs alone (and taken in
+    // strict rotation, see below), the lineage still gets expanded, loves aren't
+    // crowded out and can't crowd, and easing an artist out of seedLabels retires
+    // seed and lineage together, the same way easing off a genre does. Strays
+    // (nobody asked) still bucket to null.
     const k = (a.genreName && active.has(a.genreName)) ? a.genreName
             : (a.origin === "loved") ? "you"                        // a love outranks its lineage — always sourced
-            : (!a.genreName && a.origin === "seed") ? "you" : null;
+            : (!a.genreName && a.origin === "seed" && active.has(a.name)) ? "typed"
+            : (a.fromSeed && active.has(a.fromSeed)) ? "kin" : null;
     if (k) (buckets[k] = buckets[k] || []).push(a);
   }
   const keys = Object.keys(buckets);
   if (!keys.length) return weightedPick(pool);
-  return weightedPick(buckets[keys[genreCursor++ % keys.length]]);
+  const key = keys[genreCursor++ % keys.length];
+  // The typed bucket takes strict turns, not weighted chance. profileMult favours
+  // the tagged, so an untagged artist you typed kept losing the draw to a tagged one
+  // you ALSO typed — measured: 1 deck in 3 served zero Makar and zero KNGZ on pure
+  // luck. The list is at most "how many artists the user typed", so strict fairness
+  // costs nothing. Every other bucket keeps the weighted draw: inside a genre or a
+  // lineage, fitting the deck SHOULD improve your odds.
+  if (key === "typed") return buckets.typed[typedCursor++ % buckets.typed.length];
+  return weightedPick(buckets[key]);
 }
 
 async function fetchRelatedInto(a) {
@@ -3096,7 +3129,14 @@ async function fetchRelatedInto(a) {
   // Children inherit the seed genre they descend from. Lineage used to die after one
   // hop — nothing downstream knew it was supposed to be "Greek" — and it's what lets
   // pickSource keep a multi-genre deck balanced.
-  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName }));
+  // Typed seeds have no genreName to hand down, and for months that meant their
+  // children carried NO lineage at all: INNA — reached from typing "Edward Maya",
+  // measurably the best-fitting artist in that whole graph — bucketed to null in
+  // pickSource and never once got to source a refill. fromSeed is the typed-artist
+  // twin of genreName: the name of the typed seed this artist descends from, passed
+  // down the same way, so pickSource can give the person's own artists their turn.
+  const fromSeed = a.genreName ? null : (a.fromSeed || (a.origin === "seed" ? a.name : null));
+  rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName, fromSeed }));
   // A seed's own tags are the deck's ground truth — fold them into the profile the
   // moment they arrive (relatedArtists just fetched them, so this costs nothing).
   if (a.origin === "seed" && !a._profiled) { a._profiled = 1; bumpProfile(tagsOf(a.id), 2); }
@@ -3189,9 +3229,27 @@ async function refill() {
       // Τσιτσάνης returns zero), and marking the source exhausted meant its own songs
       // never got pulled either — so a deck seeded entirely from artists like that came
       // back empty. Fall back to the source's own catalogue before writing it off.
+      // This fallback used to run ONCE: the second visit saw topPulled and stamped the
+      // artist exhausted with almost their whole catalogue unserved (pickArtistTracks
+      // takes at most 2 per pull, so typing "Makar" bought 2 songs out of his 25 and
+      // then permanent silence). knownIds/knownKeys already dedupe, so re-pulling can
+      // only surface songs the user hasn't seen. Exhausted now means what it says:
+      // the pull came back with nothing new — for a graph-less artist, the only
+      // honest definition it can have. (It stays a session judgment; load() clears it.)
+      // A typed artist's FIRST sourcing turn serves them before their neighbours.
+      // startBtn makes exactly this guarantee for genres (every genre you picked is
+      // in the first deck); typed seeds had it only by accident — a rich-graph seed
+      // like Akcent spent every turn on his neighbourhood and a 50-card deck ended
+      // before the fallback ever reached his own songs. You typed the name; the
+      // deck should contain the artist at least once.
+      if (S.origin === "seed" && !S.genreName && !S.topPulled) {
+        targets = [S].concat(targets.filter(t => t !== S)).slice(0, 3);
+      }
+
+      let ownFallback = false;
       if (!targets.length) {
-        if (S.topPulled) { S.exhausted = true; continue; }
         targets = [S];
+        ownFallback = true;
         reasonOverride = (S.genreName && S.origin === "seed") ? "Exploring " + S.genreName : "More from " + S.name;
       }
 
@@ -3207,7 +3265,11 @@ async function refill() {
           else if (S.origin === "seed") reason = "Fans of " + S.name + " also like this";
           else reason = "Related to " + S.name;
         }
-        added += queueTracks(tracks, reason, T.nbFan);
+        const got = queueTracks(tracks, reason, T.nbFan);
+        added += got;
+        // The catalogue genuinely ran dry (or close enough that a random reach into
+        // its depths found nothing unseen) — NOW the artist has had their full run.
+        if (ownFallback && !got) S.exhausted = true;
       }
     }
   } finally { state.refilling = false; }
@@ -3230,7 +3292,12 @@ function orderQueue() {
     // so off-genre never vanishes — it just stops surfacing as readily as on-genre.
     // The dial sets HOW MUCH this matters: Cozy reads as "stay in my lane", which
     // used to only mean "reach fewer hops" — it now also means "stay on-genre".
-    bias += (profileMult(tagsOf(t.artistId)) - 1) * [0.95, 0.45, 0.2][adv];
+    // Same floor as weightedPick: a typed seed's own songs are never ordered DOWN for
+    // the artist lacking tags — you asked for them, the profile doesn't get a veto.
+    const _ta = state.artists[t.artistId];
+    let _pm = profileMult(tagsOf(t.artistId));
+    if (_ta && _ta.origin === "seed" && _pm < 1) _pm = 1;
+    bias += (_pm - 1) * [0.95, 0.45, 0.2][adv];
     // Decades you love float too — a gentler pull than genre (eraMult is 0.8..1.25
     // and silent until a few loves agree on a decade).
     bias += (eraMult(t.year) - 1) * 0.5;
