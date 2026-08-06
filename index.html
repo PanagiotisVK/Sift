@@ -90,6 +90,25 @@
   #finds > *, #friends > *, #profile > *, #artist > * { flex-shrink: 0; }
 
   /* Onboarding + Welcome */
+  /* Shef on the setup screen. He used to appear only in loading and empty states —
+     places a good session never reaches — so the app's most distinctive asset was
+     invisible to most people who used it, and to anyone reviewing it. Beside the
+     heading he costs ~10px of height over the bare <h1> that was there before. */
+  .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ob-head h1 { flex: 1; min-width: 0; }
+  .ob-pot { flex: 0 0 auto; }
+  .ob-pot .potscene { width: 112px; height: 72px; }
+  /* The ingredients stop raining on a loop here and drop once per pick instead, so
+     choosing a genre visibly puts something in the pot. Same keyframes as the
+     loading scene — only the trigger changes. */
+  .ob-pot .lk-drop { animation: none; opacity: 0; }
+  .ob-pot .lk-drop.fire { animation: lkDrop 1.6s ease-in 1; }
+  /* He WAITS here and cooks on the loading screen, so this copy keeps only the signs
+     of life — the bob and the blink — and drops everything that implies he has already
+     started. The two screens then read as one sequence rather than the same loop
+     twice: you fill the pot, you press Start, he cooks it. */
+  .ob-pot .lk-stir, .ob-pot .lk-potwob, .ob-pot .lk-armR { animation: none; }
+  .ob-pot .lk-steam, .ob-pot .lk-bub { animation: none; opacity: 0; }
   #onboarding, #welcome { padding: 8px 20px 24px; overflow-y: auto; }
   #onboarding h1, #welcome h1 { font-size: 26px; margin: 6px 0 4px; }
   #onboarding p.lead, #welcome p.lead { color: var(--muted); margin: 0 0 18px; line-height: 1.4; }
@@ -105,6 +124,16 @@
      on short screens the strip's buttons were getting vertically clipped. */
   .famrow { display: flex; gap: 7px; overflow-x: auto; padding: 1px 0 11px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex-shrink: 0; }
   .famrow::-webkit-scrollbar { display: none; }
+  /* 17 families over 158 genres, and the scrollbar is deliberately hidden — so nothing
+     told anyone the strip continued past the screen edge. These fade the row out where
+     it carries on, and ONLY on the side that actually has more: scrolled to the start
+     you get a right fade alone, mid-way you get both, at the end only a left one. A
+     mask on the scroller itself rather than an overlay, so no wrapper element is needed
+     and the fade stays pinned to the edges while the buttons move underneath it.
+     No motion, so this is the whole affordance under Reduce Motion. */
+  .famrow.hint-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  .famrow.hint-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+  .famrow.hint-l.hint-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
   .fam { flex: 0 0 auto; background: rgba(255,255,255,.05); border: 1px solid var(--glass-brd); color: var(--muted); border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .fam.on { background: var(--accent); color: #0b0b0d; border-color: transparent; }
   .fam .cnt { opacity: .5; margin-left: 5px; font-weight: 500; }
@@ -221,6 +250,40 @@
   .wave.on { clip-path: inset(0 100% 0 0); will-change: clip-path; }
   .wave.on i { background: var(--accent); }
   @media (prefers-reduced-motion: reduce) { .wave i { transition: none; } }
+  /* THE HOOK MARKER — where findHotStart() decided the song actually begins, and
+     where playback jumped to. Everything needed to draw this already existed
+     (hotStarts[id] in seconds, a 30s-wide scrubber); the app simply never showed it,
+     so its most original mechanism read as the player mysteriously starting late.
+     It has to stay legible over BOTH wave layers — grey unplayed bars and white
+     played ones — so the spine is white on a dark halo rather than either alone.
+     The downward cap is what stops it reading as a second playhead. */
+  .hotmark { position: absolute; top: 0; bottom: 0; width: 0; z-index: 2; pointer-events: none; display: none; }
+  .hotmark.on { display: block; }
+  .hotmark::before {                                  /* spine */
+    content: ""; position: absolute; top: 2px; bottom: 2px; left: -1.5px; width: 3px;
+    border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 1.5px rgba(9,9,11,.8);
+  }
+  .hotmark::after {                                   /* cap, pointing down at the spot */
+    content: ""; position: absolute; top: -3px; left: -4px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid var(--accent);
+    filter: drop-shadow(0 0 1.5px rgba(9,9,11,.9));
+  }
+  /* Named once, on the song where the marker first appears. After that the shape
+     carries it — a permanent label would be clutter on every card forever. */
+  .hotmark .hm-lbl {
+    position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+    font-size: 9.5px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+    color: var(--text); background: rgba(9,9,11,.9); border: 1px solid var(--line-2);
+    padding: 2.5px 7px; border-radius: 999px; opacity: 0; transition: opacity .3s;
+  }
+  .hotmark.named .hm-lbl { opacity: 1; }
+  /* The landing beat: the bars morph from placeholder to the real decoded envelope
+     and the marker drops onto it in the same moment. Enhancement only — the marker
+     is fully visible without it, because Reduce Motion must not hide the feature. */
+  .hotmark.land { animation: hotLand .45s cubic-bezier(.2,.8,.3,1); }
+  @keyframes hotLand { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .hotmark.land { animation: none; } .hotmark .hm-lbl { transition: none; } }
 
   .loading, .empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); text-align:center; padding: 0 30px; }
   .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #26262b; border-top-color: var(--accent); animation: spin 1s linear infinite; }
@@ -766,6 +829,18 @@
   .coach-row .ci svg { width: 18px; height: 18px; }
   .coach-row small { display: block; color: var(--muted); }
   .coach .btn-primary { margin-top: 6px; }
+  /* Digging-depth readout — the learned half of the discovery model, made visible.
+     A meter rather than a number alone: the point is that it MOVES while you swipe,
+     and a bar shows that at a glance where "38%" doesn't. */
+  .depth { margin: 12px 0 4px; }
+  .depth-top { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .depth-top b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .depth-bar { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,.09); margin: 7px 0 8px; overflow: hidden; }
+  .depth-bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); width: 0; transition: width .45s cubic-bezier(.2,.8,.3,1); }
+  @media (prefers-reduced-motion: reduce) { .depth-bar i { transition: none; } }
+  .depth-note { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0; }
+  .depth-note b { color: var(--text); font-weight: 600; }
+
   /* Genre tuner sheet */
   .gsheet-ov { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; }
   .gsheet { width: 100%; max-height: 74%; background: var(--bg2); border-radius: var(--r-lg) var(--r-lg) 0 0; border-top: 1px solid var(--glass-brd); padding: 16px 18px calc(20px + env(safe-area-inset-bottom)); box-shadow: var(--shadow-2); overflow-y: auto; animation: gsheetUp .22s cubic-bezier(.2,.7,.3,1); }
@@ -1085,7 +1160,14 @@
 
     <!-- ONBOARDING -->
     <section class="screen" id="onboarding">
-      <h1>What do you love?</h1>
+      <!-- Shef sits beside the heading rather than above it: the scene costs almost
+           no vertical space there, and onboarding is the screen where every pixel
+           pushed below the fold costs a pick. Filled at boot from the loading
+           scene's markup, so the drawing is authored exactly once. -->
+      <div class="ob-head">
+        <h1>What do you love?</h1>
+        <div class="ob-pot" id="obPot" aria-hidden="true"></div>
+      </div>
       <p class="lead">Pick a few genres and artists you already enjoy. Sift uses them as a launch pad — then follows your taste outward with every swipe.</p>
       <div class="section-label">Genres — tap to pick, tap again to turn it up</div>
       <input id="genreSearch" class="genre-search" placeholder="Search genres (e.g. deep house, bachata, djent)…" autocomplete="off" />
@@ -1197,7 +1279,7 @@
       <div class="dock">
         <div class="player">
           <button class="playbtn" id="btnPlay" aria-label="Play or pause"></button>
-          <div class="seek" id="seek"><div class="wave" id="wave"></div><div class="wave on" id="waveOn"></div></div>
+          <div class="seek" id="seek"><div class="wave" id="wave"></div><div class="wave on" id="waveOn"></div><div class="hotmark" id="hotMark"><span class="hm-lbl">best part</span></div></div>
           <div class="time" id="timeLabel">0:00</div>
         </div>
         <div class="controls">
@@ -1687,6 +1769,14 @@
       <div class="tune-label">How far should Sift reach?</div>
       <div class="tune-seg" id="tuneSeg">
         <button data-adv="0">🛋️ Cozy</button><button data-adv="1">⚖️ Balanced</button><button data-adv="2">🧭 Adventurous</button>
+      </div>
+      <!-- What the depth model is doing right now. The dial above is only half of
+           what decides this: state.familiarity moves on every "Heard it" and every
+           keeper, and until now it was invisible everywhere in the app. -->
+      <div class="depth" id="depthBox">
+        <div class="depth-top"><span>Digging depth</span><b id="depthPct">—</b></div>
+        <div class="depth-bar"><i id="depthFill"></i></div>
+        <p class="depth-note" id="depthNote"></p>
       </div>
       <button class="tune-fresh" id="tuneFresh">
         <span class="tf-star">✦</span>
@@ -3015,15 +3105,24 @@ async function fetchRelatedInto(a) {
 // From an artist's ranked track list (biggest hits first), reach PAST the hits into
 // album cuts — the songs you're less likely to already know. How deep depends on your
 // adventure dial + learned familiarity (how often you've hit "heard it").
+// How far past an artist's hits to reach, as a fraction of their catalogue. Pulled
+// out of pickArtistTracks so the Tune sheet can SHOW this number: a second copy of
+// the formula for display would drift from the real one the first time either moved,
+// and then the app would be confidently lying about its own behaviour.
+const DEPTH_BASE = [0.1, 0.32, 0.55];     // by adventure dial
+const DEPTH_CAP = 0.7;                    // never land in only-the-B-sides territory
+function currentDepth() {
+  // Familiarity nudges deeper, but its own contribution is capped first.
+  let depth = DEPTH_BASE[state.adventure] + Math.min(state.familiarity || 0, 3) * 0.06;
+  if (state.freshFinds) depth = Math.max(depth, 0.5);
+  return Math.max(0, Math.min(DEPTH_CAP, depth));
+}
 function pickArtistTracks(pool) {
   const list = (pool || []).filter(t => t && t.preview && t.artist);
   if (!list.length) return [];
   // Reach past the biggest hits, but not so deep the songs stop sounding like the artist
-  // you actually came here for. Familiarity nudges deeper, but capped so it never lands
-  // in only-the-obscure-B-sides territory.
-  let depth = [0.1, 0.32, 0.55][state.adventure] + Math.min(state.familiarity || 0, 3) * 0.06;
-  if (state.freshFinds) depth = Math.max(depth, 0.5);
-  depth = Math.max(0, Math.min(0.7, depth));
+  // you actually came here for.
+  const depth = currentDepth();
   const skip = Math.min(Math.floor(list.length * depth), Math.max(0, list.length - 3)); // never skip everything
   const deep = list.slice(skip);
   const out = [], bag = deep.slice();
@@ -3323,6 +3422,8 @@ function save() {
       lastDailyDone: state.lastDailyDone,
       coached: state.coached,
       tuneHinted: state.tuneHinted,
+      hotNamed: state.hotNamed,
+      stripHinted: state.stripHinted,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (e) { /* storage may be blocked; app still works in-session */ }
@@ -3367,6 +3468,8 @@ function load() {
     if (typeof d.lastDailyDone === "string") state.lastDailyDone = d.lastDailyDone;
     if (d.coached) state.coached = 1;
     if (d.tuneHinted) state.tuneHinted = 1;
+    if (d.hotNamed) state.hotNamed = 1;
+    if (d.stripHinted) state.stripHinted = 1;
     return Object.keys(state.artists).length > 0 || state.liked.length > 0;
   } catch (e) { return false; }
 }
@@ -3674,6 +3777,23 @@ async function flushUsage() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushUsage(); });
 
 /* ---------- Onboarding UI ---------- */
+// Shef's pot is authored once, inside #deckLoading. Copy it now rather than
+// duplicating 90 lines of SVG: this runs at boot, before the first renderCard()
+// empties the deck and takes the original with it.
+(function seedObPot() {
+  const src = document.querySelector("#deckLoading .potscene");
+  const slot = document.getElementById("obPot");
+  if (src && slot) slot.innerHTML = src.outerHTML;
+})();
+// One ingredient per pick, cycling through the three drop groups so consecutive
+// picks don't retrigger the same falling note.
+let obDropN = 0;
+function obDrop() {
+  const drops = document.querySelectorAll("#obPot .lk-drop");
+  if (!drops.length) return;
+  const d = drops[obDropN++ % drops.length];
+  d.classList.remove("fire"); void d.getBoundingClientRect(); d.classList.add("fire");
+}
 const seedGenres = new Map();   // genre -> weight (1..3); bigger = seeds harder
 const seedArtists = new Map();   // artist name -> weight (1..3), same weighting as genres
 const genreChips = document.getElementById("genreChips");
@@ -3701,6 +3821,7 @@ GENRES.forEach(g => {
     let w = (seedGenres.get(g) || 0) + 1;
     if (w > 3) { seedGenres.delete(g); w = 0; } else { seedGenres.set(g, w); }
     renderChip(el, g, w, lead);
+    if (w > 0) obDrop();          // adding or turning up — not the tap that clears it
     updateStart();
   };
   genreChips.appendChild(el);
@@ -3737,6 +3858,42 @@ function buildFamRow(rowEl, active, onPick) {
   // Centre the selected family in the strip. Set scrollLeft directly rather than
   // scrollIntoView, which would also scroll the whole page vertically to reach it.
   if (activeEl) rowEl.scrollLeft = Math.max(0, activeEl.offsetLeft - rowEl.clientWidth / 2 + activeEl.offsetWidth / 2);
+  attachStripHints(rowEl);
+}
+// Which edges of a family strip have more behind them. Runs after every rebuild
+// because the answer changes with the active family and with the screen width.
+function syncStripHints(rowEl) {
+  const max = rowEl.scrollWidth - rowEl.clientWidth;
+  rowEl.classList.toggle("hint-l", max > 8 && rowEl.scrollLeft > 4);
+  rowEl.classList.toggle("hint-r", max > 8 && rowEl.scrollLeft < max - 4);
+}
+function attachStripHints(rowEl) {
+  if (!rowEl._hinted) {
+    rowEl._hinted = 1;
+    rowEl.addEventListener("scroll", () => syncStripHints(rowEl), { passive: true });
+    window.addEventListener("resize", () => syncStripHints(rowEl));
+  }
+  // Layout isn't settled on the frame the buttons are appended — scrollWidth reads
+  // as clientWidth and every strip would look like it had nothing to reveal.
+  requestAnimationFrame(() => syncStripHints(rowEl));
+}
+// Once per install, on the first strip anyone sees: scroll out and back so the gesture
+// is demonstrated rather than implied. The fade alone says "there is more"; this says
+// "and you get to it by dragging". Skipped entirely under Reduce Motion, where the
+// fade is left to do the whole job.
+function nudgeStrip(rowEl) {
+  if (!rowEl || state.stripHinted) return;
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const max = rowEl.scrollWidth - rowEl.clientWidth;
+  if (max < 30 || rowEl.scrollLeft > 5) return;   // nothing to show, or not at the start
+  state.stripHinted = 1; save();
+  const t0 = performance.now(), DUR = 900, PEAK = 30;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / DUR);
+    rowEl.scrollLeft = Math.sin(p * Math.PI) * PEAK;   // out and back on one arc
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 let activeFamily = FAMILY_NAMES[0];
@@ -3763,6 +3920,8 @@ function setFamily(f) {
 }
 document.getElementById("genreSearch").addEventListener("input", refreshGenreVisibility);
 setFamily(activeFamily);   // start on ★ Popular
+// Demonstrate the strip once, after layout has settled enough for scrollWidth to be real.
+setTimeout(() => nudgeStrip(document.getElementById("famRow")), 700);
 document.getElementById("addArtist").onclick = () => addArtistChip();
 document.getElementById("artistInput").addEventListener("keydown", e => { if (e.key === "Enter") addArtistChip(); });
 
@@ -3806,6 +3965,7 @@ function addArtistChip(pic) {
   const val = input.value.trim();
   if (val && !seedArtists.has(val)) {
     seedArtists.set(val, 1);
+    obDrop();                     // a typed artist is an ingredient too
     const el = document.createElement("div");
     el.className = "chip";
     el._lead = "";
@@ -4133,6 +4293,31 @@ function renderWave(track) {
     for (let i = 0; i < kids.length; i++) kids[i].style.height = (shape ? 10 + shape[i] * 90 : 26) + "%";
   }
 }
+// Draw the hook marker at the point findHotStart() chose. Safe to call at any time:
+// before analysis lands hotStarts[id] is undefined and this just clears whatever the
+// previous song left behind.
+const hotMarkEl = document.getElementById("hotMark");
+function renderHotMark(track) {
+  if (!hotMarkEl) return;
+  const h = track ? hotStarts[track.id] : undefined;
+  // The SAME test playTrack uses before jumping (h > 1.5). Anything looser and the
+  // marker would claim a jump that never happened — findHotStart returns 0 when the
+  // hook is already at the top of the clip, and small values are left alone.
+  if (!h || h <= 1.5) { hotMarkEl.classList.remove("on", "land", "named"); return; }
+  // Against the preview's REAL duration, not a hardcoded 30 — Apple's clips are
+  // often 29.x and a fixed divisor would drift the marker off the bars it describes.
+  const dur = (audio.duration && isFinite(audio.duration) && audio.duration > 5) ? audio.duration : 30;
+  hotMarkEl.style.left = (Math.min(1, h / dur) * 100).toFixed(2) + "%";
+  if (hotMarkEl.classList.contains("on")) return;    // already placed for this song
+  hotMarkEl.classList.add("on");
+  hotMarkEl.classList.remove("land"); void hotMarkEl.offsetWidth; hotMarkEl.classList.add("land");
+  // Say what it is exactly once per install, then let the shape speak for itself.
+  if (!state.hotNamed) {
+    state.hotNamed = 1; save();
+    hotMarkEl.classList.add("named");
+    setTimeout(() => hotMarkEl.classList.remove("named"), 4200);
+  }
+}
 let scrubbing = false;
 // The displayed fill EASES toward the true position instead of snapping: a new song
 // visibly sweeps back to empty, the best-part jump glides forward, the loop restart
@@ -4274,10 +4459,13 @@ function ensureHot(track) {
     .then(r => {
       hotStarts[track.id] = (r && r.sec) || 0;
       if (r && r.fine) waveFine[track.id] = r.fine;
-      if (r && r.shape) {
-        waveShapes[track.id] = r.shape;
-        // If this song is on the card right now, morph the placeholder into the real wave
-        if (state.current && state.current.id === track.id) renderWave(track);
+      if (r && r.shape) waveShapes[track.id] = r.shape;
+      // If this song is on the card right now, morph the placeholder into the real
+      // wave and land the marker on it in the same beat. The marker is drawn even
+      // when no shape came back — the hook time is the useful half.
+      if (state.current && state.current.id === track.id) {
+        if (r && r.shape) renderWave(track);
+        renderHotMark(track);
       }
     })
     .catch(() => { hotStarts[track.id] = 0; })       // CORS/decoding failed → just play from start
@@ -4292,12 +4480,14 @@ function playTrack(track) {
   audio.src = track.preview;
   try { audio.currentTime = 0; } catch (_) {}
   renderWave(track);
+  renderHotMark(track);                             // clears the previous song's marker
   updateSeekUI(0, true);
   clearBounce(); bounceIdx = -1;
   const applyHot = () => {
     if (token !== audioToken) return;               // a newer card took over
     const h = hotStarts[track.id];
     if (h && h > 1.5 && audio.currentTime < 2.5) { try { audio.currentTime = h; } catch (_) {} showBestTag(); }
+    renderHotMark(track);   // duration is known by now, so the position is exact
   };
   audio.onloadedmetadata = applyHot;
   safePlay();
@@ -4546,8 +4736,36 @@ document.getElementById("dailyPill").onclick = () => {
 
 /* ---------- Tune sheet controls — adventurousness dial + Fresh Finds ---------- */
 const ADV_NAMES = ["Cozy", "Balanced", "Adventurous"];
+// Show where the depth model currently sits, and — the part that was invisible —
+// WHICH of the two inputs put it there. Reads currentDepth(), the same function
+// pickArtistTracks uses, so it cannot disagree with what the deck actually does.
+function renderDepth() {
+  const box = document.getElementById("depthBox");
+  if (!box) return;
+  const d = currentDepth();
+  const pct = Math.round(d * 100);
+  document.getElementById("depthPct").textContent = pct + "%";
+  // Scaled against the cap, not against 100%: 0.7 IS full travel here, and a meter
+  // that stops seven-tenths along when the model is maxed out reads as broken.
+  document.getElementById("depthFill").style.width = Math.round((d / DEPTH_CAP) * 100) + "%";
+  const base = DEPTH_BASE[state.adventure];
+  const famAdd = Math.min(state.familiarity || 0, 3) * 0.06;
+  const out = ["Sift skips the top <b>" + pct + "%</b> of each artist's catalogue before choosing a song."];
+  if (state.freshFinds && base + famAdd < 0.5) {
+    out.push("<b>✦ Fresh Finds</b> is holding it at least this deep.");
+  } else if (famAdd >= 0.03) {
+    out.push("Your <b>Heard it</b> taps have pushed it " + Math.round(famAdd * 100) +
+             " points past " + ["Cozy", "Balanced", "Adventurous"][state.adventure] +
+             " on its own — finding keepers eases it back.");
+  } else {
+    out.push("Tap <b>Heard it</b> on songs you already know and this digs deeper by itself.");
+  }
+  if (d >= DEPTH_CAP) out.push("It is at its limit — deeper than this stops sounding like the artist you came for.");
+  document.getElementById("depthNote").innerHTML = out.join(" ");
+}
 function applyAdventureUI() {
   document.querySelectorAll("#tuneSeg button").forEach(b => b.classList.toggle("on", Number(b.dataset.adv) === state.adventure));
+  renderDepth();
 }
 function setAdventure(n) {
   state.adventure = ((n % 3) + 3) % 3;
@@ -4565,6 +4783,7 @@ function applyFreshUI() {
   f.classList.toggle("on", !!state.freshFinds);
   document.getElementById("tuneFreshState").textContent = state.freshFinds ? "On" : "Off";
   document.getElementById("tuneDot").classList.toggle("on", !!state.freshFinds); // header dot = fresh is on
+  renderDepth();   // Fresh Finds sets a floor under the depth, so the meter moves with it
 }
 function setFresh() {
   state.freshFinds = !state.freshFinds;
