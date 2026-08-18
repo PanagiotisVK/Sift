@@ -74,7 +74,8 @@ WHY SIFT
 Start swiping. Your next favorite song is out there — you've just never heard it.
 ```
 
-*(1,825 chars of 4,000 — room to grow.)*
+*(2,015 chars of 4,000 — room to grow. The 1,825 figure here was stale; it
+predated the 5 Aug rewrite.)*
 
 ## What's New (version 1.0)
 

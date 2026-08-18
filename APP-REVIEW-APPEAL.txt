@@ -1,0 +1,28 @@
+APP REVIEW BOARD APPEAL — Sift
+Form: developer.apple.com/contact/request/app-review/appeal/
+
+App Name .......... Sift — Music Discovery (iOS)
+Topic ............. App Rejection
+Reason for appeal . the text below (2000 character limit)
+
+--- PASTE FROM HERE ---
+
+Submission ID 091bf87b-af03-442a-b5ac-61d0bcc6acf0, rejected 5 August 2026 under 4.3(a).
+
+The rejection turns on resemblance to other apps but identifies none. I asked in the Resolution Center on 5 August which app Sift was found to resemble, and which screens or metadata prompted it. There has been no reply. I cannot change what is too close while I do not know what it is.
+
+Three of the four listed factors are verifiable on Apple's side. Sift is the only app I have ever submitted, under one account and one bundle ID. There is no second account. The code is my own, written from scratch, with no purchased template or white-label SDK; Capacitor is the native wrapper and nothing more.
+
+That leaves concept. A swipe interface over previews is a familiar surface. What runs underneath it is not.
+
+1. Hook detection. Sift decodes every 30-second preview through the Web Audio API, computes an energy envelope in 0.25s frames, smooths it so sustained energy beats a lone transient, excludes the closing seconds so playback cannot land in a fade, and starts 1.5s before the peak. The listener hears the chorus, not the intro. The same analysis draws each card's waveform.
+
+2. Adaptive discovery depth. Sift measures how much of what it shows a listener they already recognise, and uses that to decide how far past the popular results to reach. Two listeners entering identical taste are shown materially different music.
+
+3. An open-data recommendation graph, built from ListenBrainz co-listening data and MusicBrainz tags, with alias resolution for artists filed under non-Latin names. Not a store's built-in "similar artists" field.
+
+The iTunes Search API supplies preview audio and artwork, used as documented, with links out to the store. It is the playback layer, not the product.
+
+I ask the Board either to identify the app or apps Sift was found to resemble, so I can address it, or to overturn the finding. I will make any change warranted; I need only to know what it is.
+
+--- TO HERE ---
