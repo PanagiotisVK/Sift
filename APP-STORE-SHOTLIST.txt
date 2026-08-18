@@ -1,0 +1,189 @@
+APP STORE SCREENSHOT SHOT LIST — Sift
+
+*** DONE — CAPTURE COMPLETE 2026-08-14. THIS FILE IS HISTORY. ***
+*** The five finished screenshots are in store-shots/. To submit, work from ***
+*** APP-STORE-SUBMIT.txt instead. Kept only to record why each shot exists  ***
+*** and how it was captured, in case the set ever has to be rebuilt.        ***
+
+Staged against the live web build 2026-08-14. Capture on device from build 22.
+
+The build you screenshot is the build you must attach. Capture from 22, submit 22.
+Do not fall back to build 20 — it was archived 5 Aug and predates the hook marker,
+the why-sheet and the typed-artist fix, so shots 1, 2 and 3 do not exist in it.
+
+WHY THESE FIVE
+The 4.3(a) finding was made by a reviewer who saw a swipe deck over previews and
+nothing else. Everything original in Sift was running and none of it was visible.
+Each shot below exists to make one invisible thing visible. Shots 1-3 appear in
+App Store search results, so they carry the argument.
+
+
+=====================================================================
+BEFORE YOU START — read this, it changes the order of operations
+=====================================================================
+
+The "best part" label over the waveform marker is shown EXACTLY ONCE PER INSTALL,
+for 4.2 seconds, on the first card where the marker appears.
+
+    index.html:4464    // Say what it is exactly once per install
+    index.html:4465    if (!state.hotNamed) { ... setTimeout(remove, 4200) }
+
+It is persisted to localStorage as `hotNamed`. You have already used the app, so
+on your phone that flag is already set and the label WILL NOT APPEAR AGAIN.
+
+That means shot 1 requires a FRESH INSTALL, and the whole session has to run in
+order: delete the app, reinstall from TestFlight, then capture 1 -> 5 in sequence
+as state accumulates.
+
+  * Before deleting: if you are NOT logged in on your phone, your finds live only
+    on the device and deleting the app loses them. Log in first, or accept the loss.
+  * The label window is 4.2 seconds. SCREEN RECORD the first card, then pull the
+    still frame out of the video. Do not try to time a tap.
+  * Reduce Motion is on for you, so the marker appears without the drop animation.
+    That is fine and actually steadier for a still.
+
+
+=====================================================================
+SHOT 1 — the hook marker            "Starts at the hook, not the intro"
+=====================================================================
+Screen : Discover, first card of a fresh install
+Shows  : the waveform with the marker and the "best part" flag above it
+Why    : the only screenshot that says the app analysed the audio
+
+Steps
+  1. Fresh install, run onboarding, pick your genres
+  2. Start recording BEFORE the first card finishes loading
+  3. Let the card sit — the marker drops onto the wave with its label
+  4. Stop recording, extract the frame where the flag is fully opaque
+
+Note: the pills "Fresh Find" / "Related to <artist>" / "best part" sit just above
+the title in this same frame. Do not crop them out — they carry the graph claim.
+
+
+=====================================================================
+SHOT 2 — Why this song?             "Every pick shows its work"
+=====================================================================
+Screen : Discover -> tap the "Related to <artist> >" pill on any card
+Shows  : the whole originality case on one screen
+Why    : STRONGEST SINGLE ASSET. Put it first or second.
+
+What is on it, verbatim from the live build:
+  - lineage row with avatars:  Afro House (you picked it) -> Oliver Koletzki
+    (its graph led here) -> Einmusik (this song)
+  - "Your Afro House pick led to Oliver Koletzki, and people who listen to them
+     also play Einmusik."
+  - Their sound: tag chips, lit ones = your current mix
+  - The cut: slider, "A deep cut, from a genuinely small artist - 1,546 listeners."
+  - The best part: mini waveform + marker, and the sentence that does the work:
+    "playback starts you at 0:04 - the loudest sustained passage, found by
+     decoding the preview"
+  - Your dials: Balanced
+
+Pick a card whose lineage is 3 nodes with real artist photos, not a placeholder
+initial. Retry cards until you get one — it is much stronger with three faces.
+
+
+=====================================================================
+SHOT 3 — Tune your mix              "It digs deeper as you recognise more"
+=====================================================================
+Screen : tap the sliders icon, top right
+Shows  : the adaptive depth model, with live personalised numbers
+Why    : proves the app changes per listener — the claim Apple cannot see
+
+The sentence to make sure is on screen:
+  "Sift skips the top 50% of each artist's catalogue before choosing a song.
+   Your Heard it taps have pushed it 18 points past Balanced on its own —
+   finding keepers eases it back."
+
+Capture this AFTER swiping 30-40 cards, so the number is not 0 points. A drifted
+value is the whole point — it shows adaptation actually happened.
+Crop at the genre grid; it does not need to be in frame.
+
+
+=====================================================================
+SHOT 4 — Your Finds                 "80% of it was new to you"
+=====================================================================
+Screen : Finds tab, after ~40 cards
+Shows  : big 80%, "40 played / 32 never heard / 4 loved", Save to Apple Music
+Why    : the app produces a real output; answers "preview wrapper" directly
+
+CROP ABOVE THE TRACK LIST. Reason: each saved track renders Spotify, Apple Music
+and YouTube buttons in full brand colour. Four rows of green Spotify buttons in an
+App Store screenshot is loud third-party branding on a submission that cannot
+afford a new argument. Keep the 80% block, the "leaning toward" line, and the
+"Save to Apple Music" button. One track row at most.
+
+
+=====================================================================
+SHOT 5 — Shef                       "Original art, drawn for Sift"
+=====================================================================
+Screen : the loading state while a deck builds
+Shows  : the illustrated mascot and hand-drawn animation
+Why    : answers "same source code or assets as other apps" in one image
+
+Transient — screen record while the deck loads and pull a frame. You get this for
+free during the fresh install in shot 1, so record that whole first launch.
+
+
+=====================================================================
+HARD RULES
+=====================================================================
+1. Real device captures from the build you actually attach. Screenshots showing
+   anything not in the build is Guideline 2.3.3 — a brand new rejection reason.
+2. NOTHING from design-previews/. The trail-chain pill, the pose set and the setup
+   concepts do not ship. They would photograph well and get you a 2.3.3.
+3. Shots 1, 2 and 5 need the fresh install. Shots 3 and 4 need accumulated state.
+   Capture in the order above or you will have to reinstall twice.
+
+
+=====================================================================
+ORDER IN APP STORE CONNECT
+=====================================================================
+  1. Why this song?      (shot 2)  — strongest, and it is a still
+  2. The hook marker     (shot 1)
+  3. Tune your mix       (shot 3)
+  4. Your Finds          (shot 4)
+  5. Shef                (shot 5)
+
+The first three are what show in search results.
+
+
+=====================================================================
+CAPTIONS
+=====================================================================
+  1. Every pick shows its work
+  2. Starts at the hook, not the intro
+  3. Digs deeper as you recognise more
+  4. 80% of it was new to you
+  5. Drawn for this app, nowhere else
+
+Short enough to read at thumbnail size. Set them in the app's own typeface,
+same position and size on all five, so they read as a set.
+
+
+=====================================================================
+CAPTURE FORMAT — iPhone 17 Pro
+=====================================================================
+Device captures at 1206 x 2622. App Store Connect's 6.9" slot wants
+1320 x 2868 or 1290 x 2796. Aspect ratios match (0.4600 vs 0.4603), so it is a
+clean uniform upscale — no crop, no letterbox. Targeting 1290 x 2796 keeps it to
+a 7% upscale. Confirm the accepted sizes in the ASC upload panel; Apple moves them.
+
+STILLS vs VIDEO
+  Shots 2, 3, 4 : still screenshots (side button + volume up). Full native quality.
+  Shots 1, 5    : screen recording. These are transient — 4.2s and a loading state.
+                  Do not try to time a tap.
+
+Send the raw files, unedited and uncropped. Do not use the Photos app to trim,
+mark up or "enhance" anything — it recompresses. AirDrop or upload the originals.
+
+Tooling confirmed on this machine, so the whole pipeline is local:
+  ffmpeg 8.1.1   frame extraction from the recordings
+  Pillow 12.1.1  Lanczos upscale, caption compositing, exact output dimensions
+
+STATUS BAR
+The composite will get a clean status bar (full signal, full battery, 9:41) over
+whatever the capture happens to show. This is standard practice and is what Apple's
+own marketing does — 2.3.3 is about the app's screens being truthful, not the
+carrier name. It also removes the screen-recording indicator if iOS burns one in.
+
