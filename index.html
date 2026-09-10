@@ -1789,6 +1789,14 @@
           <span class="tf-txt"><b>Friends can swipe my taste</b><small>share your 12 latest Finds with friends</small></span>
           <span class="tf-state" id="shareFindsState">On</span>
         </button>
+      </div>
+
+      <!-- Deletion lives outside profileBox on purpose. An account exists the moment
+           you sign up, but the profile row only appears once you pick a username —
+           so a user sitting on "Pick a username" had an account and no way to delete
+           it. That gap is what App Store review flagged under 5.1.1(v) on 2026-09-09.
+           Shown for ANY signed-in state, profile row or not. -->
+      <div class="acct" id="deleteBox" style="display:none;">
         <button class="acct-link" id="btnDeleteAcct">Delete my account…</button>
         <div class="acct-msg" id="deleteMsg"></div>
       </div>
@@ -5700,11 +5708,12 @@ function renderAcct() {
   // Auth state drives two screens now: You (acct/uname/profile boxes) + Friends (locked vs social).
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? "" : "none"; };
   if (!document.getElementById("acctBox")) return;
-  if (!SB) { ["acctBox", "unameBox", "profileBox", "friendsLocked", "friendsSocial"].forEach(id => show(id, false)); return; } // no backend available
+  if (!SB) { ["acctBox", "unameBox", "profileBox", "deleteBox", "friendsLocked", "friendsSocial"].forEach(id => show(id, false)); return; } // no backend available
   const ready = !!(me_session && me_profile);
   show("acctBox", !me_session);
   show("unameBox", !!me_session && !me_profile);
   show("profileBox", ready);
+  show("deleteBox", !!me_session);   // any signed-in state, including "pick a username"
   show("friendsLocked", !ready);
   show("friendsSocial", ready);
   if (!ready) return;
