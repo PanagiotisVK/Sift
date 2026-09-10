@@ -16,3 +16,7 @@ Thumbs.db
 _test_*.mp3
 resp.json
 design-previews/
+
+# App Store screenshot working files — raw device captures and composites.
+# Large binaries; the repo is also the Pages site, so keep them out of it.
+store-shots/

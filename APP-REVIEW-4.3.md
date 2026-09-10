@@ -8,6 +8,30 @@ differences."
 
 ---
 
+## OUTCOME — 18 Aug 2026
+
+Apple replied on 18 Aug. They dropped all four contributing factors and left one
+sentence: similar to another app, unnamed, twice asked. Their closing line invited a
+resubmission.
+
+Resubmitted the same day onto the same submission (091bf87b) via **Update Review**,
+not a new one — so this Resolution Center thread stays live and the reviewer sees the
+whole exchange above the resubmission. Build 22, five new screenshots, and the
+metadata rewrite below. Status: **Waiting for Review**.
+
+The metadata rewrite recorded at the bottom of this file had **never been pasted into
+App Store Connect**. On 18 Aug the live fields were still the originals: the reviewer
+note was still the 406-character version opening "Sift is a music discovery app using
+30-second catalog previews", and the description still led with "Everyone else swipes
+you through songs you already know". So the reviewer who rejected build 7 read the
+copy this document blames, not the copy that replaced it. Writing the fix into a file
+is not the same as shipping it — check the live fields.
+
+**The guidance immediately below is superseded.** It was right in August, when the
+reply had not been sent. It has been sent, twice, and answered with boilerplate.
+
+---
+
 ## Read this before doing anything
 
 **Do not upload a new build first.** A fresh binary with no reply gets the same

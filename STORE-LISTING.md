@@ -29,10 +29,15 @@ Songs you've never heard
 ## Keywords (100 chars max, comma-separated — invisible to users, pure search fuel)
 
 ```
-music,discovery,new songs,swipe,find music,taste,friends,indie,underground,daily,preview,fresh
+music,discovery,new songs,deep cuts,find music,taste,friends,indie,underground,daily,preview,fresh
 ```
 
-*(94 chars. No competitor names — Apple rejects trademark keywords.)*
+*(98 chars. No competitor names — Apple rejects trademark keywords.)*
+
+*`swipe` swapped for `deep cuts` on 2026-08-18. Keywords are invisible to users but
+the reviewer reads them, and after the 4.3(a) follow-up the swipe mechanic is the only
+surviving accusation — no reason to volunteer the word in a field nobody searching for
+the app ever sees. "deep cuts" is also a phrase people genuinely type.*
 
 ## Promotional Text (170 chars max — editable anytime without review, shows above the description)
 
@@ -69,7 +74,8 @@ WHY SIFT
 Start swiping. Your next favorite song is out there — you've just never heard it.
 ```
 
-*(1,825 chars of 4,000 — room to grow.)*
+*(2,015 chars of 4,000 — room to grow. The 1,825 figure here was stale; it
+predated the 5 Aug rewrite.)*
 
 ## What's New (version 1.0)
 
@@ -90,6 +96,31 @@ First release — welcome to Sift. Swipe through fresh songs picked for your tas
 - **Notes for reviewer:**
 
 ```
+RESUBMISSION - VERSION 1.0
+
+This is a resubmission following the Guideline 4.3(a) finding on 5 August
+(submission 091bf87b-af03-442a-b5ac-61d0bcc6acf0). I asked App Review which app Sift
+was found to duplicate, and the reply restated the guideline without naming one, so I
+have not been able to remove a specific overlap.
+
+What I have changed instead is visibility. All three mechanisms described below were
+already running in build 7 - but none of them are legible in a short session, and the
+screenshots did not show them. Hook detection changes when playback starts, which is
+imperceptible if you have never heard the song. Discovery depth needs dozens of swipes
+before it visibly diverges. The recommendation graph looks like any "similar artists"
+call from the outside. This build puts each one on screen, and the screenshots have
+been replaced to match:
+
+- Tap the "Related to <artist>" pill on any card to open Why this song? It shows the
+  artist path that produced the pick, the tags it matched, how far past the popular
+  results it reached, and the exact timestamp the hook analysis chose, with the reason.
+- The waveform on every card now carries a visible marker at the detected hook.
+- Tune your mix (sliders icon, top right) shows the current discovery depth as a live
+  number and states how far your own swipes have moved it.
+
+If you have two minutes, the Why this song? sheet is the fastest way to see that this
+is not a wrapper around a preview feed. It is two taps from launch on the demo account.
+
 WHAT SIFT DOES
 
 Sift finds you songs you have never heard, from a catalogue you already have access
@@ -125,7 +156,10 @@ PRACTICAL NOTES
 - The demo account above is pre-filled with a taste profile, so the deck is populated
   immediately on first launch.
 - Sign in with Apple is offered alongside email signup, on the You tab.
-- Account deletion is in-app: You tab → Delete my account.
+- Account deletion is in-app: You tab → Delete my account. It is shown in every
+  signed-in state, including before a username has been chosen.
+- Friends are consent-based (request → accept). Any friend or requester can be
+  blocked or reported from the Friends tab; usernames are filtered on entry.
 ```
 
 *(Rewritten 5 Aug 2026 after the build 7 4.3(a) rejection. The old note opened
@@ -171,63 +205,38 @@ for something unused.)
 
 ## Screenshots
 
-`design-previews/app-store/sift-store-1..5.png` (1320×2868, 6.9" iPhone size).
-Upload in order 1→5:
+`store-shots/01..05.png` (1290x2796, the 6.9" iPhone slot). Upload in this order - the
+first three are what show in App Store search results, so they carry the 4.3 argument:
 
-1. **Discover** — "Songs you've never heard. Found." *(violet)*
-2. **Finds + the 83% stat** — "Love it? Swipe. It's yours." *(amber)*
-3. **Friends** — "Swipe your friends' taste" *(emerald)*
-4. **Taste card** — "Your taste, on a card" *(pink)*
-5. **Artist page** — "Follow what you unearth" *(blue)*
+1. `01-why-this-song.png` - "Every pick shows its work"
+2. `02-hook.png` - "Starts at the hook, not the intro"
+3. `03-depth.png` - "Digs deeper the more you know"
+4. `04-finds.png` - "85% of it was new to you"
+5. `05-shef.png` - "A daily hand of twenty songs"
 
-**Style: "liner notes"** (2026-07-25, third pass). Earlier versions are kept in
-`v1-old/` (original) and `v2-glow/` (centred type over a coloured radial glow).
+Real device captures from **build 22** on iPhone 17 Pro (native 1206x2622), uniformly
+upscaled 7% to 1290x2796 with no crop or letterbox, status bar trimmed, captioned on
+the app's own ground (#09090b) in its own palette. Built by `compose.py` (Pillow,
+Lanczos). Captions are Segoe UI Bold, not SF Pro - Apple does not ship SF Pro for
+Windows. One-line swap if the set is ever rebuilt on a Mac.
 
-The glow version was competent but its ingredients — centred system-sans headline,
-accent-coloured second line, soft radial glow behind a floating device — are the
-default template you see on every generated app page. This version swaps the
-ingredients instead of adjusting them:
+**These replace `design-previews/app-store/sift-store-1..5.png`, which must not be
+used again.** Those were marketing posters - a device mockup over a blown-up blurred
+commercial album cover, a different accent colour per frame, fake handles. Two
+problems with them on this submission specifically. First, that composition is the
+default App Store poster template, on an app whose only remaining rejection ground is
+a template accusation. Second, they showed none of the machinery the 4.3(a) reply
+argues for, so the reviewer of build 7 had nothing in front of them.
 
-- **The background is a real album cover, blown up and blurred**, not a synthetic
-  gradient. That's the app's own backdrop treatment, so the poster and the product
-  share a visual language — and the five frames differ from each other for an honest
-  reason rather than a decorative one. Covers chosen for colour separation across the
-  strip: Currents (violet), After Hours (amber), Future Nostalgia (blue), Lo Siento
-  BB:/ (pink), The Slow Rush (gold).
-- **Bahnschrift Condensed caps, hard left**, with a tracked-out section label over a
-  short rule in the frame's colour. DIN-ish condensed reads as music press and gig
-  poster; a system UI sans reads as software.
-- **The phone bleeds off the bottom edge** instead of floating in the middle, which
-  makes it a poster rather than a slide. Cropped so the Nope / Heard it / Love row
-  still shows — that trio is the product in one glance.
-- **A fine film grain** over everything, to kill the flat digital-gradient look.
-- The header block is a fixed height with its contents bottom-aligned, so a two-line
-  and a three-line headline still place the phone at the same y. The strip reads as
-  a set rather than five loose images.
+Rule that governs the set: every frame is a screen the attached build actually
+renders. Anything out of `design-previews/` - the trail-chain pill, the Shef pose set,
+the setup concepts - is Guideline 2.3.3 and a brand new rejection reason.
 
-Earlier pass (kept for reference) — what changed from the original:
-
-- **Each frame has its own accent colour.** All five were near-identical dark
-  rectangles, and the App Store shows about two and a half of them at a time while
-  scrolling — there was nothing to pull the eye along. The second headline line now
-  carries that accent too.
-- **The phones are straight.** The tilt shrank the type on exactly the screens that
-  had the most of it.
-- **The old #5 is gone.** It was the deck-intro screen, more than half empty black,
-  sitting in the last position. Replaced by the taste card, which is the thing people
-  actually screenshot and post.
-- **The artist page is now captured through the real `openArtist()`.** The old one
-  pasted in a Deezer promo photo and repeated one album cover five times; the shipping
-  app uses the artist's top-song artwork and each track's own cover. Screenshots have
-  to show the app that ships.
-- **Fake handles have some personality** — `@mrsift`, `@nightbus`, and `@peter` on the
-  taste card.
-
-Known judgement call: screenshot 2 shows the Spotify / Apple Music / YouTube link
-buttons in their brand colours, because that is genuinely what the Finds list looks
-like. Cropping them out would misrepresent the app; leaving them in carries a small
-risk of a metadata query about promoting competing services. Kept them — accuracy
-wins, and it's the minimum-buttons view of that screen already.
+Judgement call carried over from the old set: shot 4 (Finds) is cropped above the
+track list, because each saved track renders Spotify / Apple Music / YouTube buttons
+in full brand colour. One row is visible, so the screen is still honest - but four
+rows of Spotify green in an App Store screenshot is loud third-party branding on a
+submission that cannot afford a new argument.
 
 ## Pricing & Availability
 
@@ -348,7 +357,11 @@ need them.
 
 ## Reminder before submitting for App Store review (not TestFlight)
 
-- **Submit build 7 or later.** Build 6 is *not* acceptable: it still declares iPad
+- **Submit build 22.** Not build 20 - it was archived 5 Aug and predates the hook
+  marker, the why-sheet and the typed-artist fix, so screenshots 1, 2 and 3 show
+  screens that build does not contain (Guideline 2.3.3). The build you screenshot is
+  the build you attach.
+- Historical floor, kept for reference: **build 7 or later.** Build 6 is *not* acceptable: it still declares iPad
   support, so App Store Connect blocks the submission until you upload 13-inch iPad
   screenshots — and Sift has no iPad layout worth screenshotting. Build 7 is iPhone
   only. Beyond that, three more reasons a lower build won't do:

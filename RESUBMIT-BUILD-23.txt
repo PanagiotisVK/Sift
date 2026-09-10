@@ -1,0 +1,222 @@
+﻿======================================================================
+SIFT - BUILD 23 RESUBMISSION. Written 10 Sep 2026.
+======================================================================
+
+Word wrap first:  Format menu -> Word Wrap
+
+WHAT HAPPENED
+Build 22 was rejected on 9 Sep. The GOOD news: the 4.3(a) spam finding is
+GONE. August's work did its job and Apple accepts Sift as a distinct app.
+Two ordinary issues replaced it, and both are already fixed in the code:
+
+  5.1.1(v)  Account deletion was missing. Apple was right - a real bug.
+            If you signed up and stopped at 'Pick a username', you had an
+            account and no way to delete it. Fixed, commit c9bf8f4.
+
+  5.2.3     Third-party content. Nothing was actually a violation - the app
+            has no download function at all. But Apple wants a rights
+            document for every third-party service, and no such document
+            can ever exist for YouTube. Every YouTube link removed, 5e4fdfd.
+
+The App Review Board appeal is now MOOT. It was against the 4.3(a), which no
+longer stands. Do not spend any more effort on it.
+
+
+======================================================================
+[ ] STEP 1. Get me Apple's second screenshot.
+======================================================================
+
+    In the App Store Connect tab that is open, click Download next to
+    Screenshot-0909-151636.png, then tell me. Chrome blocked my repeat
+    downloads so I only got the first one.
+
+    I already acted on the likely cause without it. If that second shot shows
+    something else, better to know before you build than after.
+
+
+======================================================================
+======================================================================
+PRE-SUBMISSION AUDIT - done 10 Sep. One thing found, one thing open.
+======================================================================
+
+FOUND AND FIXED (2.3.3, and we caused it an hour earlier)
+  Screenshot 4 showed the Finds row with the RED YOUTUBE BUTTON - a control
+  build 23 no longer has. A screenshot showing something the build lacks is a
+  fresh rejection on its own. Regenerated with the track row cropped off; the
+  old one is in store-shots\superseded\ .
+
+  [ ] While build 23 is on your phone for the recording, take ONE extra
+      screenshot of the Finds tab. A real capture beats my crop, which leaves
+      the bottom third of the frame empty. Send it and I will swap it in.
+
+VERIFIED CLEAN - no action needed
+  - No download function anywhere in the app. Nothing writes media.
+  - No analytics, no trackers, no third-party SDKs.
+  - Support URL and Privacy URL both live.
+  - Privacy policy matches the app and documents Delete my account.
+  - Content Rights: Yes. Age rating: set, not blank.
+
+CLOSED - Guideline 1.2 (user-generated content)
+  I said earlier there was no Block. WRONG - there is, on friend rows and on
+  incoming requests. My grep missed it. Your August letter was accurate.
+  Sorry for the scare.
+
+  What WAS missing is now added: a Report button (friend rows + requests), a
+  username filter (slurs, profanity, handles impersonating Sift or Apple),
+  and a database rule so Block is actually enforced - see STEP 2a.
+
+
+UNVERIFIED
+  delete_account is a Supabase function, not in the repo, so nobody has
+  confirmed it handles a user with no profile row. Your step 3 recording
+  exercises exactly that path. If it errors, that is why - tell me.
+
+
+
+[x] STEP 2a. Paste one SQL file into Supabase. (5 minutes, do it first)   DONE 10 Sep - ran it, all three said true.
+======================================================================
+
+    Supabase dashboard -> your Sift project -> SQL Editor -> New query.
+    Open   Downloads\Music App\supabase\moderation.sql   in Notepad,
+    select all, paste, Run.
+
+    The last statement prints three columns. All three must say TRUE.
+    Safe to run twice. It creates the blocks and reports tables and adds the
+    rule that stops a friend request or a deck crossing a block. Without it,
+    Block still works in the app but nothing enforces it server-side.
+
+
+[ ] STEP 2. Build 23 on the Mac.
+======================================================================
+
+    Open Terminal on the Mac and run ONE line:
+
+        cd ~/Desktop/Sift && ./mac.sh
+
+    That script saves anything Xcode changed, pulls today's fixes from GitHub,
+    installs dependencies, syncs index.html into the iOS project, and opens
+    Xcode. It stops and tells you if something fails - if it does, read me the
+    last few lines.
+
+    Then in Xcode, click the blue App icon (left sidebar) -> General tab:
+
+    [ ] Identity -> Build: change 22 to 23. (Version stays 1.0.)
+    [ ] Supported Destinations: must say iPhone ONLY. If iPad is listed, click
+        it and press the minus button. Check this AFTER the script ran, because
+        the sync can regenerate project settings.
+    [ ] Signing & Capabilities tab: "Sign in with Apple" must be listed.
+        If it is missing, click + Capability and add it back.
+    [ ] Device dropdown (top bar) -> Any iOS Device (arm64).
+    [ ] Product menu -> Archive. Wait. Then Distribute App -> App Store Connect
+        -> Upload -> accept every default.
+    [ ] Wait for the processing email (10-30 min), then in App Store Connect ->
+        TestFlight, if build 23 says Missing Compliance, click it and answer No
+        to the encryption question.
+
+
+[ ] STEP 3. Record the deletion flow on your PHYSICAL iPhone.
+======================================================================
+
+    Apple asked for this specifically. Install build 23 from TestFlight, then
+    screen-record ONE continuous take:
+
+      1. Create a NEW account with a throwaway email.
+         Do NOT use the riff.demo account - they want to see signup.
+      2. STOP at 'Pick a username'. Do not pick one.
+      3. Tap 'Delete my account...'
+      4. Tap it again to confirm (it arms on the first tap).
+      5. Show the app back in its signed-out state.
+
+    Step 2 is the whole point. That is the exact screen the reviewer was
+    stuck on. Showing deletion working somewhere else does not answer them.
+
+    Keep it short - under a minute. Then send it to yourself so it is on
+    the computer, and tell me where it landed.
+
+
+======================================================================
+[ ] STEP 4. I put it all into App Store Connect.
+======================================================================
+
+    Attach build 23, attach the recording, paste the reply below into
+    Resolution Center, and stop before the submit button - same as last time.
+
+
+======================================================================
+[ ] STEP 5. You press Resubmit to App Review.
+======================================================================
+
+
+======================================================================
+THE REPLY - already written, for reference. I will paste it in at step 4.
+======================================================================
+
+----------------------------------------------------------------------
+
+Hello,
+
+Thank you for the detailed feedback on 1.0 (22), and for attaching the screenshots —
+they showed me exactly where the problem was. Both issues are addressed in build 23.
+
+**Guideline 5.1.1(v) — Account deletion**
+
+You were right, and this was a genuine defect rather than something hard to find.
+
+Sift can be used without an account. When someone does create one, there is a short
+intermediate step between signing up and choosing a username. Account deletion was only
+rendered once a username existed, so a user sitting on the "Pick a username" screen —
+which is where your screenshot was taken — had a real account and no way to delete it.
+
+In build 23, "Delete my account…" is shown in every signed-in state, including before a
+username has been chosen. It sits on the You tab directly beneath the account section.
+Deletion is immediate and permanent: a server-side routine removes the authentication
+record, the profile, the cloud backup of saved songs, friend connections and any shared
+decks. There is no deactivate-only option, no website step, and no requirement to
+contact support. A two-tap confirmation prevents accidental deletion.
+
+The attached screen recording, captured on a physical iPhone running build 23, shows
+creating a new account, arriving at the "Pick a username" screen, tapping Delete my
+account, confirming, and the app returning to its signed-out state.
+
+**Guideline 5.2.3 — Third-party content**
+
+The screenshot you attached shows a 30-second preview playing on the Discover screen.
+Every preview and every piece of album artwork in Sift is served by Apple's own iTunes
+Search API, used exactly as documented, with links back to the iTunes / Apple Music store.
+The app never downloads, stores, caches or redistributes audio or video — there is no
+download function anywhere in it, and no media file is ever written to the device or to
+my servers. Playback is streamed directly from Apple.
+
+Documentary basis for each third-party element:
+
+1. **Preview audio and artwork — Apple iTunes Search API.** Documentation:
+https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html
+Previews are the 30-second clips Apple provides through that API for exactly this
+purpose; the app plays them from Apple's URLs and links each song back to the store.
+
+2. **Full-song playback — Apple Music via MusicKit**, for users with their own Apple
+Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted to my
+developer account: https://developer.apple.com/musickit/ and
+https://developer.apple.com/documentation/applemusicapi . Playback occurs under the
+user's own subscription; Sift never proxies or re-serves the audio.
+
+3. **Artist relationships and tags — MusicBrainz and ListenBrainz**, metadata only, no
+audio. Published by the MetaBrainz Foundation and released into the public domain under
+CC0 1.0: https://musicbrainz.org/doc/About/Data_License and
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Build 22 also showed a YouTube icon on saved songs — a plain link to a YouTube search
+page, opened in Safari, with no embedded player or download. I have removed every
+YouTube link in build 23 regardless. The remaining service buttons are Spotify and Apple
+Music search links that simply open the corresponding app.
+
+If any part of this is still unclear, I would rather fix it than argue it — please tell
+me which screen or behaviour you would like changed.
+
+Thank you for your time.
+
+Peter Vlahos
+
+----------------------------------------------------------------------
+
+Full reasoning and the code diagnosis: APP-REVIEW-5.1.1-5.2.3.md

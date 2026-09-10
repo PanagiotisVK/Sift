@@ -1,0 +1,423 @@
+﻿======================================================================
+STATUS - 18 AUG, AFTER THE ASSISTED PASS THROUGH APP STORE CONNECT
+======================================================================
+
+Everything ticked [x] below is ALREADY DONE and saved on Apple's side.
+Verified after a fresh page load, so it is stored, not just typed in.
+
+  [x] Old poster screenshots deleted, new five uploaded, order 01 -> 05
+  [x] Promotional Text replaced   (164 chars)
+  [x] Description replaced        (2,015 chars)
+  [x] Keywords replaced           (98 chars, swipe -> deep cuts)
+  [x] Reviewer note replaced      (3,596 chars, RESUBMISSION block first)
+  [x] Build 7 removed, BUILD 22 attached
+  [x] Release set to Manually release this version
+  [x] App Information checked - subtitle, Content Rights YES, age rating set
+  [x] Business checked - Free Apps Agreement ACTIVE
+
+WORTH KNOWING: every text field was still the ORIGINAL pre-rejection copy.
+The reviewer note was still the 406-character version opening "Sift is a
+music discovery app using 30-second catalog previews" - the sentence your
+own post-mortem blamed for the wrapper reading. The 5 Aug rewrite had never
+been pasted in. The reviewer who rejected build 7 read the old copy.
+
+SUBMITTED 18 AUG. Status: WAITING FOR REVIEW, item iOS App 1.0 - 1.0 (22).
+
+  [x] Demo login tested in a private window - the deck loaded.
+  [x] Screenshots checked on the version page, order 01 -> 05 correct.
+  [x] Update Review pressed, then Resubmit to App Review. Both confirmed.
+
+It went onto the SAME submission, 091bf87b - not a new one. That is what
+Update Review means, and it is the better outcome: the Resolution Center
+thread stays live, so the reviewer sees Apple's two messages and your reply
+directly above the resubmission rather than opening a blank case.
+
+WHILE WAITING:
+  - Leave the App Review Board appeal alone. Still filed against this same
+    submission, and nothing today withdrew it. It is the live escalation if
+    this comes back rejected again.
+  - Approval will NOT auto-release. Release is set to manual, so a pass puts
+    it in Pending Developer Release and Sift goes live when you press it.
+  - Do not change the name, subtitle, concept or the swipe interaction.
+
+The rest of this file is kept as the record of what was set and why.
+
+
+======================================================================
+SIFT - RESUBMISSION WALKTHROUGH, VERSION 1.0
+Written 18 Aug 2026. Everything you need is in this file.
+You should not have to open any other document.
+======================================================================
+
+Turn on word wrap first:   Format menu -> Word Wrap  (tick it)
+Otherwise the long paste blocks run off the right edge.
+
+HOW TO USE THIS
+Work top to bottom. Tick the [ ] boxes as you go. When you reach a PASTE
+block, select from its first line to its last line, copy, and paste it into
+the field named. Do not retype anything by hand.
+
+If anything on screen does not match what this file says, STOP and ask
+before clicking further. Nothing before STEP 12 is hard to undo.
+
+
+======================================================================
+WHY YOU ARE DOING THIS   (read once, then forget it)
+======================================================================
+
+Apple rejected build 7 on 5 Aug under Guideline 4.3(a) - spam - and listed
+four possible causes. You replied. On 18 Aug they answered, dropped all four,
+and left one sentence: similar to another app, which they will not name. You
+have asked twice. Their closing line invites you to resubmit.
+
+So this is not a rewrite. Same version 1.0, edited in place, with a new build
+and new screenshots that make the original machinery visible - because the
+last reviewer had no way to see it. Submitting creates a new submission ID.
+Your App Review Board appeal is filed against the OLD one and is unaffected.
+
+
+======================================================================
+PART ONE - THREE THINGS TO CHECK BEFORE OPENING APP STORE CONNECT
+======================================================================
+
+[x] STEP 1. Look at the five screenshots, full size, in order.
+
+    Folder:  Downloads\Music App\store-shots\jpg
+
+      01-why-this-song.jpg    Every pick shows its work
+      02-hook.jpg             Starts at the hook, not the intro
+      03-depth.jpg            Digs deeper the more you know
+      04-finds.jpg            85% of it was new to you
+      05-shef.jpg             A daily hand of twenty songs
+
+    UPLOAD THE JPGs. App Store Connect takes JPEG and PNG equally, and the
+    JPEGs are a third of the size, so they upload more reliably. The PNG
+    originals are one folder up in store-shots\ if you need them.
+
+    All five are 1320 x 2868. That is the size App Store Connect calls the
+    6.9-inch iPhone display, and it is the only size you need to upload.
+
+    Check each one: caption readable, no status bar at the top, nothing cut
+    off at an edge. There are no account names or email addresses in any of
+    them - already checked - so there is nothing to blur out.
+
+    If one looks wrong, stop here. Fixing it now is cheap.
+
+[x] STEP 2. Check the reviewer's demo login still works.
+
+    Open a PRIVATE / INCOGNITO window - not your normal browser profile.
+    Go to the web build and sign in as:
+
+        riff.demo@facetmusic.app
+        facetdemo123
+
+    It has to reach a working deck. Supabase now requires email confirmation,
+    so if that account has fallen out of confirmed state the reviewer sees a
+    broken app and you lose another two weeks. This one must pass.
+
+[x] STEP 3. Check build 22 is uploaded and has finished processing.
+
+    App Store Connect -> Sift -> TestFlight tab -> iOS builds.
+    Build 22 should be listed and should NOT say Processing.
+    If it says Missing Compliance, click it and answer the export compliance
+    question now - otherwise you cannot select it at STEP 9.
+
+
+======================================================================
+PART TWO - THE VERSION PAGE
+App Store Connect -> My Apps -> Sift -> 1.0 Prepare for Submission
+======================================================================
+
+Steps 4 to 11 are all on this one page, in the order you meet them going
+down it. Click Save, top right, every couple of steps.
+
+CHECKED ON SCREEN 18 AUG: the metadata on this page is still the OLD
+pre-rejection version. The Promotional Text still begins "Every swipe digs
+past the hits", which is the wording that was rewritten on 5 Aug and never
+actually pasted in. So treat steps 5, 6, 7 and 10 as REPLACING what is there,
+not checking it. Clear each box completely before pasting.
+
+
+[x] STEP 4. SCREENSHOTS.  Top of the page, App Previews and Screenshots.
+            Make sure the tab says   iPhone 6.9" Display.
+
+    [x] 4a. DELETE all five screenshots already there. Every one of them.
+            Hover each, click the X or drag it out.
+            These are the old poster mockups - a phone floating over a
+            blurred album cover. They have to go: that composition is the
+            default App Store template, on an app accused of being a
+            template, and they show none of what your reply argues for.
+
+    [x] 4b. UPLOAD the new five from store-shots\jpg, in filename order:
+            01 first, then 02, 03, 04, 05.
+
+    [x] 4c. CHECK THE ORDER afterwards. App Store Connect sometimes
+            reshuffles on upload. It must read 01, 02, 03, 04, 05 left to
+            right. The first three are what appear in App Store search
+            results, so the order is doing real work.
+
+    [x] 4d. Ignore every other device size tab - iPhone 6.9" is the only
+            one required. Do not add an app preview video.
+
+    IF THE PANEL IS GREYED OUT and Choose File / Delete All will not click,
+    that is App Store Connect's pending state, usually left over from
+    switching display size. Reload the page with Ctrl+R. If it is still grey,
+    click "View All Sizes in Media Manager" at the top right of the panel -
+    that opens a full editor and works when the inline one will not.
+
+    IF IT SAYS THE DIMENSIONS ARE WRONG, it is almost always the wrong tab.
+    The sizes Apple wants, so you can tell which slot you are in:
+
+        iPhone 6.9"  ->  1320 x 2868   <-- ours. Use this tab.
+        iPhone 6.5"  ->  1284 x 2778   will reject ours
+        iPhone 6.7"  ->  1290 x 2796   see the fallback below
+        iPad          ->  much wider, and not required at all
+
+    If the 6.9" tab genuinely refuses 1320 x 2868, there is a second set at
+    the older accepted size in:
+
+        store-shots\alt-1290x2796
+
+    Same five images, same order, 1290 x 2796. Try those. If BOTH sizes are
+    refused, stop and tell me the exact wording of the error - it means the
+    slot expects something else and I will rebuild to whatever it asks for.
+
+
+[x] STEP 5. PROMOTIONAL TEXT.  Just below the screenshots.
+            Clear the box first, then paste.
+
+----------------------------------------------------------------------
+>>> PASTE INTO: Promotional Text   (170 character limit - this is 164)
+----------------------------------------------------------------------
+
+Sift listens to every preview and starts you at the chorus. Then it learns how much you already know, and digs past the hits until it finds what you've never heard.
+
+---------------------------------------------------------------------- END
+
+[x] STEP 6. DESCRIPTION.  Below Promotional Text.
+            Clear the box completely first, then paste all of it.
+
+----------------------------------------------------------------------
+>>> PASTE INTO: Description   (4000 character limit - this is 2,015)
+----------------------------------------------------------------------
+
+Most music apps recommend you songs you already know. Sift is built for one thing: finding the ones you've never heard — and will love.
+
+HOW IT WORKS
+Pick a few genres and artists you like. Sift maps the world of music around your taste and deals you a daily hand of songs — not the hits everyone streams, but the album cuts, deep tracks and rising artists that fit you. Keep what you love, pass on what you don't, and every swipe recalibrates how deep Sift digs: recognise a lot and it reaches further past the popular results, find a keeper at that depth and it holds there. The app a crate-digger sees is not the app a casual listener sees.
+
+SKIP TO THE BEST PART
+Sift listens to every preview before you do. It measures the track's energy across its whole length, finds the loudest sustained passage rather than a single loud moment, and starts you a beat and a half before it — while making sure you never land in the fade-out. You hear the chorus first, not the intro. Thirty seconds is enough when it's the right thirty seconds.
+
+YOUR FINDS, YOURS
+Every song you keep lands in your Finds: playable as a radio, grouped by genre, with one-tap links to open it in the streaming app you already use. Sift shows you the number that matters — what percentage of your Finds you'd never heard before.
+
+FOLLOW WHAT YOU UNEARTH
+Follow the artists you discover and Sift flags when they release something new. You found them first — stay first.
+
+TASTE IS BETTER TRADED
+Add friends and see your match percentage and what you share. Swipe through a friend's recent finds. Send a deck of picks and see which ones landed. Your next favorite song is probably in a friend's library already.
+
+WHY SIFT
+• Built for discovery — not another shuffle of your existing playlists
+• A daily hand of songs keeps it fresh, not endless
+• Learns how much you already know, and digs deeper as you go
+• No ads. No selling your data. Works without an account.
+
+Start swiping. Your next favorite song is out there — you've just never heard it.
+
+---------------------------------------------------------------------- END
+
+[x] STEP 7. KEYWORDS.  Same page. Clear the box, then paste this one line.
+            The word "swipe" used to be in here and was deliberately taken
+            out - the reviewer reads this field, and the swipe mechanic is
+            the only accusation still standing. Do not put it back.
+
+----------------------------------------------------------------------
+>>> PASTE INTO: Keywords   (100 character limit - this is 98)
+----------------------------------------------------------------------
+
+music,discovery,new songs,deep cuts,find music,taste,friends,indie,underground,daily,preview,fresh
+
+---------------------------------------------------------------------- END
+
+[x] STEP 8. WHAT'S NEW.  It will be greyed out or missing. Version 1.0 has
+            no previous version, so there is nothing to write. Skip it.
+
+
+[x] STEP 9. BUILD.  Scroll to the Build section and click the + button.
+
+            Choose BUILD 22.
+
+            NOT build 20. Build 20 was archived on 5 Aug, before the hook
+            marker, the Why this song? sheet and the typed-artist fix went
+            in. Screenshots 1, 2 and 3 show screens that build does not
+            have. Screenshots that do not match the build is Guideline
+            2.3.3 - a brand new rejection reason, stacked on the one you
+            already have. The build you screenshot is the build you attach.
+
+
+[x] STEP 10. APP REVIEW INFORMATION.  Further down the same page.
+
+    [x] 10a. Sign-in required - tick YES.
+
+             User name:  riff.demo@facetmusic.app
+             Password:   facetdemo123
+
+    [x] 10b. Contact email:  petervlahosk2000@gmail.com
+             Not the vlahos89 address.
+
+    [x] 10c. NOTES. Clear the box, then paste everything below. It must
+             start with RESUBMISSION and end with the account deletion
+             line. 3,596 characters of the 4,000 allowed.
+
+----------------------------------------------------------------------
+>>> PASTE INTO: App Review Information -> Notes
+----------------------------------------------------------------------
+
+RESUBMISSION - VERSION 1.0
+
+This is a resubmission following the Guideline 4.3(a) finding on 5 August
+(submission 091bf87b-af03-442a-b5ac-61d0bcc6acf0). I asked App Review which app Sift
+was found to duplicate, and the reply restated the guideline without naming one, so I
+have not been able to remove a specific overlap.
+
+What I have changed instead is visibility. All three mechanisms described below were
+already running in build 7 - but none of them are legible in a short session, and the
+screenshots did not show them. Hook detection changes when playback starts, which is
+imperceptible if you have never heard the song. Discovery depth needs dozens of swipes
+before it visibly diverges. The recommendation graph looks like any "similar artists"
+call from the outside. This build puts each one on screen, and the screenshots have
+been replaced to match:
+
+- Tap the "Related to <artist>" pill on any card to open Why this song? It shows the
+  artist path that produced the pick, the tags it matched, how far past the popular
+  results it reached, and the exact timestamp the hook analysis chose, with the reason.
+- The waveform on every card now carries a visible marker at the detected hook.
+- Tune your mix (sliders icon, top right) shows the current discovery depth as a live
+  number and states how far your own swipes have moved it.
+
+If you have two minutes, the Why this song? sheet is the fastest way to see that this
+is not a wrapper around a preview feed. It is two taps from launch on the demo account.
+
+WHAT SIFT DOES
+
+Sift finds you songs you have never heard, from a catalogue you already have access
+to. Three parts of it are original work and are the reason the app exists:
+
+1. HOOK DETECTION. Every 30-second preview is decoded through the Web Audio API and
+analysed for its energy envelope in 0.25-second frames. That envelope is smoothed over
+roughly two seconds so sustained loudness wins over a single loud transient, and the
+closing seconds are excluded so playback can never land in a fade-out. Playback then
+starts 1.5 seconds before the resulting peak, and the same analysis draws the waveform
+scrubber on the card. You hear the chorus first instead of the intro — which is the
+difference between 30 seconds being enough to judge a song and not being enough.
+
+2. ADAPTIVE DISCOVERY DEPTH. Sift tracks how much of what it shows you is already
+familiar to you, and uses that to decide how far past the popular results to reach when
+it builds the next set. Swiping moves it continuously: recognising a lot pushes the app
+deeper into the catalogue, and finding something you keep at a given depth eases it
+back. Two people starting from the same declared taste but with different listening
+knowledge are shown materially different music.
+
+3. OPEN-DATA RECOMMENDATION GRAPH. Artist relationships come from ListenBrainz
+co-listening statistics and MusicBrainz tags, including alias resolution so that
+artists filed under non-Latin names resolve correctly. This is not a store's built-in
+"similar artists" field.
+
+Apple's iTunes Search API supplies the preview audio and artwork, used as documented
+and with links out to the store. It is the playback layer — the selection, ordering,
+audio analysis and personalisation above are all my own work.
+
+PRACTICAL NOTES
+
+- An account is optional; the app is fully usable without one.
+- The demo account above is pre-filled with a taste profile, so the deck is populated
+  immediately on first launch.
+- Sign in with Apple is offered alongside email signup, on the You tab.
+- Account deletion is in-app: You tab → Delete my account.
+
+---------------------------------------------------------------------- END
+
+[x] STEP 11. VERSION RELEASE.  Near the bottom of the page.
+             Choose "Manually release this version", so it goes live when
+             you press the button and not on its own at four in the morning.
+
+             Then click Save, top right. Do not submit yet.
+
+
+======================================================================
+PART THREE - TWO OTHER PAGES. CHECK THEM, DO NOT ASSUME.
+======================================================================
+
+[x] STEP A. APP INFORMATION.  Left sidebar -> General -> App Information.
+
+    [x] Name:       Sift - Music Discovery   (live value uses an em dash,
+                     not the colon in STORE-LISTING.md. Left as-is on
+                     purpose - do not rename mid-appeal.)
+    [x] Subtitle:   Songs you've never heard
+
+    [x] Copyright:  2026 Peter Vlahos
+    [x] Content Rights: YES, confirmed on the page.
+    [x] Age Rating: set - reads 12+, and 13+ in Vietnam. Not blank, so
+        nothing to re-answer.
+
+
+
+
+
+
+
+[x] STEP B. BUSINESS.  Left sidebar -> Business.
+            May be called Agreements, Tax, and Banking.
+
+    [x] Free Apps Agreement: ACTIVE (18 Aug 2026 - 23 Jul 2027).
+
+    [x] Trader status: no separate declaration appears on the Business
+        page, and the Free Apps Agreement is Active, so nothing is
+        outstanding here.
+
+    [x] Bank account / tax forms: LEFT ALONE, correctly. The prompts you
+        see belong to the Paid Apps Agreement, which shows Pending User
+        Info. That is expected and irrelevant to a free app.
+
+
+======================================================================
+[x] STEP 12 - SUBMIT.    THIS IS THE ONE THAT IS HARD TO UNDO.
+======================================================================
+
+Only once every box above is ticked:
+
+    Back to the 1.0 page -> UPDATE REVIEW  (top right, next to Save).
+
+It says Update Review rather than Add for Review because the 1.0 review is
+still open, just rejected. Your changes attach to that existing review, so the
+Resolution Center thread stays live and the reviewer sees their own message and
+your reply in context. That is fine, and slightly better than starting fresh.
+
+The button stays greyed until you have changed something and saved. That is
+not a block, it just means there is nothing to submit yet.
+
+You do not need to reply in Resolution Center. Apple's last message already
+invited the resubmission.
+
+
+======================================================================
+AFTER YOU SUBMIT
+======================================================================
+
+- Leave the App Review Board appeal alone. It stands against the old
+  submission and none of this withdraws it.
+
+- Do not change the app name, the subtitle, the concept or the swipe
+  interaction while you wait. Nothing Apple has sent points at a specific
+  overlap, and redesigning against an unnamed accusation is guessing.
+
+- Do not add a Friends screenshot. The set that got rejected already had
+  one. It is also the part of Sift that genuinely does resemble other apps,
+  and an honest capture would need someone else's real account name in it.
+
+- If this round is rejected on 4.3 again, the next escalation is a 20-second
+  App Preview video showing playback jumping to the hook marker and the Why
+  this song? sheet opening. Motion shows what a still cannot. Not worth the
+  extra risk until you need it.

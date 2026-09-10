@@ -1,0 +1,141 @@
+SIFT — RESUBMISSION CHECKLIST, VERSION 1.0
+Written 2026-08-18, after Apple's Resolution Center follow-up.
+
+WHAT THIS IS
+Apple replied on 18 Aug. They dropped all four contributing factors from the original
+4.3(a) letter (shared code, repackaged template, purchased template, multiple
+accounts) and left one sentence: similar to another app, unnamed. They did not answer
+which app, asked twice. Their closing line invites a resubmission.
+
+So this is not a rewrite. It is the same 1.0 version record, edited in place, with a
+new binary and new screenshots attached. Submitting produces a NEW submission ID. The
+old Resolution Center thread stays attached to 091bf87b and goes quiet. The App Review
+Board appeal is filed against that old submission and is NOT withdrawn by any of this.
+
+Everything to paste is in STORE-LISTING.md. Capture work is finished — APP-STORE-
+SHOTLIST.txt is now history, do not work from it.
+
+Work top to bottom. Stop at anything that does not match what is written here and say
+what you are seeing. Step 12 is the only one that is hard to undo.
+
+
+=====================================================================
+BEFORE YOU OPEN APP STORE CONNECT
+=====================================================================
+
+[ ] 1. Look at all five screenshots full size, in order.
+       Downloads\Music App\store-shots\
+         01-why-this-song.png    Every pick shows its work
+         02-hook.png             Starts at the hook, not the intro
+         03-depth.png            Digs deeper the more you know
+         04-finds.png            85% of it was new to you
+         05-shef.png             A daily hand of twenty songs
+       All five are 1290x2796. Check: caption readable at thumbnail size, no status
+       bar, no screen-recording indicator, nothing cut off at an edge.
+       If any one of them looks wrong, stop here — it is much cheaper to fix now.
+
+[ ] 2. Demo account still works.
+       Open a PRIVATE browsing window (not your normal profile).
+         riff.demo@facetmusic.app / facetdemo123
+       Email confirmation is switched on in Supabase. If that account has drifted
+       into unconfirmed, a reviewer sees a broken app. This has to pass.
+
+[ ] 3. Build 22 is in App Store Connect and finished processing.
+       TestFlight tab → iOS builds. If 22 shows a "Missing Compliance" warning,
+       answer the export-compliance question now; it will not be selectable until
+       you do.
+
+
+=====================================================================
+VERSION PAGE — My Apps → Sift → "1.0 Prepare for Submission"
+=====================================================================
+Nearly everything is on this one page, in this order down the page.
+
+[ ] 4. SCREENSHOTS — top of the page, "App Previews and Screenshots",
+       iPhone 6.9" Display tab.
+       [ ] Delete ALL FIVE existing screenshots first. They are the old poster
+           mockups from design-previews/ and none of them may survive. They are the
+           most template-looking asset in the submission and they show none of the
+           machinery the reply argues for.
+       [ ] Upload the new five in filename order 01 → 05.
+       [ ] Re-check the order after upload. ASC reshuffles on drag sometimes.
+           1, 2 and 3 are what show in search results, so they carry the argument.
+       [ ] Ignore every other size tab. 6.9" iPhone is the only required one.
+       [ ] No app preview video. Not needed, and a video is a new 2.3.3 surface.
+
+[ ] 5. PROMOTIONAL TEXT — STORE-LISTING.md, starts "Sift listens to every preview".
+       164 / 170 chars. Editable later without review.
+
+[ ] 6. DESCRIPTION — STORE-LISTING.md, starts "Most music apps recommend you songs
+       you already know." 1,825 / 4,000.
+
+[ ] 7. KEYWORDS — paste exactly, 98 / 100 chars:
+       music,discovery,new songs,deep cuts,find music,taste,friends,indie,underground,daily,preview,fresh
+       ("swipe" was removed 18 Aug. The reviewer reads this field; the swipe mechanic
+       is the only surviving accusation. Do not put it back.)
+
+[ ] 8. WHAT'S NEW — will be greyed out. 1.0 has no previous version. Nothing to do.
+
+[ ] 9. BUILD — the "Build" section, click +. Select build 22.
+       NOT build 20. It was archived 5 Aug and predates the hook marker, the
+       why-sheet and the typed-artist fix, so screenshots 1, 2 and 3 show screens
+       that build does not contain. That is Guideline 2.3.3 stacked on the 4.3(a).
+       The build you screenshot is the build you attach.
+
+[ ] 10. APP REVIEW INFORMATION — further down the same page.
+        [ ] Sign-in required: YES
+        [ ] riff.demo@facetmusic.app / facetdemo123
+        [ ] Notes: paste the whole reviewer note from STORE-LISTING.md.
+            It must start with the RESUBMISSION - VERSION 1.0 block, then
+            WHAT SIFT DOES, then PRACTICAL NOTES. 3,596 / 4,000 chars.
+        [ ] Contact: petervlahosk2000@gmail.com  (not the vlahos89 address)
+
+[ ] 11. VERSION RELEASE — "Manually release this version".
+        You decide when it goes live, not Apple at 4am.
+
+
+=====================================================================
+THE OTHER TWO PAGES — check, do not assume
+=====================================================================
+
+[ ] APP INFORMATION  (sidebar → General → App Information)
+        [ ] Name:      Sift: Music Discovery
+        [ ] Subtitle:  Songs you've never heard
+        [ ] Category:  Music
+        [ ] Content Rights: YES, contains third-party content, rights confirmed
+        [ ] Age Rating: should read 13+ already. Open it and confirm it did not
+            reset. If it did, the full answer set is in STORE-LISTING.md — do not
+            re-answer it from memory, the seven-step version has traps.
+        [ ] Copyright:  2026 Peter Vlahos
+
+[ ] BUSINESS  (sidebar → Business, or Agreements, Tax, and Banking)
+        [ ] Free-apps agreement shows ACTIVE
+        [ ] TRADER STATUS declared. This applies to free apps and it will block the
+            submission if it is blank. Most likely thing to surprise you.
+        [ ] Banking, tax forms, Small Business Program: DO NOTHING. Nothing is for
+            sale. STORE-LISTING.md is explicit that 1.0 ships with no IAP.
+
+
+=====================================================================
+[ ] 12. SUBMIT
+=====================================================================
+"Add for Review" / "Submit for Review". This is the step that is hard to undo.
+Do not do it until 1 through 11 are all ticked.
+
+No Resolution Center reply is needed. Their last message invites the resubmission.
+
+
+=====================================================================
+AFTER SUBMITTING
+=====================================================================
+- Leave the App Review Board appeal alone. It stands against the old submission ID
+  and this does not withdraw it. "We found your app duplicates another app, we will
+  not tell you which, please modify it" is a procedural problem, not a design
+  problem, and the Board is a different set of people. That is where the unanswered
+  question has weight.
+- Do NOT change the app name, subtitle, concept or the swipe interaction. Nothing
+  Apple has sent identifies a specific overlap. Redesigning against an unnamed
+  accusation is guessing.
+- Known engine bug, unrelated to review, still open: relatedArtists' pool.length < 3
+  fallback discards the genre filter, so the deck can drift toward chart pop past
+  roughly card 40. Worth fixing, not worth holding the submission for.
