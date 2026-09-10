@@ -56,21 +56,15 @@ VERIFIED CLEAN - no action needed
   - Privacy policy matches the app and documents Delete my account.
   - Content Rights: Yes. Age rating: set, not blank.
 
-OPEN RISK - your call, not a known finding
-  Guideline 1.2 (user-generated content). Users type their own usernames and
-  pick avatars, both visible to friends. There is NO report and NO block -
-  only Accept, Decline and Remove friend. The listing declares
-  User-Generated Content: No.
+CLOSED - Guideline 1.2 (user-generated content)
+  I said earlier there was no Block. WRONG - there is, on friend rows and on
+  incoming requests. My grep missed it. Your August letter was accurate.
+  Sorry for the scare.
 
-  Against worrying: no public feed, no free-text messaging, nothing visible
-  until both people accept. Much weaker than what 1.2 targets.
-  For worrying: BOTH of Apple's evidence screenshots were taken on the You
-  tab, so they are already poking at the account and social area.
+  What WAS missing is now added: a Report button (friend rows + requests), a
+  username filter (slurs, profanity, handles impersonating Sift or Apple),
+  and a database rule so Block is actually enforced - see STEP 2a.
 
-  IMPORTANT: your 5 Aug letter told Apple Sift has "a consent-based friends
-  system with requests and blocking". Blocking does not exist. Do not repeat
-  that claim - describing a capability the build does not have is worse than
-  the gap it was covering.
 
 UNVERIFIED
   delete_account is a Supabase function, not in the repo, so nobody has
@@ -79,8 +73,27 @@ UNVERIFIED
 
 
 
+[ ] STEP 2a. Paste one SQL file into Supabase. (5 minutes, do it first)
+======================================================================
+
+    Supabase dashboard -> your Sift project -> SQL Editor -> New query.
+    Open   Downloads\Music App\supabase\moderation.sql   in Notepad,
+    select all, paste, Run.
+
+    The last statement prints three columns. All three must say TRUE.
+    Safe to run twice. It creates the blocks and reports tables and adds the
+    rule that stops a friend request or a deck crossing a block. Without it,
+    Block still works in the app but nothing enforces it server-side.
+
+
 [ ] STEP 2. Build 23 in Xcode.
 ======================================================================
+
+    [ ] FIRST, on the Mac:  git pull.  The fixes are only in git. The repo has
+        no entitlements file and no signing team, so those live on your Mac
+        only - after pulling, open Signing & Capabilities and confirm
+        "Sign in with Apple" is still listed. If it vanished, add it back.
+
 
     [ ] Run your usual Capacitor sync so index.html reaches the iOS project.
         The fixes are in index.html - if you skip the sync, build 23 ships

@@ -156,7 +156,10 @@ PRACTICAL NOTES
 - The demo account above is pre-filled with a taste profile, so the deck is populated
   immediately on first launch.
 - Sign in with Apple is offered alongside email signup, on the You tab.
-- Account deletion is in-app: You tab → Delete my account.
+- Account deletion is in-app: You tab → Delete my account. It is shown in every
+  signed-in state, including before a username has been chosen.
+- Friends are consent-based (request → accept). Any friend or requester can be
+  blocked or reported from the Friends tab; usernames are filtered on entry.
 ```
 
 *(Rewritten 5 Aug 2026 after the build 7 4.3(a) rejection. The old note opened

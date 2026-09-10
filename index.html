@@ -5827,6 +5827,19 @@ async function blockUser(id, uname) {
   await removeFriend(id);
   toast("Blocked @" + (uname || "them") + " — they can't request you or send you decks.");
 }
+// Report a person (App Store 1.2). Two steps, in this order, so a record exists even
+// if they cancel the email: a row in `reports` (silent on a pre-migration database),
+// then a prefilled mail to the support address so it lands in front of a human. The
+// anchor-click is the one way to open mailto: that works in both Safari and WKWebView.
+async function reportUser(id, uname) {
+  if (!SB || !me_session) return;
+  try { await SB.from("reports").insert({ reporter: me_session.user.id, reported: id, reason: "user" }); } catch (_) {}
+  const a = document.createElement("a");
+  a.href = "mailto:petervlahosk2000@gmail.com?subject=" + encodeURIComponent("Sift report: @" + (uname || id))
+         + "&body=" + encodeURIComponent("Reporting @" + (uname || "") + " (" + id + ")." + String.fromCharCode(10, 10) + "What happened:" + String.fromCharCode(10));
+  a.click();
+  toast("Thanks — we've got the report and will look at it.");
+}
 async function renderFriends() {
   const list = document.getElementById("friendsList");
   if (!list || !SB || !me_session) return;
@@ -5863,11 +5876,12 @@ async function renderFriends() {
           : ((p.recent_finds || []).length
             ? '<div class="fdet-note">You’ve already heard everything they shared ✓</div>'
             : '<div class="fdet-note">Their recent Finds will show up here once they share some.</div>'));
-      det.innerHTML += '<div class="fdet-actions"><button class="btn-mini ghost fdet-rm">Remove friend</button><button class="btn-mini ghost fdet-block">Block</button></div>';
+      det.innerHTML += '<div class="fdet-actions"><button class="btn-mini ghost fdet-rm">Remove friend</button><button class="btn-mini ghost fdet-block">Block</button><button class="btn-mini ghost fdet-report">Report</button></div>';
       const sw = det.querySelector(".fdet-swipe");
       if (sw) sw.onclick = (e) => { e.stopPropagation(); startTasteSwipe(p, fresh); };
       det.querySelector(".fdet-rm").onclick = (e) => { e.stopPropagation(); removeFriend(p.id); toast("Removed @" + p.username); };
       det.querySelector(".fdet-block").onclick = (e) => { e.stopPropagation(); blockUser(p.id, p.username); };
+      det.querySelector(".fdet-report").onclick = (e) => { e.stopPropagation(); reportUser(p.id, p.username); };
       row.onclick = () => det.classList.toggle("open");
       list.appendChild(row);
       list.appendChild(det);
@@ -5898,7 +5912,7 @@ async function renderFriendRequests() {
       const row = document.createElement("div"); row.className = "inbox-row";
       row.innerHTML = '<div class="inbox-ic">🤝</div><div class="inbox-body"><b>@' + esc(uname) + '</b> wants to be friends' +
         '<div class="inbox-sub">' + timeAgo(r.created_at) + '</div></div>' +
-        '<button class="btn-mini freq-ok">Accept</button><button class="btn-mini ghost freq-no" aria-label="Decline">✕</button><button class="btn-mini ghost freq-block" aria-label="Block" title="Block">🚫</button>';
+        '<button class="btn-mini freq-ok">Accept</button><button class="btn-mini ghost freq-no" aria-label="Decline">✕</button><button class="btn-mini ghost freq-block" aria-label="Block" title="Block">🚫</button><button class="btn-mini ghost freq-report" aria-label="Report" title="Report">🚩</button>';
       row.querySelector(".freq-ok").onclick = async () => {
         try {
           await SB.from("friendships").update({ status: "accepted" }).eq("user_id", r.user_id).eq("friend_id", me_session.user.id);
@@ -5916,6 +5930,7 @@ async function renderFriendRequests() {
         await blockUser(r.user_id, uname);
         renderFriendRequests();
       };
+      row.querySelector(".freq-report").onclick = async () => { await reportUser(r.user_id, uname); };
       wrap.appendChild(row);
     });
   } catch (e) { wrap.innerHTML = ""; /* pre-migration database — requests simply don't exist yet */ }
@@ -6170,10 +6185,24 @@ async function saveNewPass() {
   } catch (e) { acctMsg("resetMsg", "Something went wrong — try again.", "err"); }
 }
 
+// Username filter (App Store 1.2 — user-authored text that other people see).
+// Roots rather than whole words so the obvious leetspeak variants still catch, but
+// deliberately short: "sex" would take out essex, "cock" would take out hitchcock.
+// Reserved handles stop anyone posing as the app, Apple, or a moderator.
+const HANDLE_BLOCK = ["nigg","fagg","kike","chink","retard","rape","nazi","hitler","cunt","fuck","shit","bitch","whore","slut","pussy","porn","jizz"];
+const HANDLE_RESERVED = ["sift","siftmusic","siftapp","admin","administrator","moderator","support","help","apple","applemusic","spotify","official","staff","system","root","null","undefined"];
+function handleAllowed(v) {
+  const sv = (v || "").toLowerCase();
+  const leet = sv.replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/5/g, "s").replace(/7/g, "t").replace(/_/g, "");
+  if (HANDLE_RESERVED.includes(sv)) return false;
+  return !HANDLE_BLOCK.some(w => leet.includes(w));
+}
+
 async function saveUsername() {
   if (!SB || !me_session) return;
   const v = cleanHandle(document.getElementById("unameInput").value);
   if (v.length < 3) { acctMsg("unameMsg", "Username needs at least 3 letters or numbers.", "err"); return; }
+  if (!handleAllowed(v)) { acctMsg("unameMsg", "That username isn't available — try another.", "err"); return; }
   acctMsg("unameMsg", "Saving…");
   const t = myTaste();
   try {
@@ -6190,6 +6219,7 @@ async function renameUsername() {
   if (!SB || !me_session || !me_profile) return;
   const v = cleanHandle(document.getElementById("unameEditInput").value);
   if (v.length < 3) { acctMsg("unameEditMsg", "Username needs at least 3 letters or numbers.", "err"); return; }
+  if (!handleAllowed(v)) { acctMsg("unameEditMsg", "That username isn't available — try another.", "err"); return; }
   if (v === me_profile.username) { document.getElementById("unameEditRow").style.display = "none"; acctMsg("unameEditMsg", ""); return; }
   acctMsg("unameEditMsg", "Saving…");
   try {
@@ -6212,6 +6242,13 @@ async function addFriend() {
   try {
     const { data: prof } = await SB.from("profiles").select("id,username").eq("username", v).maybeSingle();
     if (!prof) { acctMsg("friendMsg", "No one with that username yet.", "err"); return; }
+    // A block in either direction ends it here. The database policy refuses it too;
+    // this just saves a round trip and never says which side blocked whom.
+    try {
+      const { data: blk } = await SB.from("blocks").select("blocker")
+        .or("and(blocker.eq." + me_session.user.id + ",blocked.eq." + prof.id + "),and(blocker.eq." + prof.id + ",blocked.eq." + me_session.user.id + ")").limit(1);
+      if (blk && blk.length) { acctMsg("friendMsg", "Couldn't send that request.", "err"); return; }
+    } catch (_) { /* table not created yet — policy on the insert is the backstop */ }
     // Friending is a REQUEST now — the other person accepts before either side is linked.
     let { error } = await SB.from("friendships").insert({ user_id: me_session.user.id, friend_id: prof.id, status: "pending" });
     if (error && /status|schema cache/i.test(error.message || "")) {

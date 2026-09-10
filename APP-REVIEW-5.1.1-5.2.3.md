@@ -92,27 +92,33 @@ blocker, so build 23 can expose a third issue that was always there.
 | Content Rights in ASC | Yes, rights confirmed |
 | Age rating | set — 12+, 13+ in Vietnam. Not blank |
 
-### Open risk — Guideline 1.2, user-generated content
+### Guideline 1.2, user-generated content — now closed
 
-**There is no report mechanism and no block.** The only friend actions are Accept,
-Decline and Remove friend (`index.html:5866`, `5901`). Users type their own usernames
-and pick avatars, both visible to friends, and friend requests are sent by username.
+**Correction to an earlier draft of this section:** it said there was no Block. There
+is — `blockUser()`, reachable from a friend's row and from an incoming request, writing
+to a `blocks` table. The earlier grep looked for `id=` attributes and these are classes.
+The 5 Aug letter's "requests and blocking" was accurate. Withdrawn, with apologies to
+the person who wrote it.
 
-The listing declares **User-Generated Content: No**.
+What *was* missing, and is now added (10 Sep):
 
-Arguments each way: Sift has no public feed, no free-text messaging, and nothing is
-visible until both people accept — a much weaker UGC case than 1.2 is aimed at. But
-both of Apple's evidence screenshots were taken on the **You tab**, so the reviewer is
-already poking at the account and social surface.
+- **Report** — a `Report` button beside Remove friend / Block on every friend row, and
+  a 🚩 on every incoming request. `reportUser()` writes a row to `reports` and opens a
+  prefilled email to the support address, in that order, so a record exists even if
+  the mail is cancelled.
+- **Username filter** — `handleAllowed()` rejects slurs, hard profanity (with the
+  obvious leetspeak variants) and reserved handles that would impersonate the app,
+  Apple or a moderator. Applied on first pick and on rename. Kept deliberately short so
+  it does not eat *essex* or *hitchcock*.
+- **Block is enforced, not just recorded.** `supabase/moderation.sql` creates `blocks`
+  and `reports` with row-level security, and adds a *restrictive* insert policy on
+  `friendships` and `deck_sends` that refuses any row across a block in either
+  direction. The client also checks `blocks` before sending a request, so the "Couldn't
+  send that request" message appears without a round trip. **That SQL has to be pasted
+  into the Supabase SQL editor by Peter** — nothing here can run it.
 
-**Also, a correction that matters.** The 5 Aug letter to App Review described "a
-consent-based friends system with requests and blocking". Blocking does not exist. Do
-not repeat that claim — a capability described to Apple that isn't in the build is a
-misrepresentation, and worse than the gap it was meant to cover.
-
-Cheapest mitigations if this is worth closing: a username filter, a Block action that
-also prevents re-requests, and a report path. Peter's call — it is not a known finding,
-just the last guideline with real teeth that nothing has addressed.
+The listing still declares User-Generated Content: No. With report, block, a filter and
+published contact details all present, either answer is now defensible; leave it.
 
 ### Unverified
 
