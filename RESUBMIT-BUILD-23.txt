@@ -73,7 +73,7 @@ UNVERIFIED
 
 
 
-[ ] STEP 2a. Paste one SQL file into Supabase. (5 minutes, do it first)
+[x] STEP 2a. Paste one SQL file into Supabase. (5 minutes, do it first)   DONE 10 Sep - ran it, all three said true.
 ======================================================================
 
     Supabase dashboard -> your Sift project -> SQL Editor -> New query.
