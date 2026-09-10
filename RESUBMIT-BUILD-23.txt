@@ -86,29 +86,34 @@ UNVERIFIED
     Block still works in the app but nothing enforces it server-side.
 
 
-[ ] STEP 2. Build 23 in Xcode.
+[ ] STEP 2. Build 23 on the Mac.
 ======================================================================
 
-    [ ] FIRST, on the Mac:  git pull.  The fixes are only in git. The repo has
-        no entitlements file and no signing team, so those live on your Mac
-        only - after pulling, open Signing & Capabilities and confirm
-        "Sign in with Apple" is still listed. If it vanished, add it back.
+    Open Terminal on the Mac and run ONE line:
+
+        cd ~/Desktop/Sift && ./mac.sh
+
+    That script saves anything Xcode changed, pulls today's fixes from GitHub,
+    installs dependencies, syncs index.html into the iOS project, and opens
+    Xcode. It stops and tells you if something fails - if it does, read me the
+    last few lines.
+
+    Then in Xcode, click the blue App icon (left sidebar) -> General tab:
+
+    [ ] Identity -> Build: change 22 to 23. (Version stays 1.0.)
+    [ ] Supported Destinations: must say iPhone ONLY. If iPad is listed, click
+        it and press the minus button. Check this AFTER the script ran, because
+        the sync can regenerate project settings.
+    [ ] Signing & Capabilities tab: "Sign in with Apple" must be listed.
+        If it is missing, click + Capability and add it back.
+    [ ] Device dropdown (top bar) -> Any iOS Device (arm64).
+    [ ] Product menu -> Archive. Wait. Then Distribute App -> App Store Connect
+        -> Upload -> accept every default.
+    [ ] Wait for the processing email (10-30 min), then in App Store Connect ->
+        TestFlight, if build 23 says Missing Compliance, click it and answer No
+        to the encryption question.
 
 
-    [ ] Run your usual Capacitor sync so index.html reaches the iOS project.
-        The fixes are in index.html - if you skip the sync, build 23 ships
-        WITHOUT them and gets rejected for the same two things.
-
-    [ ] In Xcode, App target -> General -> Deployment Info.
-        It must read IPHONE ONLY. I changed it in the project file, but
-        confirm it took. Sift has no iPad layout and this review ran on an
-        iPad Air 11-inch.
-
-    [ ] Archive, then upload to App Store Connect.
-    [ ] Wait for processing, then answer export compliance if it asks.
-
-
-======================================================================
 [ ] STEP 3. Record the deletion flow on your PHYSICAL iPhone.
 ======================================================================
 
@@ -175,31 +180,35 @@ account, confirming, and the app returning to its signed-out state.
 
 **Guideline 5.2.3 — Third-party content**
 
-Sift does not download, store, cache or redistribute any audio or video. There is no
-download function anywhere in the app, and no media file is ever written to the device
-or to my servers. All playback is streamed directly from Apple.
+The screenshot you attached shows a 30-second preview playing on the Discover screen.
+Every preview and every piece of album artwork in Sift is served by Apple's own iTunes
+Search API, used exactly as documented, with links back to the iTunes / Apple Music store.
+The app never downloads, stores, caches or redistributes audio or video — there is no
+download function anywhere in it, and no media file is ever written to the device or to
+my servers. Playback is streamed directly from Apple.
 
-The third-party material the app uses, and the basis for each:
+Documentary basis for each third-party element:
 
-1. **Apple iTunes Search API** — 30-second preview audio and album artwork, used as
-documented and publicly available, with links back to the store. This is the only
-source of preview audio in the app.
-2. **Apple Music, via MusicKit** — full-song playback for users who have their own
-Apple Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted
-to my developer account. Playback occurs under the user's own subscription; Sift never
-stores, proxies or re-serves the audio.
-3. **MusicBrainz and ListenBrainz** — artist relationships and tags only, no audio.
-Published by the MetaBrainz Foundation and released into the public domain under CC0
-1.0 Universal. Licence: https://creativecommons.org/publicdomain/zero/1.0/ — source:
-https://musicbrainz.org/doc/About/Data_License
+1. **Preview audio and artwork — Apple iTunes Search API.** Documentation:
+https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html
+Previews are the 30-second clips Apple provides through that API for exactly this
+purpose; the app plays them from Apple's URLs and links each song back to the store.
 
-On the specific item I believe prompted this finding: build 22 showed a YouTube icon on
-saved songs. It was a plain link to a YouTube search results page, opened in Safari,
-with no embedded player, no extraction and no downloading of any kind. I recognise that
-it can read otherwise, and as I cannot produce a rights document for YouTube, I have
-removed every YouTube link from the app entirely in build 23. The remaining service
-buttons are Spotify and Apple Music search links, which simply open the corresponding
-app or website.
+2. **Full-song playback — Apple Music via MusicKit**, for users with their own Apple
+Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted to my
+developer account: https://developer.apple.com/musickit/ and
+https://developer.apple.com/documentation/applemusicapi . Playback occurs under the
+user's own subscription; Sift never proxies or re-serves the audio.
+
+3. **Artist relationships and tags — MusicBrainz and ListenBrainz**, metadata only, no
+audio. Published by the MetaBrainz Foundation and released into the public domain under
+CC0 1.0: https://musicbrainz.org/doc/About/Data_License and
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Build 22 also showed a YouTube icon on saved songs — a plain link to a YouTube search
+page, opened in Safari, with no embedded player or download. I have removed every
+YouTube link in build 23 regardless. The remaining service buttons are Spotify and Apple
+Music search links that simply open the corresponding app.
 
 If any part of this is still unclear, I would rather fix it than argue it — please tell
 me which screen or behaviour you would like changed.

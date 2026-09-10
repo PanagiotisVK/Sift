@@ -44,24 +44,25 @@ Also `TARGETED_DEVICE_FAMILY` "1,2" → 1. It had been universal since the Capac
 project was first committed and Sift has no iPad layout — which is how this review
 ended up on an iPad Air.
 
-## 5.2.3 — nothing here was a violation, but one thing was unanswerable
+## 5.2.3 — Apple flagged the preview player itself
 
-Verified in the source: **no download surface exists.** No `download`, no `.mp3`, no
-`blob:`, no `createObjectURL`, no media writes. Every service button was a plain search
-URL opened in Safari.
+Apple's second screenshot (`Screenshot-0909-151636.png`, retrieved 10 Sep) settles what
+this finding is about: it is the **Discover card** — a 30-second preview playing at 0:21,
+the album artwork behind it, "Fresh Find" and "best part" pills. Not the Finds row, not
+a button. The reviewer looked at the core product and asked for proof of rights to the
+audio and artwork.
 
-What decided it was Apple's own remedy — *"attach documentary evidence that you have
-all necessary rights or permissions to the third-party audio or video streaming,
-catalogs, and discovery services"*. Apple's API terms, the MusicKit entitlement and the
-CC0 data licences can all be produced on paper. **A YouTube permission cannot be, ever.**
-So while a YouTube target existed, the request was unanswerable.
+That is answerable, and the answer is strong: **every preview and every piece of
+artwork comes from Apple's own iTunes Search API**, used as documented, with links back
+to Apple's store. Full-song playback is MusicKit under the user's own Apple Music
+subscription. The only non-Apple data is MusicBrainz/ListenBrainz artist metadata (no
+audio), released under CC0. Verified in the source: **no download surface exists** — no
+`download`, `.mp3`, `blob:`, `createObjectURL`, or media writes anywhere.
 
-Removed in `5e4fdfd`: every YouTube link is gone — the Finds row button and the
-`shareFind()` fallback, which now uses an Apple Music search. `SVC_ICONS.yt` and the
-`.yt` CSS rule are kept but marked dead so nobody restores the button later.
-
-A YouTube glyph beside a play button is the visual signature of a ripper. That reading,
-not the code, is what got flagged.
+The YouTube link was removed anyway (`5e4fdfd`). It was not what Apple pointed at, but
+Apple's remedy is a rights *document per third-party service*, and none can ever exist
+for YouTube — so leaving it would have left the request permanently unanswerable. It was
+a plain search URL and is not missed.
 
 ---
 
@@ -157,31 +158,35 @@ account, confirming, and the app returning to its signed-out state.
 
 **Guideline 5.2.3 — Third-party content**
 
-Sift does not download, store, cache or redistribute any audio or video. There is no
-download function anywhere in the app, and no media file is ever written to the device
-or to my servers. All playback is streamed directly from Apple.
+The screenshot you attached shows a 30-second preview playing on the Discover screen.
+Every preview and every piece of album artwork in Sift is served by Apple's own iTunes
+Search API, used exactly as documented, with links back to the iTunes / Apple Music store.
+The app never downloads, stores, caches or redistributes audio or video — there is no
+download function anywhere in it, and no media file is ever written to the device or to
+my servers. Playback is streamed directly from Apple.
 
-The third-party material the app uses, and the basis for each:
+Documentary basis for each third-party element:
 
-1. **Apple iTunes Search API** — 30-second preview audio and album artwork, used as
-documented and publicly available, with links back to the store. This is the only
-source of preview audio in the app.
-2. **Apple Music, via MusicKit** — full-song playback for users who have their own
-Apple Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted
-to my developer account. Playback occurs under the user's own subscription; Sift never
-stores, proxies or re-serves the audio.
-3. **MusicBrainz and ListenBrainz** — artist relationships and tags only, no audio.
-Published by the MetaBrainz Foundation and released into the public domain under CC0
-1.0 Universal. Licence: https://creativecommons.org/publicdomain/zero/1.0/ — source:
-https://musicbrainz.org/doc/About/Data_License
+1. **Preview audio and artwork — Apple iTunes Search API.** Documentation:
+https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html
+Previews are the 30-second clips Apple provides through that API for exactly this
+purpose; the app plays them from Apple's URLs and links each song back to the store.
 
-On the specific item I believe prompted this finding: build 22 showed a YouTube icon on
-saved songs. It was a plain link to a YouTube search results page, opened in Safari,
-with no embedded player, no extraction and no downloading of any kind. I recognise that
-it can read otherwise, and as I cannot produce a rights document for YouTube, I have
-removed every YouTube link from the app entirely in build 23. The remaining service
-buttons are Spotify and Apple Music search links, which simply open the corresponding
-app or website.
+2. **Full-song playback — Apple Music via MusicKit**, for users with their own Apple
+Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted to my
+developer account: https://developer.apple.com/musickit/ and
+https://developer.apple.com/documentation/applemusicapi . Playback occurs under the
+user's own subscription; Sift never proxies or re-serves the audio.
+
+3. **Artist relationships and tags — MusicBrainz and ListenBrainz**, metadata only, no
+audio. Published by the MetaBrainz Foundation and released into the public domain under
+CC0 1.0: https://musicbrainz.org/doc/About/Data_License and
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Build 22 also showed a YouTube icon on saved songs — a plain link to a YouTube search
+page, opened in Safari, with no embedded player or download. I have removed every
+YouTube link in build 23 regardless. The remaining service buttons are Spotify and Apple
+Music search links that simply open the corresponding app.
 
 If any part of this is still unclear, I would rather fix it than argue it — please tell
 me which screen or behaviour you would like changed.
