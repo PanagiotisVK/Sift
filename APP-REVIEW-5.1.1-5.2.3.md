@@ -65,6 +65,63 @@ not the code, is what got flagged.
 
 ---
 
+## Pre-submission audit — 10 Sep 2026
+
+Run because each rejection so far has surfaced something new: Apple stops at the first
+blocker, so build 23 can expose a third issue that was always there.
+
+### Found and fixed
+
+- **2.3.3, self-inflicted an hour earlier.** Screenshot 4 (`04-finds`) showed the Finds
+  track row with the **red YouTube button** — a control build 23 no longer has. A
+  screenshot showing something the build lacks is a fresh rejection. The frame is
+  regenerated with a bottom crop ending below "Save to Apple Music". The old file is
+  kept at `store-shots/superseded/04-finds-with-youtube-button.png`.
+  A fresh capture from build 23 would be better than a crop — the cropped frame leaves
+  the lower third empty.
+
+### Verified clean
+
+| Check | Result |
+| --- | --- |
+| Download surface anywhere in app | none — no `blob:`, `createObjectURL`, media writes |
+| Analytics / trackers / third-party SDKs | none (the one "Plausible" hit is a comment) |
+| Outbound hosts | Apple, ListenBrainz, MusicBrainz, Supabase, jsDelivr, Spotify, own Pages |
+| Support URL + Privacy URL | both live, HTTP 200 |
+| Privacy policy vs actual behaviour | matches, and documents "Delete my account" on the You tab |
+| Content Rights in ASC | Yes, rights confirmed |
+| Age rating | set — 12+, 13+ in Vietnam. Not blank |
+
+### Open risk — Guideline 1.2, user-generated content
+
+**There is no report mechanism and no block.** The only friend actions are Accept,
+Decline and Remove friend (`index.html:5866`, `5901`). Users type their own usernames
+and pick avatars, both visible to friends, and friend requests are sent by username.
+
+The listing declares **User-Generated Content: No**.
+
+Arguments each way: Sift has no public feed, no free-text messaging, and nothing is
+visible until both people accept — a much weaker UGC case than 1.2 is aimed at. But
+both of Apple's evidence screenshots were taken on the **You tab**, so the reviewer is
+already poking at the account and social surface.
+
+**Also, a correction that matters.** The 5 Aug letter to App Review described "a
+consent-based friends system with requests and blocking". Blocking does not exist. Do
+not repeat that claim — a capability described to Apple that isn't in the build is a
+misrepresentation, and worse than the gap it was meant to cover.
+
+Cheapest mitigations if this is worth closing: a username filter, a Block action that
+also prevents re-requests, and a report path. Peter's call — it is not a known finding,
+just the last guideline with real teeth that nothing has addressed.
+
+### Unverified
+
+- `delete_account` is a Supabase RPC and is not in this repo, so it has not been
+  confirmed to handle a user with **no profile row**. The step 3 screen recording
+  exercises exactly that path — if it errors, that is why.
+
+---
+
 ## Reply to paste into Resolution Center
 
 Hello,

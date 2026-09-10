@@ -35,6 +35,50 @@ longer stands. Do not spend any more effort on it.
 
 
 ======================================================================
+======================================================================
+PRE-SUBMISSION AUDIT - done 10 Sep. One thing found, one thing open.
+======================================================================
+
+FOUND AND FIXED (2.3.3, and we caused it an hour earlier)
+  Screenshot 4 showed the Finds row with the RED YOUTUBE BUTTON - a control
+  build 23 no longer has. A screenshot showing something the build lacks is a
+  fresh rejection on its own. Regenerated with the track row cropped off; the
+  old one is in store-shots\superseded\ .
+
+  [ ] While build 23 is on your phone for the recording, take ONE extra
+      screenshot of the Finds tab. A real capture beats my crop, which leaves
+      the bottom third of the frame empty. Send it and I will swap it in.
+
+VERIFIED CLEAN - no action needed
+  - No download function anywhere in the app. Nothing writes media.
+  - No analytics, no trackers, no third-party SDKs.
+  - Support URL and Privacy URL both live.
+  - Privacy policy matches the app and documents Delete my account.
+  - Content Rights: Yes. Age rating: set, not blank.
+
+OPEN RISK - your call, not a known finding
+  Guideline 1.2 (user-generated content). Users type their own usernames and
+  pick avatars, both visible to friends. There is NO report and NO block -
+  only Accept, Decline and Remove friend. The listing declares
+  User-Generated Content: No.
+
+  Against worrying: no public feed, no free-text messaging, nothing visible
+  until both people accept. Much weaker than what 1.2 targets.
+  For worrying: BOTH of Apple's evidence screenshots were taken on the You
+  tab, so they are already poking at the account and social area.
+
+  IMPORTANT: your 5 Aug letter told Apple Sift has "a consent-based friends
+  system with requests and blocking". Blocking does not exist. Do not repeat
+  that claim - describing a capability the build does not have is worse than
+  the gap it was covering.
+
+UNVERIFIED
+  delete_account is a Supabase function, not in the repo, so nobody has
+  confirmed it handles a user with no profile row. Your step 3 recording
+  exercises exactly that path. If it errors, that is why - tell me.
+
+
+
 [ ] STEP 2. Build 23 in Xcode.
 ======================================================================
 
