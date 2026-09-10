@@ -1,0 +1,156 @@
+﻿======================================================================
+SIFT - BUILD 23 RESUBMISSION. Written 10 Sep 2026.
+======================================================================
+
+Word wrap first:  Format menu -> Word Wrap
+
+WHAT HAPPENED
+Build 22 was rejected on 9 Sep. The GOOD news: the 4.3(a) spam finding is
+GONE. August's work did its job and Apple accepts Sift as a distinct app.
+Two ordinary issues replaced it, and both are already fixed in the code:
+
+  5.1.1(v)  Account deletion was missing. Apple was right - a real bug.
+            If you signed up and stopped at 'Pick a username', you had an
+            account and no way to delete it. Fixed, commit c9bf8f4.
+
+  5.2.3     Third-party content. Nothing was actually a violation - the app
+            has no download function at all. But Apple wants a rights
+            document for every third-party service, and no such document
+            can ever exist for YouTube. Every YouTube link removed, 5e4fdfd.
+
+The App Review Board appeal is now MOOT. It was against the 4.3(a), which no
+longer stands. Do not spend any more effort on it.
+
+
+======================================================================
+[ ] STEP 1. Get me Apple's second screenshot.
+======================================================================
+
+    In the App Store Connect tab that is open, click Download next to
+    Screenshot-0909-151636.png, then tell me. Chrome blocked my repeat
+    downloads so I only got the first one.
+
+    I already acted on the likely cause without it. If that second shot shows
+    something else, better to know before you build than after.
+
+
+======================================================================
+[ ] STEP 2. Build 23 in Xcode.
+======================================================================
+
+    [ ] Run your usual Capacitor sync so index.html reaches the iOS project.
+        The fixes are in index.html - if you skip the sync, build 23 ships
+        WITHOUT them and gets rejected for the same two things.
+
+    [ ] In Xcode, App target -> General -> Deployment Info.
+        It must read IPHONE ONLY. I changed it in the project file, but
+        confirm it took. Sift has no iPad layout and this review ran on an
+        iPad Air 11-inch.
+
+    [ ] Archive, then upload to App Store Connect.
+    [ ] Wait for processing, then answer export compliance if it asks.
+
+
+======================================================================
+[ ] STEP 3. Record the deletion flow on your PHYSICAL iPhone.
+======================================================================
+
+    Apple asked for this specifically. Install build 23 from TestFlight, then
+    screen-record ONE continuous take:
+
+      1. Create a NEW account with a throwaway email.
+         Do NOT use the riff.demo account - they want to see signup.
+      2. STOP at 'Pick a username'. Do not pick one.
+      3. Tap 'Delete my account...'
+      4. Tap it again to confirm (it arms on the first tap).
+      5. Show the app back in its signed-out state.
+
+    Step 2 is the whole point. That is the exact screen the reviewer was
+    stuck on. Showing deletion working somewhere else does not answer them.
+
+    Keep it short - under a minute. Then send it to yourself so it is on
+    the computer, and tell me where it landed.
+
+
+======================================================================
+[ ] STEP 4. I put it all into App Store Connect.
+======================================================================
+
+    Attach build 23, attach the recording, paste the reply below into
+    Resolution Center, and stop before the submit button - same as last time.
+
+
+======================================================================
+[ ] STEP 5. You press Resubmit to App Review.
+======================================================================
+
+
+======================================================================
+THE REPLY - already written, for reference. I will paste it in at step 4.
+======================================================================
+
+----------------------------------------------------------------------
+
+Hello,
+
+Thank you for the detailed feedback on 1.0 (22), and for attaching the screenshots —
+they showed me exactly where the problem was. Both issues are addressed in build 23.
+
+**Guideline 5.1.1(v) — Account deletion**
+
+You were right, and this was a genuine defect rather than something hard to find.
+
+Sift can be used without an account. When someone does create one, there is a short
+intermediate step between signing up and choosing a username. Account deletion was only
+rendered once a username existed, so a user sitting on the "Pick a username" screen —
+which is where your screenshot was taken — had a real account and no way to delete it.
+
+In build 23, "Delete my account…" is shown in every signed-in state, including before a
+username has been chosen. It sits on the You tab directly beneath the account section.
+Deletion is immediate and permanent: a server-side routine removes the authentication
+record, the profile, the cloud backup of saved songs, friend connections and any shared
+decks. There is no deactivate-only option, no website step, and no requirement to
+contact support. A two-tap confirmation prevents accidental deletion.
+
+The attached screen recording, captured on a physical iPhone running build 23, shows
+creating a new account, arriving at the "Pick a username" screen, tapping Delete my
+account, confirming, and the app returning to its signed-out state.
+
+**Guideline 5.2.3 — Third-party content**
+
+Sift does not download, store, cache or redistribute any audio or video. There is no
+download function anywhere in the app, and no media file is ever written to the device
+or to my servers. All playback is streamed directly from Apple.
+
+The third-party material the app uses, and the basis for each:
+
+1. **Apple iTunes Search API** — 30-second preview audio and album artwork, used as
+documented and publicly available, with links back to the store. This is the only
+source of preview audio in the app.
+2. **Apple Music, via MusicKit** — full-song playback for users who have their own
+Apple Music subscription, through MusicKit JS v3 under the MusicKit entitlement granted
+to my developer account. Playback occurs under the user's own subscription; Sift never
+stores, proxies or re-serves the audio.
+3. **MusicBrainz and ListenBrainz** — artist relationships and tags only, no audio.
+Published by the MetaBrainz Foundation and released into the public domain under CC0
+1.0 Universal. Licence: https://creativecommons.org/publicdomain/zero/1.0/ — source:
+https://musicbrainz.org/doc/About/Data_License
+
+On the specific item I believe prompted this finding: build 22 showed a YouTube icon on
+saved songs. It was a plain link to a YouTube search results page, opened in Safari,
+with no embedded player, no extraction and no downloading of any kind. I recognise that
+it can read otherwise, and as I cannot produce a rights document for YouTube, I have
+removed every YouTube link from the app entirely in build 23. The remaining service
+buttons are Spotify and Apple Music search links, which simply open the corresponding
+app or website.
+
+If any part of this is still unclear, I would rather fix it than argue it — please tell
+me which screen or behaviour you would like changed.
+
+Thank you for your time.
+
+Peter Vlahos
+
+----------------------------------------------------------------------
+
+Full reasoning and the code diagnosis: APP-REVIEW-5.1.1-5.2.3.md
