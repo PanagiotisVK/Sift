@@ -89,6 +89,24 @@ UNVERIFIED
 [ ] STEP 2. Build 23 on the Mac.
 ======================================================================
 
+    HEADS UP - your Mac has never pushed to GitHub. Not once. Every Xcode
+    change you have made (deployment target 15.6, the Sign in with Apple
+    entitlement, your signing team) is sitting in local commits the rest of
+    the world cannot see. mac.sh treats a failed push as harmless and just
+    prints "couldn't push" and carries on.
+
+    That is why the repo says 14.0 and iPad, and your Xcode says 15.6 and
+    iPhone. YOUR MAC IS THE CORRECT ONE. Nothing to fix in Xcode.
+
+    While you are in Terminal, fixing it permanently takes one command:
+
+        gh auth login
+
+    Follow the prompts (GitHub.com -> HTTPS -> browser). After that mac.sh
+    pushes properly and I can actually see your project settings.
+    Not required for build 23. Do it if you have five minutes.
+
+
     Open Terminal on the Mac and run ONE line:
 
         cd ~/Desktop/Sift && ./mac.sh

@@ -40,9 +40,13 @@ Fixed in `c9bf8f4`: deletion moved to its own `deleteBox`, shown for **any** ses
 `deleteAccount()` already guarded on `me_session` rather than `me_profile`, so the RPC
 path needed no change. Verified in all three states.
 
-Also `TARGETED_DEVICE_FAMILY` "1,2" → 1. It had been universal since the Capacitor
-project was first committed and Sift has no iPad layout — which is how this review
-ended up on an iPad Air.
+**Corrected 10 Sep — the iPad theory was wrong.** This document first claimed iPad
+support had crept back in, because the repo shows `TARGETED_DEVICE_FAMILY = "1,2"`. It
+had not. Peter's Mac has it set to iPhone-only in a commit that never reached GitHub
+(see "Repo vs Mac drift" below). Apple's screenshots are letterboxed with a compat-mode
+resize control in the corner — an iPhone-only app running on an iPad, which Apple does
+routinely. Nothing to fix. The Windows-side edit to `project.pbxproj` was reverted so it
+cannot collide with the Mac's copy during a merge.
 
 ## 5.2.3 — Apple flagged the preview player itself
 
@@ -63,6 +67,36 @@ The YouTube link was removed anyway (`5e4fdfd`). It was not what Apple pointed a
 Apple's remedy is a rights *document per third-party service*, and none can ever exist
 for YouTube — so leaving it would have left the request permanently unanswerable. It was
 a plain search URL and is not missed.
+
+---
+
+## Repo vs Mac drift — read before trusting any iOS-side audit
+
+**Peter's Mac has never successfully pushed to GitHub.** There is not one `Xcode:`
+commit in the repo's history, which is the message `mac.sh` uses when it saves Xcode's
+changes. Its push step is deliberately non-fatal, so it has been printing "couldn't
+push (GitHub login needed)" and carrying on — for months.
+
+Consequences:
+
+- **The repo's `ios/` tree is not what ships.** It has no `.entitlements` file, no
+  `DEVELOPMENT_TEAM`, `IPHONEOS_DEPLOYMENT_TARGET = 14.0` (the Mac is on 15.6) and
+  `TARGETED_DEVICE_FAMILY = "1,2"` (the Mac is iPhone-only). All of that lives in
+  unpushed local commits.
+- **Never edit `project.pbxproj` from Windows.** The Mac owns it. An edit here merges
+  against the Mac's version and a conflict in a `.pbxproj` leaves marker text that stops
+  Xcode opening the project at all — unrecoverable for a non-coder mid-flow. The one
+  edit made on 10 Sep was reverted for exactly this reason.
+- **Audits of `index.html` remain valid** — that file is authored on Windows and pushed,
+  so what was reviewed is what ships. Only the iOS project settings are unverifiable
+  from here.
+- The Xcode checklist step in `RESUBMIT-BUILD-23.txt` ("Supported Destinations: iPhone
+  only", "Sign in with Apple present") is therefore the *only* control on those
+  settings. It is not belt-and-braces; it is the belt.
+
+**Worth fixing properly:** run `gh auth login` on the Mac once. Until then every Xcode
+capability change is one disk failure away from being gone, and nothing on this side can
+see the real project.
 
 ---
 
