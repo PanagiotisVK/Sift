@@ -140,6 +140,11 @@ UNVERIFIED
 
       1. Create a NEW account with a throwaway email.
          Do NOT use the riff.demo account - they want to see signup.
+         USE A GMAIL ADDRESS for the throwaway. Found 10 Sep: AOL took the
+         confirmation email and never showed it (Yahoo/iCloud may do the
+         same). Every Gmail signup has confirmed in under a minute. If you
+         get stuck at 'we sent a confirmation link', tell me - I can pull
+         the link straight out of the mail log.
       2. STOP at 'Pick a username'. Do not pick one.
       3. Tap 'Delete my account...'
       4. Tap it again to confirm (it arms on the first tap).

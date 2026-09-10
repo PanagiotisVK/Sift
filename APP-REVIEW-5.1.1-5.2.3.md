@@ -155,6 +155,20 @@ What *was* missing, and is now added (10 Sep):
 The listing still declares User-Generated Content: No. With report, block, a filter and
 published contact details all present, either answer is now defensible; leave it.
 
+### Email deliverability — found 10 Sep, not a blocker
+
+Peter's own test signup (`@aol.com`) never received its confirmation email. Traced end
+to end: Supabase sent it (`/signup` 200), Resend delivered it (accepted, no bounce),
+DKIM/SPF/DMARC all pass. AOL accepted the message and discarded it. Resend's Insights
+name the cause: the mail came from `noreply@siftmusic.app` but its only link went to
+`dqteepkjhnlidjireelt.supabase.co` and on to `panagiotisvk.github.io` — three unrelated
+domains, the shape of a phishing mail. Gmail signups have always confirmed in seconds.
+
+Done 10 Sep: sender renamed to `hello@siftmusic.app` (one of Resend's two flags).
+Not a review risk: the reviewer signs in with the confirmed demo account. The real fix
+is build 24 — confirm by 6-digit code instead of a link (no link, no mismatch, and the
+user never leaves the app). Plan recorded in PROJECT.md.
+
 ### Unverified
 
 - `delete_account` is a Supabase RPC and is not in this repo, so it has not been
