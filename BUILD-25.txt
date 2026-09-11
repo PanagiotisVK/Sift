@@ -1,0 +1,32 @@
+﻿BUILD 25 - the better engine, to TestFlight only
+======================================================================
+
+What it carries (already live on the web build, ear-tested 11 Sep: 9 loves in 20):
+  - An artist MusicBrainz doesn't know (Sirin Inci) is seeded from Apple's
+    index - never a look-alike.
+  - Apple Music's "similar artists" is now Sift's second graph, used
+    whenever the open data is thin. Sirin Inci gets Ollf / Chedly / LB74 /
+    Mert Tunc; Akcent gets Reea / DJ Project / Dj Sava / Play & Win.
+  - The chart-pop drift in the back half of a deck (INNA -> Eminem,
+    Weeknd, Britney) is gone.
+  - Nothing else changed. Build 23 (Apple, in review) is untouched.
+
+[ ] STEP 1. Mac -> TestFlight. NOT the App Store.
+======================================================================
+    cd ~/Desktop/Sift && ./mac.sh
+    Xcode, blue App icon -> General:
+    [ ] Build: 24 -> 25. Version stays 1.0.
+    [ ] Supported Destinations: iPhone only (untick iPad if it came back).
+    [ ] Signing & Capabilities: "Sign in with Apple" still listed.
+    [ ] Any iOS Device (arm64) -> Product -> Archive -> Distribute App
+        -> App Store Connect -> Upload.
+    [ ] Tell me when it's processing. I add the Me + Friends groups and
+        write the tester notes, same as 24. Do NOT touch the App Store
+        submission - build 23 stays where it is.
+
+[ ] STEP 2. Watch what your testers say.
+======================================================================
+    I measured this on YOUR four artists. Your 14 testers seed with
+    theirs - that is the real test of whether it holds up. Pass me any
+    "why did it play THIS?" - I can trace every card to the door it
+    came through.
