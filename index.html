@@ -6071,7 +6071,7 @@ async function doLogin() {
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
 
-async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; hideCodeBox(); renderAcct(); }
+async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; hideCodeBox(); acctMsg("authMsg", ""); renderAcct(); }
 
 /* ---------- Build 24: confirm signup with the emailed code ----------
    Why: the confirmation link points at supabase.co and redirects to github.io while the
@@ -6222,7 +6222,7 @@ async function deleteAccount() {
     if (error) { acctMsg("deleteMsg", error.message, "err"); return; }
     try { await SB.auth.signOut({ scope: "local" }); } catch (e) {}
     me_session = null; me_profile = null; findsPulled = false;
-    acctMsg("deleteMsg", "");
+    acctMsg("deleteMsg", ""); acctMsg("authMsg", "");
     renderAcct();
     toast("Account deleted. Your Finds are still on this device.");
   } catch (e) { acctMsg("deleteMsg", "Network error — please try again.", "err"); }
