@@ -1,0 +1,48 @@
+﻿BUILD 24 - sign-up by code (not a link)
+======================================================================
+
+What changed (already pushed, already live on the web build):
+  - After "Create account" the app now shows a box: "Type the code we
+    emailed to ...". The email carries an 8-digit code. You type it,
+    tap Confirm, and land on "Pick a username" without leaving the app.
+  - "Log in" on an unconfirmed address opens the same box.
+  - "Send a new code" if it never arrived (one per minute).
+  - The email still contains the old link too, so build 23 (the one
+    Apple is reviewing) keeps working. Nothing about build 23 changed.
+
+Tested 11 Sep on the web build, start to finish: sign up -> code ->
+Pick a username -> Delete my account. Works.
+
+[ ] STEP 1. Build 24 on the Mac -> TestFlight only. NOT the App Store.
+======================================================================
+
+    Terminal on the Mac, one line:
+
+        cd ~/Desktop/Sift && ./mac.sh
+
+    Then in Xcode (blue App icon -> General):
+    [ ] Identity -> Build: 23 -> 24. Version stays 1.0.
+    [ ] Supported Destinations: iPhone only (check after the sync).
+    [ ] Signing & Capabilities: "Sign in with Apple" still listed.
+    [ ] Any iOS Device (arm64) -> Product -> Archive -> Distribute App
+        -> App Store Connect -> Upload.
+    [ ] When it finishes processing: TestFlight -> build 24 -> add the
+        Me and Friends groups. Do NOT touch the App Store submission;
+        build 23 is in review and stays there.
+
+[ ] STEP 2. Try it on your phone from TestFlight.
+======================================================================
+
+    New account with petervlahosk2000+b24@gmail.com. The code arrives
+    in your normal Gmail. Type it in the app. You should land on
+    "Pick a username" without Safari ever opening. Then delete it.
+
+[ ] STEP 3. LATER - only once build 24 is the live App Store app.
+======================================================================
+
+    Tell me and I remove the "older version? use this link" line from
+    the Supabase email. That line is the reason AOL/Yahoo bin the
+    email. Until build 24 is what App Store users have, it stays.
+
+    If Apple approves build 23 first, build 24 becomes a small update
+    (version 1.0.1) - say the word and I set that up.

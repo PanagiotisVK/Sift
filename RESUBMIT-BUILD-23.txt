@@ -89,6 +89,24 @@ UNVERIFIED
 [ ] STEP 2. Build 23 on the Mac.
 ======================================================================
 
+    HEADS UP - your Mac has never pushed to GitHub. Not once. Every Xcode
+    change you have made (deployment target 15.6, the Sign in with Apple
+    entitlement, your signing team) is sitting in local commits the rest of
+    the world cannot see. mac.sh treats a failed push as harmless and just
+    prints "couldn't push" and carries on.
+
+    That is why the repo says 14.0 and iPad, and your Xcode says 15.6 and
+    iPhone. YOUR MAC IS THE CORRECT ONE. Nothing to fix in Xcode.
+
+    While you are in Terminal, fixing it permanently takes one command:
+
+        gh auth login
+
+    Follow the prompts (GitHub.com -> HTTPS -> browser). After that mac.sh
+    pushes properly and I can actually see your project settings.
+    Not required for build 23. Do it if you have five minutes.
+
+
     Open Terminal on the Mac and run ONE line:
 
         cd ~/Desktop/Sift && ./mac.sh
@@ -114,14 +132,23 @@ UNVERIFIED
         to the encryption question.
 
 
-[ ] STEP 3. Record the deletion flow on your PHYSICAL iPhone.
+[x] STEP 3. Record the deletion flow on your PHYSICAL iPhone.   DONE 11 Sep
 ======================================================================
+    RECORDED 11 Sep -> Downloads\sift-account-deletion.mp4 (31s, 5MB,
+    full unedited take: signup -> confirm -> Pick a username with Delete
+    -> deleted -> signed out). Ready for me to attach at STEP 4.
+
 
     Apple asked for this specifically. Install build 23 from TestFlight, then
     screen-record ONE continuous take:
 
       1. Create a NEW account with a throwaway email.
          Do NOT use the riff.demo account - they want to see signup.
+         USE A GMAIL ADDRESS for the throwaway. Found 10 Sep: AOL took the
+         confirmation email and never showed it (Yahoo/iCloud may do the
+         same). Every Gmail signup has confirmed in under a minute. If you
+         get stuck at 'we sent a confirmation link', tell me - I can pull
+         the link straight out of the mail log.
       2. STOP at 'Pick a username'. Do not pick one.
       3. Tap 'Delete my account...'
       4. Tap it again to confirm (it arms on the first tap).
@@ -135,8 +162,18 @@ UNVERIFIED
 
 
 ======================================================================
-[ ] STEP 4. I put it all into App Store Connect.
+[x] STEP 4. I put it all into App Store Connect.   DONE 11 Sep (staged by Claude)
 ======================================================================
+    STAGED 11 Sep, all saved in App Store Connect:
+      - Build swapped 22 -> 23
+      - Reviewer Notes rewritten (drops the stale 4.3(a) opener; leads
+        with the 5.1.1 + 5.2.3 fixes)
+      - Recording attached in App Review Information
+      - Finds/85% screenshot with the YouTube button replaced with the
+        clean one (all 5 screenshots now match build 23)
+      - Reply to App Review written + recording attached, SAVED AS DRAFT
+    Two clicks left for you (STEP 5): send the draft reply, then Resubmit.
+
 
     Attach build 23, attach the recording, paste the reply below into
     Resolution Center, and stop before the submit button - same as last time.

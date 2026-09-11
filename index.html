@@ -744,6 +744,8 @@
   .acct-msg:empty { margin-top: 0; }
   .acct-msg.err { color: var(--nope); }
   .acct-msg.ok { color: var(--love); }
+  .acct-code { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-brd); }
+  #authCode { letter-spacing: .3em; font-size: 20px; text-align: center; font-variant-numeric: tabular-nums; }
   /* Sign in with Apple. Apple's HIG fixes the look of this button — white on a dark
      UI, their mark, their wording, nothing else inside it — so it deliberately does
      NOT use our accent or type. Hidden until JS confirms we're in the iOS app. */
@@ -1740,6 +1742,17 @@
           <button class="btn-mini ghost" id="btnLogin">Log in</button>
         </div>
         <button class="acct-link" id="btnForgot">Forgot your password?</button>
+        <!-- Build 24: the confirmation email now carries a code as well as the
+             link, so a new user finishes right here instead of bouncing out to Safari and
+             back. Shown after Create account, or when Log in says "not confirmed". -->
+        <div class="acct-code" id="codeBox" style="display:none;">
+          <div class="acct-sub" id="codeSub"></div>
+          <div class="acct-row">
+            <input id="authCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="Code from the email" autocomplete="one-time-code" />
+            <button class="btn-mini" id="btnVerifyCode">Confirm</button>
+          </div>
+          <button class="acct-link" id="btnResendCode">Send a new code</button>
+        </div>
         <div class="acct-msg" id="authMsg"></div>
       </div>
 
@@ -6035,7 +6048,7 @@ async function doSignup() {
     const { data, error } = await SB.auth.signUp({ email, password: pass });
     if (error) { acctMsg("authMsg", error.message, "err"); return; }
     if (data.session) { me_session = data.session; acctMsg("authMsg", "Welcome to Sift! Pick a username 👇", "ok"); loadMe(); }
-    else { acctMsg("authMsg", "Almost there — we sent a confirmation link to " + email + ". Tap it, then come back and log in. (Check spam if it's shy.)", "ok"); }
+    else { acctMsg("authMsg", "Almost there — we emailed a code to " + email + ". (Check spam if it's shy.)", "ok"); showCodeBox(email); }
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
 
@@ -6048,16 +6061,78 @@ async function doLogin() {
     const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
     if (error) {
       // The most common stumble once confirmations are on — say what to do, not just what failed.
-      const friendly = /not confirmed/i.test(error.message || "")
-        ? "Confirm your email first — check your inbox for the link we sent."
-        : error.message;
-      acctMsg("authMsg", friendly, "err"); return;
+      if (/not confirmed/i.test(error.message || "")) {
+        acctMsg("authMsg", "Confirm your email first — type the code from the email we sent (or tap its link).", "err");
+        showCodeBox(email); return;
+      }
+      acctMsg("authMsg", error.message, "err"); return;
     }
-    me_session = data.session; acctMsg("authMsg", ""); loadMe();
+    me_session = data.session; hideCodeBox(); acctMsg("authMsg", ""); loadMe();
   } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
 }
 
-async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; renderAcct(); }
+async function doLogout() { if (SB) { try { await SB.auth.signOut(); } catch (e) {} } me_session = null; me_profile = null; findsPulled = false; hideCodeBox(); acctMsg("authMsg", ""); renderAcct(); }
+
+/* ---------- Build 24: confirm signup with the emailed code ----------
+   Why: the confirmation link points at supabase.co and redirects to github.io while the
+   mail comes from siftmusic.app — three unrelated domains, which is what phishing looks
+   like, and AOL swallowed one outright on 10 Sep. The link also bounced the user out to
+   Safari and asked them to "come back and log in". The email now carries a code too; the
+   user types it here and lands on "Pick a username" without leaving the app. The link
+   stays in the email for one build so build 23 keeps working, then it comes out. */
+let _pendingEmail = "";
+function showCodeBox(email) {
+  _pendingEmail = email;
+  const sub = document.getElementById("codeSub");
+  if (sub) sub.textContent = "Type the code we emailed to " + email + " — no need to leave the app.";
+  const box = document.getElementById("codeBox"); if (box) box.style.display = "";
+  const inp = document.getElementById("authCode"); if (inp) { inp.value = ""; inp.focus(); }
+}
+function hideCodeBox() {
+  _pendingEmail = "";
+  const box = document.getElementById("codeBox"); if (box) box.style.display = "none";
+}
+
+async function doVerifyCode() {
+  if (!SB) return;
+  const email = _pendingEmail || document.getElementById("authEmail").value.trim();
+  const token = (document.getElementById("authCode").value || "").replace(/\D/g, "");
+  if (!email) { acctMsg("authMsg", "Type your email in the box above first.", "err"); return; }
+  if (token.length < 6 || token.length > 10) { acctMsg("authMsg", "That doesn't look like the whole code — check the email and try again.", "err"); return; }
+  acctMsg("authMsg", "Checking the code…");
+  try {
+    // "signup" is the type for a confirm-signup code; fall back to the generic "email"
+    // type only if the server rejects the type itself (not the code).
+    let res = await SB.auth.verifyOtp({ email, token, type: "signup" });
+    if (res.error && /type/i.test(res.error.message || "")) res = await SB.auth.verifyOtp({ email, token, type: "email" });
+    if (res.error) {
+      const m = res.error.message || "";
+      acctMsg("authMsg", /expired|invalid/i.test(m) ? "That code didn't work — it may have expired. Tap “Send a new code” and try the new one." : m, "err");
+      return;
+    }
+    if (!res.data || !res.data.session) { hideCodeBox(); acctMsg("authMsg", "Confirmed — now log in with your password.", "ok"); return; }
+    me_session = res.data.session;
+    hideCodeBox();
+    acctMsg("authMsg", "Welcome to Sift! Pick a username 👇", "ok");
+    loadMe();
+  } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
+}
+
+async function doResendCode() {
+  if (!SB) return;
+  const email = _pendingEmail || document.getElementById("authEmail").value.trim();
+  if (!email) { acctMsg("authMsg", "Type your email in the box above first.", "err"); return; }
+  acctMsg("authMsg", "Sending a new code…");
+  try {
+    const { error } = await SB.auth.resend({ type: "signup", email });
+    if (error) {
+      // Supabase refuses a second email inside 60 seconds — say so instead of echoing the raw error.
+      acctMsg("authMsg", /rate|second|wait|soon/i.test(error.message || "") ? "Give it a minute — a code went out very recently." : error.message, "err");
+      return;
+    }
+    acctMsg("authMsg", "New code sent to " + email + ". (Check spam if it's shy.)", "ok");
+  } catch (e) { acctMsg("authMsg", "Network error — please try again.", "err"); }
+}
 
 /* ---------- Sign in with Apple ----------
    App Store Guideline 4.8 makes this mandatory the moment an app offers its own email
@@ -6147,7 +6222,7 @@ async function deleteAccount() {
     if (error) { acctMsg("deleteMsg", error.message, "err"); return; }
     try { await SB.auth.signOut({ scope: "local" }); } catch (e) {}
     me_session = null; me_profile = null; findsPulled = false;
-    acctMsg("deleteMsg", "");
+    acctMsg("deleteMsg", ""); acctMsg("authMsg", "");
     renderAcct();
     toast("Account deleted. Your Finds are still on this device.");
   } catch (e) { acctMsg("deleteMsg", "Network error — please try again.", "err"); }
@@ -6276,6 +6351,9 @@ window._refreshSocial = function () { if (SB && me_session && me_profile) { sync
   if (!SB) { renderAcct(); return; }   // offline / no backend → all account UI stays hidden
   document.getElementById("btnSignup").onclick = doSignup;
   document.getElementById("btnLogin").onclick = doLogin;
+  document.getElementById("btnVerifyCode").onclick = doVerifyCode;
+  document.getElementById("btnResendCode").onclick = doResendCode;
+  document.getElementById("authCode").addEventListener("keydown", e => { if (e.key === "Enter") doVerifyCode(); });
   // Apple's button only appears in the iOS app, and 4.8 wants it at least as prominent
   // as our own signup — so it sits above the email fields, not below them.
   if (isNativeIOS()) {
