@@ -2685,6 +2685,27 @@ async function appleDepth(id) {
   const d = await itunesApi("lookup", { id: id, entity: "song", limit: 25 });
   return ((d && d.results) || []).filter(r => r.wrapperType === "track" && r.previewUrl).length;
 }
+// A typed artist MusicBrainz has never heard of, seeded from Apple's index instead. The
+// id is "ap-<appleId>" — the same synthetic form song-search tracks already carry, so
+// everything downstream knows what to do with it: relatedArtists returns [] (no MBID,
+// no ListenBrainz graph), refill's own-catalogue fallback pulls their songs by Apple id,
+// and the tag filters simply see an untagged artist. Own catalogue only, but the RIGHT
+// catalogue — which is the whole point.
+const apSeedCache = {};
+async function appleSeedFor(name) {
+  const k = nameKey(name);
+  if (!k) return null;
+  if (apSeedCache[k] !== undefined) return apSeedCache[k];
+  const cs = await appleCandidates(name);
+  if (!cs || !cs.length) return (apSeedCache[k] = null);
+  let best = cs[0];
+  if (cs.length > 1) {   // same tiebreak appleArtistId uses: the entry with real songs behind it
+    const depth = await Promise.all(cs.map(c => appleDepth(c.id)));
+    let b = 0; depth.forEach((n, i) => { if (n > depth[b]) b = i; });
+    best = cs[b];
+  }
+  return (apSeedCache[k] = { id: "ap-" + best.id, name: best.name, nb_fan: 0 });
+}
 async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified name match
   if (!MBID_RE.test(mbid || "")) return null;
   const m = lbArtist[mbid] = lbArtist[mbid] || {};
@@ -2813,7 +2834,15 @@ const AppleLBProvider = {
       }
       // MB ranks by text relevance, not fame — with several same-named artists
       // ("Rema", "BTS"…), let real listener counts pick the one people mean.
-      let a = exact[0] || list[0];
+      // But NO exact name-or-alias match means MusicBrainz doesn't know this artist —
+      // it does not mean the top text hit is them. Typing "Sirin Inci" (absent from
+      // MB) used to seed "Şirin", a 1970s Turkish arabesk singer, and the whole deck
+      // played her scene. Apple's index knows the niche acts MusicBrainz doesn't, so a
+      // verified Apple match takes the seat instead; if Apple has no exact match
+      // either, the seat stays empty and the user is told. A stranger is worse than
+      // nothing — nothing is at least honest.
+      let a = exact[0];
+      if (!a) return await appleSeedFor(name);
       if (exact.length > 1) {
         const counts = await Promise.all(exact.map(x => lbListeners(x.id)));
         a = exact[counts.indexOf(Math.max.apply(null, counts))];
@@ -2943,7 +2972,7 @@ const AppleLBProvider = {
         // we're opening a KNOWN artist — accept its answer only on an exact name match,
         // or we'd open a same-named stranger.
         const a = await this.searchArtist(nameHint);
-        if (a && nameKey(a.name) === want) mbid = a.id;
+        if (a && MBID_RE.test(a.id) && nameKey(a.name) === want) mbid = a.id;   // searchArtist may now hand back an ap- seed
       }
     }
     let appleId = ap ? ap[1] : (mbid ? await appleArtistId(mbid) : null);
@@ -3372,7 +3401,7 @@ async function refill() {
         if (!reason) {
           if (S.genreName && S.origin === "seed") reason = "Exploring " + S.genreName;
           else if (S.origin === "loved") reason = "Because you love " + S.name;
-          else if (S.origin === "seed") reason = "Fans of " + S.name + " also like this";
+          else if (S.origin === "seed") reason = (T === S) ? "More from " + S.name : "Fans of " + S.name + " also like this";   // the seed's OWN songs aren't "fans also like"
           else reason = "Related to " + S.name;
         }
         const got = queueTracks(tracks, reason, T.nbFan);
@@ -4224,6 +4253,7 @@ startBtn.onclick = async () => {
     setDeckStatus("Finding " + name + "…");
     const a = await searchArtist(name);
     if (a) ensureArtist(a.id, a.name, 2.5 * w, { origin: "seed", nbFan: a.nb_fan }); // weight scales seeding
+    else toast("Couldn't find " + name + " — check the spelling on Apple Music.");   // never seed a stranger in their place
   }
   // register genre seeds via anchor artists (weighted), then expand through the graph
   const seedsByGenre = new Map();
