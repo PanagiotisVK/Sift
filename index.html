@@ -2706,6 +2706,44 @@ async function appleSeedFor(name) {
   }
   return (apSeedCache[k] = { id: "ap-" + best.id, name: best.name, nb_fan: 0 });
 }
+// Apple Music's own "similar artists" — the second graph. ListenBrainz has no neighbours
+// at all for a whole tier of artists (Sirin Inci, Makar), and for regional pop its
+// co-listening is dominated by global chart acts (Akcent → Linkin Park, Black Eyed
+// Peas); Apple's graph answered both with exactly the right scene (Sirin Inci → Ollf,
+// Chedly, LB74, Mert Tunç; Akcent → Reea, DJ Project, Dj Sava, Play & Win). It is
+// uneven, though — Ertu's list was Rock, Metal and Poetry — so neighbours are never
+// taken raw: relatedArtists weights them by genre against the source and the deck
+// profile, same as it weights ListenBrainz kin. Apple's genre labels double as the
+// artist's tags so profileMult and tagsCompatible have something to read for artists
+// MusicBrainz never tagged. One developer-token call per artist, cached in lbArtist.
+const APPLE_GENRE_SKIP = new Set(["music", "worldwide"]);   // labels that say nothing
+async function appleSimilar(appleId) {
+  const key = "ap-" + appleId;
+  const m = lbArtist[key] = lbArtist[key] || {};
+  if (m.apSim) return m.apSim;
+  let out = [], mine = [];
+  try {
+    const tok = await appleDevToken();
+    const r = await fetch("https://api.music.apple.com/v1/catalog/us/artists/" + appleId + "?views=similar-artists",
+      { headers: { Authorization: "Bearer " + tok } });
+    if (r.ok) {
+      const d = await r.json();
+      const me = (d.data && d.data[0]) || {};
+      // "Hip-Hop/Rap" and "R&B/Soul" are two umbrella words each, not one specific genre:
+      // split them so TAG_GENERIC and bumpProfile see what they already know how to ignore.
+      const label = g => (g || []).flatMap(x => String(x).split("/")).map(normTag).filter(x => x && !APPLE_GENRE_SKIP.has(x));
+      mine = label((me.attributes || {}).genreNames);
+      out = ((((me.views || {})["similar-artists"] || {}).data) || [])
+        .filter(a => a && a.id && a.attributes && a.attributes.name)
+        .map(a => ({ id: "ap-" + a.id, name: a.attributes.name, genres: label(a.attributes.genreNames) }));
+      out.forEach(a => { const x = lbArtist[a.id] = lbArtist[a.id] || {}; x.name = a.name; if (!x.tags || !x.tags.length) x.tags = a.genres; });
+      if ((!m.tags || !m.tags.length) && mine.length) m.tags = mine;
+    }
+  } catch (_) {}
+  // A failed call is "couldn't look", not "nobody similar" — don't cache an empty answer.
+  if (out.length) { m.apSim = out; m.apGenres = mine; lbCacheSave(); }
+  return out;
+}
 async function appleArtistId(mbid) {  // MBID -> Apple artist id, via a verified name match
   if (!MBID_RE.test(mbid || "")) return null;
   const m = lbArtist[mbid] = lbArtist[mbid] || {};
@@ -2916,17 +2954,78 @@ const AppleLBProvider = {
     }
     return out;
   },
+  // Apple's similar-artists list, shaped like a ListenBrainz row so the same weighted
+  // sampling below can draw from it. Weight: fits the DECK profile 3, shares a real genre
+  // with the source 2, everything else 1. Deck fit outranks source kinship on purpose:
+  // Apple files Makar under Hip-Hop/Rap, so "shares Makar's genre" is the German rap
+  // scene, while the person typing Makar next to Sirin Inci and Akcent wants his dance
+  // side. On a seed's own neighbours that is a bias, not a veto (KNGZ stays reachable
+  // from Sirin Inci). Past the first hop, a neighbour whose labels are all off-profile
+  // is dropped — untagged ones keep the benefit of the doubt ListenBrainz kin get.
+  // Measured before this rule: the second hop turned a House + Romanian-dance deck 50%
+  // rap in one run (Chedly to Tunisian hip-hop, Makar to Dardan to AK Ausserkontrolle).
+  async _appleRows(appleId, tags, srcId) {
+    const sim = await appleSimilar(appleId);
+    const mine = new Set(((lbArtist["ap-" + appleId] || {}).apGenres) || []);
+    if (srcId && !(tags[srcId] || []).length) tags[srcId] = [...mine];   // fill a blind source, never overwrite real MB tags
+    const src = state.artists[srcId];
+    const firstHop = !!(src && src.origin === "seed");
+    // A thin profile (MusicBrainz down, or a one-seed deck) knows too little to call
+    // "Dance" off-profile: measured with MB returning 503s all afternoon, the profile was
+    // {house} alone, INNA's Apple kin (Alexandra Stan, SICKOTOY — labelled Dance) all
+    // scored as strangers, and the fallback served Pitbull instead. So on a seed's own
+    // neighbours a thin profile accepts kin that share the seed's Apple label, umbrella
+    // or not. Hop two stays strict — that is where Far East Movement bridges to Fabolous.
+    const thin = Object.keys(state.tagProfile || {}).length < 3;
+    // Benefit of the doubt is not transitive. An unlabelled neighbour passes the veto
+    // (absence of data is not drift) — but past the first hop, an unlabelled neighbour
+    // of a source that is ITSELF unlabelled or off-profile is an unknown of an unknown.
+    // Measured with a full profile: Samoobeatz ("Worldwide", so no label) reached Turkish
+    // pop-rap through kin nobody could check, and KNGZ (off-profile, allowed as a seed's
+    // ride-along) did the same. Ollf's unlabelled kin still pass: he fits the deck.
+    const srcTags = tags[srcId] || [];
+    const srcTrusted = firstHop || (srcTags.length && profileMult(srcTags) >= 1);
+    const rows = [], off = [];
+    for (const a of sim) {
+      tags[a.id] = a.genres;
+      if (!a.genres.length && !srcTrusted) continue;
+      const fit = profileMult(a.genres);
+      const kin = a.genres.some(g => mine.has(g) && !TAG_GENERIC.has(g));
+      const kinLoose = a.genres.some(g => mine.has(g));
+      const row = { artist_mbid: a.id, name: a.name, score: fit > 1 ? 3 : (kin ? 2 : 1) };
+      const offProfile = a.genres.length && fit < 1 && !(firstHop && thin && kinLoose);
+      if (offProfile) { if (firstHop) off.push(row); continue; }
+      rows.push(row);
+    }
+    // A seed whose kin are ALL off-profile is mislabelled, not misplaced: Apple files
+    // Makar under Hip-Hop/Rap, so his list is rappers, while he was typed next to Sirin
+    // Inci for his dance side. Such a seed becomes an island — own catalogue only, which
+    // is exactly what he was before Apple's graph existed and what the person typing him
+    // meant. Letting even two of those kin through was measured twice: the seed rotation
+    // hands the seed an equal turn, the explore path picks those kin as bridges, and
+    // their own unlabelled neighbours walk straight past the hop-two veto — 42% rap in a
+    // House deck. Where a seed has SOME kin that fit, two off-profile ones ride along
+    // (KNGZ under Sirin Inci) and a nope on them teaches the profile.
+    return rows.length ? rows.concat(off.slice(0, 2)) : [];
+  },
   async relatedArtists(id) {
-    if (!MBID_RE.test(id || "")) return [];
+    const ap = /^ap-(\d+)$/.exec(id || "");
+    let cand = [], tags = {}, compat = [];
+    if (ap) {
+      // No MBID, no ListenBrainz — Apple is the only graph this artist has.
+      cand = await this._appleRows(ap[1], tags, id);
+      compat = cand;
+    } else if (MBID_RE.test(id || "")) {
     const d = await lbApi("https://labs.api.listenbrainz.org/similar-artists/json?artist_mbids=" + encodeURIComponent(id) + "&algorithm=" + LB_ALG);
     const all = Array.isArray(d) ? d : [];
     // Two defenses against co-listening drift: (1) genre-tag filter — a neighbor must
     // be genre-kin to the source, which is what cuts The Weeknd/Bieber/Ariana out of
     // Burna Boy's "similar" list; (2) similarity-weighted sampling from the survivors
     // instead of always taking the top of a ranked list, so neighborhoods vary.
-    const cand = all.slice(0, 60);
-    const tags = await mbMetaFor([id].concat(cand.map(r => r.artist_mbid)));
-    const compat = cand.filter(r => tagsCompatible(tags[id], tags[r.artist_mbid]));
+    cand = all.slice(0, 60);
+    tags = await mbMetaFor([id].concat(cand.map(r => r.artist_mbid)));
+    compat = cand.filter(r => tagsCompatible(tags[id], tags[r.artist_mbid]));
+    } else return [];
     // Untagged neighbours clear the kinship filter on benefit of the doubt rather than
     // on evidence. That rule protects genuinely niche artists, who often carry no
     // MusicBrainz tags — but where the source IS well tagged and verifiable kin are
@@ -2935,10 +3034,28 @@ const AppleLBProvider = {
     // become a reserve for thin neighbourhoods instead of peers in rich ones.
     const tagged = compat.filter(r => (tags[r.artist_mbid] || []).length);
     let pool = ((tags[id] || []).length && tagged.length >= 6 ? tagged : compat).slice(0, 40);
-    if (pool.length < 3) {
-      // Thin or untagged graph: better off-genre than starved — but when the deck has
-      // a profile, at least take the closest strangers rather than the first ten.
-      pool = cand.slice().sort((x, y) => profileMult(tags[y.artist_mbid]) - profileMult(tags[x.artist_mbid])).slice(0, 10);
+    // A source with NO tags (MusicBrainz has none, or the tag call failed this session)
+    // can't be kinship-checked, so tagsCompatible waved everyone through: measured, that
+    // is how "Fans of Akcent also like this" produced Red Hot Chili Peppers twice.
+    const blind = !ap && !(tags[id] || []).length;
+    // The mirror case: the source is tagged but its NEIGHBOURS came back untagged (a
+    // partial MusicBrainz miss), so tagsCompatible waved all sixty through — measured as
+    // "Fans of Akcent also like this: U2", then Shakira bridging to Madonna and Katy
+    // Perry. A neighbourhood nobody could check is as blind as a source nobody could.
+    const blindKin = !ap && cand.length >= 6 && !tagged.length;
+    if ((pool.length < 3 || blind || blindKin) && !ap) {
+      // Thin, or blind. Ask Apple first — its similar-artists covers the acts
+      // ListenBrainz never sees and its rows carry genres, and this thin case was where
+      // the deck used to drift: "closest strangers" from raw co-listening is how a
+      // Romanian dance seed reached Bruno Mars. Only if Apple has nothing either does the
+      // unfiltered pool (thin: the closest strangers) get its turn.
+      const apId = await appleArtistId(id);
+      const rows = apId ? await this._appleRows(apId, tags, id) : [];
+      // Even one or two Apple kin beat ten co-listening strangers. No Apple answer at
+      // all: a blind source must NOT keep the whole unfiltered list — measured, that was
+      // INNA → Snoop Dogg → Wu-Tang when both lookups failed at once.
+      if (rows.length) pool = rows;
+      else pool = cand.slice().sort((x, y) => profileMult(tags[y.artist_mbid]) - profileMult(tags[x.artist_mbid])).slice(0, 10);
     }
     const picked = [];
     // In the thin case untagged artists are still in the pool; keep them reachable but
@@ -2953,7 +3070,7 @@ const AppleLBProvider = {
     }
     return Promise.all(picked.map(async r => {
       (lbArtist[r.artist_mbid] = lbArtist[r.artist_mbid] || {}).name = r.name;
-      return { id: r.artist_mbid, name: r.name, nb_fan: await lbListeners(r.artist_mbid) };
+      return { id: r.artist_mbid, name: r.name, nb_fan: MBID_RE.test(r.artist_mbid) ? await lbListeners(r.artist_mbid) : 0 };
     }));
   },
   // Artist ids in the wild aren't all MBIDs: Finds and follows saved under Deezer
@@ -3278,7 +3395,22 @@ async function fetchRelatedInto(a) {
   rel.forEach(r => ensureArtist(r.id, r.name, a.score * 0.5, { via: a.name, nbFan: r.nb_fan, genreName: a.genreName, fromSeed }));
   // A seed's own tags are the deck's ground truth — fold them into the profile the
   // moment they arrive (relatedArtists just fetched them, so this costs nothing).
-  if (a.origin === "seed" && !a._profiled) { a._profiled = 1; bumpProfile(tagsOf(a.id), 2); }
+  if (a.origin === "seed" && !a._profiled) {
+    a._profiled = 1;
+    // MusicBrainz tags are the profile's ground truth, but a seed MB never tagged — or a
+    // tag call that failed this session — left the profile EMPTY when every seed was
+    // like that, and an empty profile makes profileMult neutral, which switches off
+    // every weight and veto downstream. Measured: that is the gap between an 85% and a
+    // 35% on-vibe deck on identical code. Apple's genre labels stand in; bumpProfile
+    // drops the umbrella words itself, so a mislabelled seed (Makar, "Hip-Hop/Rap")
+    // contributes nothing rather than something wrong.
+    let tg = tagsOf(a.id);
+    if (!tg.length) {
+      const apId = MBID_RE.test(a.id) ? (lbArtist[a.id] || {}).appleId : (/^ap-(\d+)$/.exec(a.id) || [])[1];
+      tg = ((lbArtist["ap-" + apId] || {}).apGenres) || [];
+    }
+    bumpProfile(tg, 2);
+  }
 }
 
 // From an artist's ranked track list (biggest hits first), reach PAST the hits into
