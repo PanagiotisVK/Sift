@@ -34,14 +34,14 @@ WHAT THE CODE DOES (already written, commit below)
     [ ] Write down the Key ID (the XXXXXXXXXX part).
 
 
-[ ] STEP 2. Log the Mac in to Supabase (once)
+[x] STEP 2. (skipped - Claude used the Supabase dashboard in Safari instead)
 ======================================================================
     In the Claude chat, type:
         ! npx supabase login
     A browser page opens; approve it. Then tell Claude "logged in".
 
 
-[ ] STEP 3. Put the key into Supabase (Claude gives you the exact command)
+[x] STEP 3. DONE 25 Sep - secrets saved; Apple accepts the key (invalid_grant on a fake code). Put the key into Supabase (Claude gives you the exact command)
 ======================================================================
     Claude can't read key files, so YOU run the command that sends the key
     to Supabase. It looks like:
@@ -49,7 +49,7 @@ WHAT THE CODE DOES (already written, commit below)
     Then move the .p8 somewhere safe (not Downloads), e.g. a password manager.
 
 
-[ ] STEP 4. Claude deploys apple-revoke and builds 1.0.1 for TestFlight
+[x] STEP 4. DONE 25 Sep - apple-revoke deployed; 1.0.1 (28) uploaded
 ======================================================================
 
 
