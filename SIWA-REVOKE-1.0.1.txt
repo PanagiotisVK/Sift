@@ -1,0 +1,61 @@
+SIGN IN WITH APPLE REVOKE - for 1.0.1. Written 25 Sep 2026.
+======================================================================
+
+WHY
+Apple requires it (Guideline 5.1.1(v)): when someone who signed up with
+Sign in with Apple deletes their account, the app must tell Apple to
+revoke Sift's access. Until now Sift deleted the account but Apple still
+listed Sift under Settings -> your name -> Sign in with Apple.
+
+WHAT THE CODE DOES (already written, commit below)
+  - Delete my account, for an Apple account only: Apple's sheet appears
+    once (Face ID), "Confirm with Apple to disconnect Sift...".
+  - The new server function apple-revoke swaps that one-time code for a
+    token and revokes it with Apple.
+  - Then the account is deleted as before.
+  - If the user cancels the Apple sheet, or anything fails, the account is
+    STILL deleted (deletion must never be blocked). The message then tells
+    them how to remove Sift by hand in Settings.
+  - Email accounts: no change at all.
+
+  Files: supabase/functions/apple-revoke/index.ts
+         index.html -> isAppleAccount(), revokeAppleSignIn(), deleteAccount()
+
+
+[ ] STEP 1. Make a Sign in with Apple key (developer.apple.com, 2 min)
+======================================================================
+    Certificates, Identifiers & Profiles -> Keys -> blue (+)
+    [ ] Key Name: Sift Sign in with Apple
+    [ ] Tick "Sign in with Apple" -> Configure -> Primary App ID:
+        com.pvk.sift -> Save
+    [ ] Continue -> Register -> DOWNLOAD (Apple only lets you do this once).
+        The file is  ~/Downloads/AuthKey_XXXXXXXXXX.p8
+    [ ] Write down the Key ID (the XXXXXXXXXX part).
+
+
+[ ] STEP 2. Log the Mac in to Supabase (once)
+======================================================================
+    In the Claude chat, type:
+        ! npx supabase login
+    A browser page opens; approve it. Then tell Claude "logged in".
+
+
+[ ] STEP 3. Put the key into Supabase (Claude gives you the exact command)
+======================================================================
+    Claude can't read key files, so YOU run the command that sends the key
+    to Supabase. It looks like:
+        ! npx supabase secrets set --project-ref dqteepkjhnlidjireelt APPLE_SIWA_KEY_ID=XXXXXXXXXX APPLE_SIWA_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_XXXXXXXXXX.p8)"
+    Then move the .p8 somewhere safe (not Downloads), e.g. a password manager.
+
+
+[ ] STEP 4. Claude deploys apple-revoke and builds 1.0.1 for TestFlight
+======================================================================
+
+
+[ ] STEP 5. Test on your iPhone (TestFlight)
+======================================================================
+    [ ] You tab -> Sign in with Apple (a fresh Apple sign-in).
+    [ ] iPhone Settings -> your name -> Sign in with Apple: Sift is listed.
+    [ ] Sift -> Delete my account -> tap again -> Apple sheet -> Face ID.
+    [ ] The account deletes, with no Settings message under the sign-in box.
+    [ ] iPhone Settings -> Sign in with Apple: Sift is GONE. That is the pass.

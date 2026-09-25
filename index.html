@@ -6372,6 +6372,38 @@ async function doAppleSignIn() {
 // client-side code must never hold the power to touch auth.users directly.
 // Local Finds survive — the app simply returns to its logged-out state.
 let deleteAcctTimer = null;
+// Guideline 5.1.1(v): an account made with Sign in with Apple must have its Apple grant
+// revoked when it's deleted, or Sift stays listed under Settings → Apple Account →
+// Sign in with Apple. Sift keeps no Apple tokens, so it asks Apple for a fresh one-time
+// code (one Face ID tap) and the apple-revoke edge function swaps it and revokes it.
+// Never blocks the deletion itself: a cancelled sheet or a failed revoke still deletes
+// the account, and returns a line telling the user how to finish the job by hand.
+function isAppleAccount() {
+  const u = me_session && me_session.user;
+  if (!u) return false;
+  const provs = (u.app_metadata && u.app_metadata.providers) || [];
+  return provs.includes("apple") || (u.identities || []).some(i => i.provider === "apple");
+}
+async function revokeAppleSignIn() {
+  if (!isAppleAccount()) return "";
+  const manual = "To remove Sift from your Apple Account too: Settings → your name → Sign in with Apple → Sift → Stop Using.";
+  const C = window.Capacitor;
+  const plugin = isNativeIOS() && C && C.registerPlugin ? C.registerPlugin("SignInWithApple") : null;
+  if (!plugin) return manual;   // web build: no Apple sheet to ask
+  acctMsg("deleteMsg", "Confirm with Apple to disconnect Sift from your Apple Account…");
+  try {
+    const res = await plugin.authorize({ clientId: "com.pvk.sift", redirectURI: "https://panagiotisvk.github.io/Sift/", scopes: "" });
+    const code = res && res.response && res.response.authorizationCode;
+    if (!code) return manual;
+    const r = await fetch(SB_URL + "/functions/v1/apple-revoke", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + me_session.access_token, apikey: SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json().catch(() => ({}));
+    return d.revoked ? "" : manual;
+  } catch (e) { return manual; }   // cancelled sheet or network: still delete, say how to finish
+}
 async function deleteAccount() {
   if (!SB || !me_session) return;
   const b = document.getElementById("btnDeleteAcct");
@@ -6384,6 +6416,7 @@ async function deleteAccount() {
   clearTimeout(deleteAcctTimer);
   b.classList.remove("armed");
   b.textContent = "Delete my account…";
+  const appleNote = await revokeAppleSignIn();
   acctMsg("deleteMsg", "Deleting your account…");
   try {
     const { error } = await SB.rpc("delete_account");
@@ -6393,6 +6426,7 @@ async function deleteAccount() {
     acctMsg("deleteMsg", ""); acctMsg("authMsg", "");
     renderAcct();
     toast("Account deleted. Your Finds are still on this device.");
+    if (appleNote) acctMsg("authMsg", appleNote, "ok");
   } catch (e) { acctMsg("deleteMsg", "Network error — please try again.", "err"); }
 }
 
