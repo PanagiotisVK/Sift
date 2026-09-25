@@ -22,7 +22,8 @@ WHAT THE CODE DOES (already written, commit below)
          index.html -> isAppleAccount(), revokeAppleSignIn(), deleteAccount()
 
 
-[ ] STEP 1. Make a Sign in with Apple key (developer.apple.com, 2 min)
+[x] STEP 1. Make a Sign in with Apple key - DONE 25 Sep by Claude.
+    Key ID VC236BSWG7, file ~/Downloads/AuthKey_VC236BSWG7.p8
 ======================================================================
     Certificates, Identifiers & Profiles -> Keys -> blue (+)
     [ ] Key Name: Sift Sign in with Apple
@@ -44,7 +45,7 @@ WHAT THE CODE DOES (already written, commit below)
 ======================================================================
     Claude can't read key files, so YOU run the command that sends the key
     to Supabase. It looks like:
-        ! npx supabase secrets set --project-ref dqteepkjhnlidjireelt APPLE_SIWA_KEY_ID=XXXXXXXXXX APPLE_SIWA_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_XXXXXXXXXX.p8)"
+        ! npx supabase secrets set --project-ref dqteepkjhnlidjireelt APPLE_SIWA_KEY_ID=VC236BSWG7 APPLE_SIWA_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_VC236BSWG7.p8)"
     Then move the .p8 somewhere safe (not Downloads), e.g. a password manager.
 
 
