@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const out = path.join(root, "www");
 const FILES = [
   "index.html",
+  "supabase.js",
   "privacy.html",
   "manifest.json",
   "logo-mark.png",

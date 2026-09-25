@@ -12,7 +12,8 @@
     "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.0",
-    "@capacitor/ios": "^7.0.0"
+    "@capacitor/ios": "^7.0.0",
+    "@supabase/supabase-js": "^2.117.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0"

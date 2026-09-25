@@ -12,7 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="Sift" />
 <link rel="icon" href="favicon.png?v=3" />
 <link rel="apple-touch-icon" href="icon-180.png" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js 2.117.2, bundled rather than fetched from jsDelivr at launch (App Store 2.5.2:
+     no executable code downloaded at runtime). Update with: npm i @supabase/supabase-js@2 &&
+     cp node_modules/@supabase/supabase-js/dist/umd/supabase.js . -->
+<script src="supabase.js"></script>
 <style>
   :root {
     /* Ink design system — monochrome chrome, album art is the only colour.
@@ -6431,6 +6434,16 @@ async function saveNewPass() {
 // Reserved handles stop anyone posing as the app, Apple, or a moderator.
 const HANDLE_BLOCK = ["nigg","fagg","kike","chink","retard","rape","nazi","hitler","cunt","fuck","shit","bitch","whore","slut","pussy","porn","jizz"];
 const HANDLE_RESERVED = ["sift","siftmusic","siftapp","admin","administrator","moderator","support","help","apple","applemusic","spotify","official","staff","system","root","null","undefined"];
+// Deck names are free text a friend reads, so they get the same roots, checked per word
+// instead of across the whole string: a name is a phrase, and "grape" or "therapy" in one
+// shouldn't bounce the way they would inside a username. Reserved handles don't apply.
+function deckTitleAllowed(v) {
+  const words = (v || "").toLowerCase()
+    .replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/5/g, "s").replace(/7/g, "t")
+    .split(/[^a-z]+/).filter(Boolean);
+  const squashed = words.filter(w => w.length === 1).join("");   // "f u c k" spelled out
+  return ![...words, squashed].some(w => HANDLE_BLOCK.some(r => r === "rape" ? /^rap(e|ed|es|ing|ist)$/.test(w) : w.includes(r)));
+}
 function handleAllowed(v) {
   const sv = (v || "").toLowerCase();
   const leet = sv.replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/5/g, "s").replace(/7/g, "t").replace(/_/g, "");
@@ -6634,6 +6647,7 @@ async function createDeckFromPicks() {
   const picks = [...state.liked].reverse().filter(t => deckSel.has(t.id)).slice(0, 12);
   if (picks.length < 3) return;
   const title = (document.getElementById("deckTitle").value || "").trim() || (me_profile.username + "'s picks");
+  if (!deckTitleAllowed(title)) { toast("That name isn't allowed — try another"); document.getElementById("deckTitle").focus(); return; }
   const tracks = picks.map(t => ({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, preview: t.preview }));
   const btn = document.getElementById("btnDeckSend");
   btn.disabled = true; btn.textContent = "Creating…";
