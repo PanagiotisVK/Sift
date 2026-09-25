@@ -23,6 +23,11 @@ WHAT CHANGED IN THE APP
   - Also ships builds 24 and 25 (sign-up by 6-digit code, the Apple
     similar-artists graph). Testers have had both on TestFlight.
 
+DONE 25 Sep 2026, ~12:23 PM - Claude did every step below:
+  build 26 archived + uploaded, attached to 1.0, notes updated, PDF attached
+  (it REPLACED the deletion video - ASC allows only one attachment), reply
+  sent with the PDF, Update Review, Resubmit. State: WAITING FOR REVIEW.
+
 THE DOCUMENT:  Sift-5.2.3-Rights-Evidence.pdf  (in the Sift folder)
   Every third-party service, what it is used for and the licence for it,
   plus a screenshot of your MusicKit key in the developer account.
