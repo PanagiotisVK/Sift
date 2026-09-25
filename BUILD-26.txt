@@ -1,0 +1,95 @@
+BUILD 26 - answer 5.2.3 with a DOCUMENT, not a message. Written 25 Sep 2026.
+======================================================================
+
+WHAT HAPPENED
+Build 23 was rejected again on 24 Sep, 5.2.3 only (account deletion is
+done). Apple's wording this time:
+
+  "...potentially unauthorized access to third-party audio or video
+   streaming, catalogs, and discovery services ... please ATTACH
+   documentary evidence in the App Review Information section"
+
+Our 11 Sep reply explained everything in a message. They want a FILE in
+the Attachment box on the version page. The only thing there right now
+is the account-deletion video.
+
+WHAT CHANGED IN THE APP
+  - The green Spotify button on Finds rows is gone. Same reason as
+    YouTube: a search link needs no licence, but it can't be backed by a
+    document either. Only Apple Music and Share are left.
+  - The You tab has a small credits line (Apple Music, MusicBrainz,
+    ListenBrainz). The MusicBrainz genre-tag licence requires it, and the
+    evidence PDF points to it.
+  - Also ships builds 24 and 25 (sign-up by 6-digit code, the Apple
+    similar-artists graph). Testers have had both on TestFlight.
+
+THE DOCUMENT:  Sift-5.2.3-Rights-Evidence.pdf  (in the Sift folder)
+  Every third-party service, what it is used for and the licence for it,
+  plus a screenshot of your MusicKit key in the developer account.
+
+
+[ ] STEP 1. Mac -> build 26
+======================================================================
+    cd ~/Desktop/Sift && ./mac.sh
+    Xcode, blue App icon -> General:
+    [ ] Build: 25 -> 26. Version stays 1.0.
+    [ ] Supported Destinations: iPhone only.
+    [ ] Signing & Capabilities: "Sign in with Apple" still listed.
+    [ ] Any iOS Device (arm64) -> Product -> Archive -> Distribute App
+        -> App Store Connect -> Upload.
+    [ ] On your phone, from TestFlight: open Finds, check there is NO
+        green Spotify button. Open You and check the credits line is at
+        the bottom.
+
+[ ] STEP 2. App Store Connect -> Sift -> iOS App 1.0 (the version page)
+======================================================================
+    [ ] Build: remove 23, add 26.
+    [ ] App Review Information -> Attachment: ADD
+        Sift-5.2.3-Rights-Evidence.pdf. Keep the deletion video if it
+        lets you have both. If only one file fits, the PDF wins.
+    [ ] Notes box: paste this line at the TOP of what is already there:
+
+        GUIDELINE 5.2.3: documentary evidence is attached
+        (Sift-5.2.3-Rights-Evidence.pdf). Sift streams only from Apple
+        (iTunes Search API previews; MusicKit under the user's own Apple
+        Music subscription, MusicKit key 4NAPM3K3DP). The only other data
+        is CC0 / CC BY-NC-SA artist metadata from MusicBrainz and
+        ListenBrainz, with no audio. The Spotify and YouTube links are
+        removed in build 26.
+
+    [ ] Screenshots: check none of them shows a green Spotify button.
+        Screenshot 4 was cropped above the button row on 10 Sep. Look
+        anyway.
+    [ ] Save.
+
+[ ] STEP 3. Reply in App Review (the submission page with the messages),
+    then press "Resubmit to App Review"
+======================================================================
+    Paste:
+
+Hello,
+
+Thank you. I have now attached the documentary evidence in the App Review
+Information section as a PDF: "Sift-5.2.3-Rights-Evidence.pdf". It lists
+every third-party service the app uses, what it is used for, and the
+licence or agreement behind it:
+
+- Preview audio and artwork: Apple's iTunes Search API, streamed from
+  Apple's servers and linked back to Apple Music.
+- Catalogue and full-song playback: the Apple Music API and MusicKit JS,
+  through the MusicKit key on my developer account (key 4NAPM3K3DP, team
+  N6Y9JAG2XB; a screenshot is included), and only under the listener's
+  own Apple Music subscription.
+- Discovery metadata (no audio): MusicBrainz and ListenBrainz from the
+  MetaBrainz Foundation, published under CC0 1.0 and CC BY-NC-SA 3.0. The
+  app is free and credits them on the You tab.
+
+To leave nothing that cannot be documented, build 26 also removes the
+last outbound links to other services (Spotify, and YouTube in build 23).
+Sift now uses no audio, video, catalogue or discovery service other than
+Apple's and the open MetaBrainz data. It downloads and stores no media.
+
+If a particular screen still raises a question, please tell me which one
+and I will change it.
+
+Peter Vlahos

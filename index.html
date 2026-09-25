@@ -617,8 +617,8 @@
   .find .fmeta { flex: 1; min-width: 0; }
   .find .fmeta .n { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .find .fmeta .a { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* "Open in your app" service links — search the song in Spotify / Apple Music.
-     The .yt rule is dead as of 2026-09-10; see SVC_ICONS.yt for why. */
+  /* "Open in your app" service links — the song in Apple Music, plus Share.
+     The .sp and .yt rules are dead (2026-09-25, 2026-09-10); see SVC_ICONS.yt for why. */
   .find .svc { flex-basis: 100%; display: flex; gap: 6px; }
   .find .svc a, .find .svc button { flex: 1; text-align: center; text-decoration: none; font-weight: 700; font-size: 10.5px; padding: 8px 3px; border-radius: 10px; white-space: nowrap; cursor: pointer; }
   /* Platform buttons: white logo on the solid trademark colour + subtle white border — clean & poppy */
@@ -1817,6 +1817,8 @@
 
       <button class="startover" id="startOver">Start over — clear my taste</button>
       <div class="about-note">Sift · early access · your taste lives on this device · <a href="privacy.html">privacy</a> · <a href="mailto:petervlahosk2000@gmail.com?subject=Sift%20feedback">send feedback</a></div>
+      <!-- Credits the data licences require (MusicBrainz tags are CC BY-NC-SA 3.0, not CC0). Also what App Review's 5.2.3 evidence document points to. -->
+      <div class="about-note">Previews, artwork &amp; catalogue: Apple Music · artist data: <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> (<a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener">CC BY-NC-SA 3.0</a>) &amp; <a href="https://listenbrainz.org" target="_blank" rel="noopener">ListenBrainz</a> (CC0), MetaBrainz Foundation</div>
     </section>
 
     <!-- DECK MODE (a friend swiping a shared deck) -->
@@ -5461,6 +5463,9 @@ const SVC_ICONS = {
   // produced, a YouTube one never can. Every YouTube target was a plain search URL
   // and nothing was ever downloaded — but a YouTube glyph beside a play button is
   // the visual signature of a ripper, so the whole surface is gone. Do not re-add.
+  // Spotify followed on 2026-09-25, after 1.0 (23) drew the same 5.2.3 finding for
+  // "catalogs and discovery services": a search link needs no licence, but it can't
+  // be evidenced by a document either, and a document is all Apple will accept.
   yt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
   sh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>'
 };
@@ -5543,14 +5548,12 @@ function updateFinds() {
     row.className = "find";
     row._tid = t.id; // lets the radio highlight the row it's playing
     const q = encodeURIComponent(t.artist + " " + t.title); // open/find the song in the user's app
-    const sp = "https://open.spotify.com/search/" + q;
     const ap = t.appleUrl || ("https://music.apple.com/us/search?term=" + q); // exact song once resolved
     row.innerHTML = '<span class="fcov"><img src="' + (t.cover || "") + '" alt="" /><span class="eq"><i></i><i></i><i></i></span></span>' +
       '<div class="fmeta"><div class="n">' + esc(t.title) + '</div><div class="a">' + esc(t.artist) + '</div></div>' +
       '<button class="mini">' + ICON_RADIO_PLAY + '</button>' +
       '<button class="mini rm" title="Remove from Finds" aria-label="Remove from Finds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
       '<div class="svc">' +
-        '<a class="sp" href="' + sp + '" target="_blank" rel="noopener" title="Open in Spotify" aria-label="Spotify">' + SVC_ICONS.sp + '</a>' +
         '<a class="ap" href="' + ap + '" target="_blank" rel="noopener" title="Open in Apple Music" aria-label="Apple Music">' + SVC_ICONS.ap + '</a>' +
         '<button class="sh" title="Share this song" aria-label="Share">' + SVC_ICONS.sh + '</button>' +
       '</div>';
